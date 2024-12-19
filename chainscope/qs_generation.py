@@ -1,4 +1,5 @@
 import logging
+import uuid
 from dataclasses import dataclass
 from typing import Literal
 
@@ -17,14 +18,26 @@ class Question:
     y_value: int | float
 
 
+@dataclass
+class QsDataset:
+    questions: list[Question]
+    dataset_id: str
+    template: Literal["gt", "lt"]
+    expected_answer: Literal["yes", "no"]
+    pick_count: int
+    min_value_diff: int
+    max_value_diff: int
+
+
 def gen_qs(
     expected_answer: Literal["yes", "no"],
     template: Literal["gt", "lt"],
     pick_count: int,
     min_value_diff: int,
     max_value_diff: int,
+    dataset_id: str,
     verbose: bool,
-) -> list[Question]:
+) -> QsDataset:
     qs = []
     values = load_values()
     for category, category_values in values.items():
@@ -62,6 +75,7 @@ def gen_qs(
                 qs.append(
                     Question(
                         q_str=q_str,
+                        q_id=uuid.uuid4().hex,
                         expected_answer=expected_answer,
                         category=category,
                         x=x,
@@ -72,4 +86,12 @@ def gen_qs(
                 )
                 picked_count += 1
 
-    return qs
+    return QsDataset(
+        questions=qs,
+        dataset_id=dataset_id,
+        template=template,
+        expected_answer=expected_answer,
+        pick_count=pick_count,
+        min_value_diff=min_value_diff,
+        max_value_diff=max_value_diff,
+    )

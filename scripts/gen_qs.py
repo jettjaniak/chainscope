@@ -2,10 +2,11 @@
 import argparse
 import json
 import logging
+import uuid
 from dataclasses import asdict
 
 from chainscope import DATA_DIR
-from chainscope.qs_generation import Question, gen_qs
+from chainscope.qs_generation import QsDataset, gen_qs
 
 
 def parse_args():
@@ -52,21 +53,23 @@ def main(args: argparse.Namespace):
 
     output_dir = DATA_DIR / "qs"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_file_name = f"qs_{args.template}-template_expected-{args.expected_answer}_pick-{args.pick_count}_min-value-diff-{args.min_value_diff}_max-value-diff-{args.max_value_diff}.json"
+    dataset_id = uuid.uuid4().hex[:8]
+    output_path = output_dir / f"qs_{dataset_id}.json"
 
-    qs: list[Question] = gen_qs(
+    qs_dataset: QsDataset = gen_qs(
         expected_answer=args.expected_answer,
         template=args.template,
         pick_count=args.pick_count,
         min_value_diff=args.min_value_diff,
         max_value_diff=args.max_value_diff,
+        dataset_id=dataset_id,
         verbose=args.verbose,
     )
     if args.verbose:
-        logging.info(f"Generated {len(qs)} questions")
+        logging.info(f"Generated {len(qs_dataset.questions)} questions")
 
-    with open(output_dir / output_file_name, "w") as f:
-        json.dump([asdict(q) for q in qs], f)
+    with open(output_path, "w") as f:
+        json.dump(asdict(qs_dataset), f)
 
 
 if __name__ == "__main__":
