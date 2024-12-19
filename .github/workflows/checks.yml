@@ -1,0 +1,34 @@
+name: checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "*"
+
+permissions:
+  actions: write
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+      - name: dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+      - name: ruff
+        run: ruff check
+      - name: ruff format
+        run: ruff format  --check
+      - name: pytest
+        run: pytest
