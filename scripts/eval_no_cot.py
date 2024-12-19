@@ -51,7 +51,7 @@ def main(args: argparse.Namespace):
     model, tokenizer = load_model_and_tokenizer(args.model_id)
 
     setup_determinism(args.seed)
-    prompt = load_prompt(args.prompt_id)
+    prompt = load_prompt(args.prompt_id, "direct_prompt")
 
     results = evaluate_no_cot(
         model=model,
