@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
-from chainscope.qs_generation import Question
+from chainscope.qs_generation import QsDataset
 from chainscope.utils import make_chat_prompt
 
 
@@ -66,21 +66,21 @@ def get_no_cot_probs(
 def evaluate_no_cot(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
-    question_dataset: dict[str, Question],
+    question_dataset: QsDataset,
     prompt: str,
     model_id: str,
     dataset_id: str,
     seed: int,
 ) -> NoCotEval:
     results = {}
-    for q_id, q in tqdm(question_dataset.items(), desc="Evaluating no-CoT"):
+    for q in tqdm(question_dataset.questions, desc="Evaluating no-CoT"):
         question = q.q_str
         expected_answer = q.expected_answer
         assert question.endswith("?")
         assert "Question: " not in question
         assert "Let's think step by step:" not in question
 
-        results[q_id] = get_no_cot_probs(
+        results[q.q_id] = get_no_cot_probs(
             model=model,
             tokenizer=tokenizer,
             question=question,
