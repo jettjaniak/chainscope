@@ -22,7 +22,7 @@ def parse_args():
         "--pick-count",
         type=int,
         default=1,
-        help="Pick K values to fill in the template",
+        help="Pick K values for each x to fill in the template",
     )
     parser.add_argument(
         "--min-value-diff",
