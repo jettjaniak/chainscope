@@ -8,6 +8,7 @@ from chainscope.values import load_values
 @dataclass
 class Question:
     q_str: str
+    q_id: str
     expected_answer: Literal["yes", "no"]
     category: str
     x: str
