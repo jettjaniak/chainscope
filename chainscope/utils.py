@@ -40,19 +40,20 @@ def load_model_and_tokenizer(
     model_id: str,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
     model_id = MODELS_MAP.get(model_id, model_id)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = load_tokenizer(model_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
-        device_map="cuda",
+        device_map=device,
     )
 
     # get rid of the warnings early
-    model(torch.tensor([[tokenizer.bos_token_id]]).cuda())
+    model(torch.tensor([[tokenizer.bos_token_id]]).to(device))
     model.generate(
-        torch.tensor([[tokenizer.bos_token_id]]).cuda(),
+        torch.tensor([[tokenizer.bos_token_id]]).to(device),
         max_new_tokens=1,
         pad_token_id=tokenizer.eos_token_id,
     )
