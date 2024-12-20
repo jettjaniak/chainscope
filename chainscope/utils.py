@@ -1,7 +1,5 @@
-import random
 import re
 
-import numpy as np
 import torch
 from transformers import (
     AutoModelForCausalLM,
@@ -55,14 +53,6 @@ def load_model_and_tokenizer(
     )
 
     return model, tokenizer
-
-
-def setup_determinism(seed: int):
-    torch.manual_seed(seed)
-    torch.random.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    random.seed(seed)
-    np.random.seed(seed)
 
 
 def remove_llama_system_dates(chat_input_str: str) -> str:

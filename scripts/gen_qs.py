@@ -4,7 +4,7 @@ from typing import Literal
 
 import click
 
-from chainscope.qs_generation import QsDataset, gen_qs
+from chainscope.questions import QsDataset, gen_qs
 
 
 @click.command()

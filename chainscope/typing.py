@@ -78,8 +78,35 @@ class DirectEval(YAMLWizard):
     instr_id: str
 
     def save(self, dataset_id: str) -> Path:
-        directory = DATA_DIR / "direct_eval" / dataset_id
-        directory.mkdir(exist_ok=True)
+        directory = DATA_DIR / "direct_eval" / self.instr_id / dataset_id
+        directory.mkdir(exist_ok=True, parents=True)
+        model_id = self.model_id.replace("/", "__")
+        path = directory / f"{model_id}.yaml"
+        self.to_yaml_file(path)
+        return path
+
+
+@dataclass
+class SamplingParams(YAMLWizard):
+    temperature: float
+    top_p: float
+    max_new_tokens: int
+
+    def get_identifier(self) -> str:
+        return f"T{self.temperature}_P{self.top_p}_M{self.max_new_tokens}"
+
+
+@dataclass
+class CotResponses(YAMLWizard):
+    responses_by_qid: dict[str, dict[str, str]]  # qid -> {uuid -> response_str}
+    model_id: str
+    instr_id: str
+    sampling_params: SamplingParams
+
+    def save(self, dataset_id: str) -> Path:
+        sp_id = self.sampling_params.get_identifier()
+        directory = DATA_DIR / "cot_responses" / self.instr_id / sp_id / dataset_id
+        directory.mkdir(exist_ok=True, parents=True)
         model_id = self.model_id.replace("/", "__")
         path = directory / f"{model_id}.yaml"
         self.to_yaml_file(path)

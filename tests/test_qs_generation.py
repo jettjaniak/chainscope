@@ -1,12 +1,12 @@
 import pytest
 
-from chainscope.qs_generation import gen_qs
+from chainscope.questions import gen_qs
 
 
 @pytest.mark.parametrize("comparison", ["gt", "lt"])
 @pytest.mark.parametrize("answer", ["YES", "NO"])
 @pytest.mark.parametrize("prop_id", ["aircraft-speeds", "element-densities"])
-def test_gen_qs_parametrized(comparison, answer, prop_id):
+def test_gen_qs(comparison, answer, prop_id):
     dataset = gen_qs(
         answer=answer,
         comparison=comparison,

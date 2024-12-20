@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
-from chainscope.qs_generation import QsDataset
+from chainscope.questions import QsDataset
 from chainscope.typing import *
 from chainscope.utils import get_model_device, make_chat_prompt
 
