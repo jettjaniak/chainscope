@@ -18,6 +18,7 @@ MODELS_MAP = {
     "G27": "google/gemma-2-27b-it",
     # Llama models
     "L": "meta-llama/Llama-3.2-3B-Instruct",
+    "L1": "meta-llama/Llama-3.2-1B-Instruct",
     "L3": "meta-llama/Llama-3.2-3B-Instruct",
     "L8": "meta-llama/Llama-3.1-8B-Instruct",
     "L70": "meta-llama/Llama-3.3-70B-Instruct",
@@ -25,7 +26,10 @@ MODELS_MAP = {
     "P": "microsoft/Phi-3.5-mini-instruct",
     # Qwen models
     "Q": "Qwen/Qwen2.5-3B-Instruct",
+    "Q0.5": "Qwen/Qwen2.5-0.5B-Instruct",
+    "Q1.5": "Qwen/Qwen2.5-1.5B-Instruct",
     "Q3": "Qwen/Qwen2.5-3B-Instruct",
+    "Q7": "Qwen/Qwen2.5-7B-Instruct",
     "Q14": "Qwen/Qwen2.5-14B-Instruct",
     "Q32": "Qwen/Qwen2.5-32B-Instruct",
     "Q72": "Qwen/Qwen2.5-72B-Instruct",
