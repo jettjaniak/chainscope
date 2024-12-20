@@ -8,7 +8,12 @@ from chainscope import DATA_DIR
 from chainscope.prompts import load_prompt
 from chainscope.qs_evaluation import evaluate_no_cot
 from chainscope.qs_generation import QsDataset, Question
-from chainscope.utils import is_chat_model, load_model_and_tokenizer, setup_determinism
+from chainscope.utils import (
+    MODELS_MAP,
+    is_chat_model,
+    load_model_and_tokenizer,
+    setup_determinism,
+)
 
 
 def parse_args():
@@ -57,8 +62,9 @@ def main(args: argparse.Namespace):
             max_value_diff=data["max_value_diff"],
         )
 
-    assert is_chat_model(args.model_id), "Model must be a chat model"
-    model, tokenizer = load_model_and_tokenizer(args.model_id)
+    model_id = MODELS_MAP.get(args.model_id, args.model_id)
+    assert is_chat_model(model_id), "Model must be a chat model"
+    model, tokenizer = load_model_and_tokenizer(model_id)
 
     setup_determinism(args.seed)
     prompt = load_prompt(args.prompt_id, "direct_prompt")
@@ -68,14 +74,14 @@ def main(args: argparse.Namespace):
         tokenizer=tokenizer,
         question_dataset=question_dataset,
         prompt=prompt,
-        model_id=args.model_id,
+        model_id=model_id,
         dataset_id=args.dataset_id,
         seed=args.seed,
     )
 
     no_cot_dir = DATA_DIR / "no-cot-accuracy"
     no_cot_dir.mkdir(parents=True, exist_ok=True)
-    model_name = args.model_id.split("/")[-1]
+    model_name = model_id.split("/")[-1]
     filename = f"{model_name}_{args.dataset_id}.json"
     with open(no_cot_dir / filename, "w") as f:
         json.dump(asdict(results), f)

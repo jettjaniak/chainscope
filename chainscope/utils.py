@@ -43,7 +43,6 @@ def load_tokenizer(model_id: str) -> PreTrainedTokenizerBase:
 def load_model_and_tokenizer(
     model_id: str,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
-    model_id = MODELS_MAP.get(model_id, model_id)
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     tokenizer = load_tokenizer(model_id)
