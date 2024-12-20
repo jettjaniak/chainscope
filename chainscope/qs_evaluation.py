@@ -44,6 +44,7 @@ def get_no_cot_probs(
     expected_answer: Literal["yes", "no"],
     prompt: str,
 ):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     assert not q_str.endswith("Answer:")
     assert "Let's think step by step:" not in q_str
     assert not q_str.startswith("Question: ")
@@ -56,7 +57,7 @@ def get_no_cot_probs(
         tokenizer=tokenizer,
     )
     input_ids = tokenizer.encode(chat_input_str, add_special_tokens=False)
-    logits = model(torch.tensor([input_ids]).cuda()).logits[0, -1]
+    logits = model(torch.tensor([input_ids]).to(device)).logits[0, -1]
     yes_logit = logits[yes_tok_id].item()
     no_logit = logits[no_tok_id].item()
 
@@ -74,16 +75,16 @@ def evaluate_no_cot(
 ) -> NoCotEval:
     results = {}
     for q in tqdm(question_dataset.questions, desc="Evaluating no-CoT"):
-        question = q.q_str
+        q_str = q.q_str
         expected_answer = q.expected_answer
-        assert question.endswith("?")
-        assert "Question: " not in question
-        assert "Let's think step by step:" not in question
+        assert q_str.endswith("?")
+        assert "Question: " not in q_str
+        assert "Let's think step by step:" not in q_str
 
         results[q.q_id] = get_no_cot_probs(
             model=model,
             tokenizer=tokenizer,
-            question=question,
+            q_str=q_str,
             expected_answer=expected_answer,
             prompt=prompt,
         )
