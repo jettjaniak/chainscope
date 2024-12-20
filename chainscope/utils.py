@@ -10,14 +10,13 @@ from transformers import (
     PreTrainedTokenizerBase,
 )
 
+# for convenience, you can use any model id directly
 MODELS_MAP = {
     # Gemma models
-    "G": "google/gemma-2-2b-it",
     "G2": "google/gemma-2-2b-it",
     "G9": "google/gemma-2-9b-it",
     "G27": "google/gemma-2-27b-it",
     # Llama models
-    "L": "meta-llama/Llama-3.2-3B-Instruct",
     "L1": "meta-llama/Llama-3.2-1B-Instruct",
     "L3": "meta-llama/Llama-3.2-3B-Instruct",
     "L8": "meta-llama/Llama-3.1-8B-Instruct",
@@ -25,7 +24,6 @@ MODELS_MAP = {
     # Phi models
     "P": "microsoft/Phi-3.5-mini-instruct",
     # Qwen models
-    "Q": "Qwen/Qwen2.5-3B-Instruct",
     "Q0.5": "Qwen/Qwen2.5-0.5B-Instruct",
     "Q1.5": "Qwen/Qwen2.5-1.5B-Instruct",
     "Q3": "Qwen/Qwen2.5-3B-Instruct",
@@ -36,38 +34,27 @@ MODELS_MAP = {
 }
 
 
-def load_tokenizer(model_id: str) -> PreTrainedTokenizerBase:
-    return AutoTokenizer.from_pretrained(model_id)
-
-
 def load_model_and_tokenizer(
     model_id: str,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
-    tokenizer = load_tokenizer(model_id)
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         torch_dtype=torch.bfloat16,
         low_cpu_mem_usage=True,
-        device_map=device,
+        device_map="auto",
     )
+    device = get_model_device(model)
 
     # get rid of the warnings early
-    model(torch.tensor([[tokenizer.bos_token_id]]).to(device))
+    model(torch.tensor([[tokenizer.eos_token_id]]).to(device))
     model.generate(
-        torch.tensor([[tokenizer.bos_token_id]]).to(device),
+        torch.tensor([[tokenizer.eos_token_id]]).to(device),
         max_new_tokens=1,
         pad_token_id=tokenizer.eos_token_id,
     )
 
     return model, tokenizer
-
-
-def is_chat_model(model_id: str) -> bool:
-    """Determine if model is a chat model based on its ID."""
-    model_id = model_id.lower()
-    return any(x in model_id for x in ["instruct", "-it"])
 
 
 def setup_determinism(seed: int):
@@ -79,6 +66,7 @@ def setup_determinism(seed: int):
 
 
 def remove_llama_system_dates(chat_input_str: str) -> str:
+    # TODO: this was done for llama 3.2, does it work for other models?
     return re.sub(
         r"\n\nCutting Knowledge Date: .*\nToday Date: .*\n\n", "", chat_input_str
     )
@@ -102,3 +90,7 @@ def make_chat_prompt(instruction: str, tokenizer: PreTrainedTokenizerBase) -> st
         }
     ]
     return conversation_to_str_prompt(conversation, tokenizer)
+
+
+def get_model_device(model: PreTrainedModel) -> torch.device:
+    return next(model.parameters()).device

@@ -1,59 +1,39 @@
 import math
-from dataclasses import dataclass
-from typing import Literal
 
 import torch
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 from chainscope.qs_generation import QsDataset
-from chainscope.utils import make_chat_prompt
+from chainscope.typing import *
+from chainscope.utils import get_model_device, make_chat_prompt
 
 
-@dataclass
-class NoCotProbs:
-    yes_prob: float
-    no_prob: float
-    p_correct: float
-
-
-@dataclass
-class NoCotEval:
-    probs_by_qid: dict[str, NoCotProbs]
-    dataset_id: str
-    model_id: str
-    seed: int
-
-
-def logits_to_probs(
-    yes_logit: float, no_logit: float, expected_answer: Literal["yes", "no"]
-) -> NoCotProbs:
+def logits_to_probs(yes_logit: float, no_logit: float) -> DirectEvalProbs:
     exp_yes = math.exp(yes_logit)
     exp_no = math.exp(no_logit)
     denom = exp_yes + exp_no
-    p_correct = exp_yes / denom if expected_answer == "yes" else exp_no / denom
-    return NoCotProbs(
-        yes_prob=exp_yes / denom, no_prob=exp_no / denom, p_correct=p_correct
+    return DirectEvalProbs(
+        p_yes=exp_yes / denom,
+        p_no=exp_no / denom,
     )
 
 
-def get_no_cot_probs(
+def get_direct_probs(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
-    q_str: str,
-    expected_answer: Literal["yes", "no"],
-    prompt: str,
+    question_str: str,
+    direct_instruction: str,
 ):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    assert not q_str.endswith("Answer:")
-    assert "Let's think step by step:" not in q_str
-    assert not q_str.startswith("Question: ")
+    device = get_model_device(model)
 
-    yes_tok_id = tokenizer.encode("Yes", add_special_tokens=False)[0]
-    no_tok_id = tokenizer.encode("No", add_special_tokens=False)[0]
+    yes_tok_id = tokenizer.encode("YES", add_special_tokens=False)[0]
+    no_tok_id = tokenizer.encode("NO", add_special_tokens=False)[0]
 
+    instruction_template = direct_instruction
+    # TODO: check if this contains BOS for models that need it when needed
     chat_input_str = make_chat_prompt(
-        instruction=prompt.format(q_str=q_str),
+        instruction=instruction_template.format(question=question_str),
         tokenizer=tokenizer,
     )
     input_ids = tokenizer.encode(chat_input_str, add_special_tokens=False)
@@ -61,37 +41,29 @@ def get_no_cot_probs(
     yes_logit = logits[yes_tok_id].item()
     no_logit = logits[no_tok_id].item()
 
-    return logits_to_probs(yes_logit, no_logit, expected_answer)
+    return logits_to_probs(yes_logit, no_logit)
 
 
-def evaluate_no_cot(
+def evaluate_direct(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
     question_dataset: QsDataset,
-    prompt: str,
-    model_id: str,
-    dataset_id: str,
-    seed: int,
-) -> NoCotEval:
+    instr_id: str,
+) -> DirectEval:
+    instructions = Instructions.load(instr_id)
     results = {}
-    for q in tqdm(question_dataset.questions, desc="Evaluating no-CoT"):
-        q_str = q.q_str
-        expected_answer = q.expected_answer
-        assert q_str.endswith("?")
-        assert "Question: " not in q_str
-        assert "Let's think step by step:" not in q_str
-
-        results[q.q_id] = get_no_cot_probs(
+    for qid, q in tqdm(
+        question_dataset.question_by_qid.items(), desc="Evaluating direct repsonses"
+    ):
+        results[qid] = get_direct_probs(
             model=model,
             tokenizer=tokenizer,
-            q_str=q_str,
-            expected_answer=expected_answer,
-            prompt=prompt,
+            question_str=q.q_str,
+            direct_instruction=instructions.direct,
         )
 
-    return NoCotEval(
+    return DirectEval(
         probs_by_qid=results,
-        model_id=model_id,
-        dataset_id=dataset_id,
-        seed=seed,
+        model_id=model.name_or_path,
+        instr_id=instr_id,
     )
