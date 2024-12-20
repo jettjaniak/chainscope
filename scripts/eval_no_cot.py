@@ -7,7 +7,7 @@ from dataclasses import asdict
 from chainscope import DATA_DIR
 from chainscope.prompts import load_prompt
 from chainscope.qs_evaluation import evaluate_no_cot
-from chainscope.qs_generation import QsDataset
+from chainscope.qs_generation import QsDataset, Question
 from chainscope.utils import is_chat_model, load_model_and_tokenizer, setup_determinism
 
 
@@ -45,7 +45,17 @@ def main(args: argparse.Namespace):
     dataset_path = qs_dir / f"qs_{args.dataset_id}.json"
     assert dataset_path.exists(), f"Dataset {args.dataset_id} not found"
     with open(dataset_path, "r") as f:
-        question_dataset: QsDataset = QsDataset(**json.load(f))
+        data = json.load(f)
+        questions = [Question(**q) for q in data["questions"]]
+        question_dataset: QsDataset = QsDataset(
+            questions=questions,
+            dataset_id=data["dataset_id"],
+            template=data["template"],
+            expected_answer=data["expected_answer"],
+            pick_count=data["pick_count"],
+            min_value_diff=data["min_value_diff"],
+            max_value_diff=data["max_value_diff"],
+        )
 
     assert is_chat_model(args.model_id), "Model must be a chat model"
     model, tokenizer = load_model_and_tokenizer(args.model_id)
