@@ -127,11 +127,12 @@ class CotEval(YAMLWizard):
     ]  # qid -> {response_uuid -> result}
     model_id: str
     instr_id: str
+    dataset_id: str
     sampling_params: SamplingParams
 
-    def save(self, dataset_id: str) -> Path:
+    def save(self) -> Path:
         sp_id = self.sampling_params.get_identifier()
-        directory = DATA_DIR / "cot_eval" / self.instr_id / sp_id / dataset_id
+        directory = DATA_DIR / "cot_eval" / self.instr_id / sp_id / self.dataset_id
         directory.mkdir(exist_ok=True, parents=True)
         model_id = self.model_id.replace("/", "__")
         path = directory / f"{model_id}.yaml"
