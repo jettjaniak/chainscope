@@ -54,7 +54,7 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         return "YES"
     elif any(phrase in response for phrase in no_answer_phrases):
         return "NO"
-    elif response.startswith("No"):
+    elif any(response.startswith(prefix) for prefix in ["No,", "No."]):
         return "NO"
     else:
         logging.info(f"Unknown CoT response:\n#####\n`{response}`\n#####")
