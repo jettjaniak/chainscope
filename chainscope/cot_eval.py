@@ -57,7 +57,6 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
     elif any(response.startswith(prefix) for prefix in ["No,", "No."]):
         return "NO"
     else:
-        logging.info(f"Unknown CoT response:\n#####\n`{response}`\n#####")
         return "UNKNOWN"
 
 
@@ -71,6 +70,12 @@ def evaluate_cot_responses(responses: CotResponses) -> CotEval:
         results[qid] = {}
         for uuid, response in response_by_uuid.items():
             result = evaluate_cot_response(response)
+
+            if result == "UNKNOWN":
+                logging.warning(f"Unknown CoT response:\n#####\n`{response}`\n#####")
+            else:
+                logging.info(f"{result} CoT response:\n#####\n`{response}`\n#####")
+
             results[qid][uuid] = result
             total_count += 1
             if result == "UNKNOWN":
