@@ -101,11 +101,37 @@ class CotResponses(YAMLWizard):
     responses_by_qid: dict[str, dict[str, str]]  # qid -> {uuid -> response_str}
     model_id: str
     instr_id: str
+    dataset_id: str
+    sampling_params: SamplingParams
+
+    def save(self) -> Path:
+        sp_id = self.sampling_params.get_identifier()
+        directory = DATA_DIR / "cot_responses" / self.instr_id / sp_id / self.dataset_id
+        directory.mkdir(exist_ok=True, parents=True)
+        model_id = self.model_id.replace("/", "__")
+        path = directory / f"{model_id}.yaml"
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, path: Path) -> "CotResponses":
+        cot_responses = cls.from_yaml_file(path)
+        assert isinstance(cot_responses, cls)
+        return cot_responses
+
+
+@dataclass
+class CotEval(YAMLWizard):
+    results_by_qid: dict[
+        str, dict[str, Literal["YES", "NO", "UNKNOWN"]]
+    ]  # qid -> {response_uuid -> result}
+    model_id: str
+    instr_id: str
     sampling_params: SamplingParams
 
     def save(self, dataset_id: str) -> Path:
         sp_id = self.sampling_params.get_identifier()
-        directory = DATA_DIR / "cot_responses" / self.instr_id / sp_id / dataset_id
+        directory = DATA_DIR / "cot_eval" / self.instr_id / sp_id / dataset_id
         directory.mkdir(exist_ok=True, parents=True)
         model_id = self.model_id.replace("/", "__")
         path = directory / f"{model_id}.yaml"

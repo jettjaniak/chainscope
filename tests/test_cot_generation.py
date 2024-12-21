@@ -30,18 +30,20 @@ def test_get_question_cot_responses(small_model_and_tokenizer, sampling_params):
 
 def test_get_all_cot_responses(small_model_and_tokenizer, sampling_params):
     model, tokenizer = small_model_and_tokenizer
-    qs_dataset = QsDataset.load("aircraft-speeds_gt_NO_1_tests")
+    dataset_id = "aircraft-speeds_gt_NO_1_tests"
     cot_responses = get_all_cot_responses(
         model=model,
         tokenizer=tokenizer,
-        question_dataset=qs_dataset,
+        dataset_id=dataset_id,
         instr_id="instr-v0",
         sampling_params=sampling_params,
         n_responses=2,
     )
-
     assert isinstance(cot_responses, CotResponses)
-    assert cot_responses.responses_by_qid.keys() == qs_dataset.question_by_qid.keys()
+    question_dataset = QsDataset.load(dataset_id)
+    assert (
+        cot_responses.responses_by_qid.keys() == question_dataset.question_by_qid.keys()
+    )
     assert all(
         len(responses) == 2 for responses in cot_responses.responses_by_qid.values()
     )

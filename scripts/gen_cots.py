@@ -3,7 +3,6 @@
 import click
 
 from chainscope.cot_generation import get_all_cot_responses
-from chainscope.questions import QsDataset
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP, load_model_and_tokenizer
 
@@ -25,7 +24,6 @@ def main(
     top_p: float,
     max_new_tokens: int,
 ):
-    question_dataset = QsDataset.load(dataset_id)
     model_id = MODELS_MAP.get(model_id, model_id)
     model, tokenizer = load_model_and_tokenizer(model_id)
 
@@ -38,12 +36,12 @@ def main(
     cot_responses = get_all_cot_responses(
         model=model,
         tokenizer=tokenizer,
-        question_dataset=question_dataset,
+        dataset_id=dataset_id,
         instr_id=instr_id,
         sampling_params=sampling_params,
         n_responses=n_responses,
     )
-    cot_responses.save(dataset_id)
+    cot_responses.save()
 
 
 if __name__ == "__main__":

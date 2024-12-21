@@ -52,14 +52,15 @@ def get_question_cot_responses(
 def get_all_cot_responses(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizerBase,
-    question_dataset: QsDataset,
     instr_id: str,
+    dataset_id: str,
     sampling_params: SamplingParams,
     n_responses: int,
 ) -> CotResponses:
     instructions = Instructions.load(instr_id)
     responses = {}
 
+    question_dataset = QsDataset.load(dataset_id)
     # Process each question
     for qid, q in tqdm(
         question_dataset.question_by_qid.items(),
@@ -78,5 +79,6 @@ def get_all_cot_responses(
         responses_by_qid=responses,
         model_id=model.name_or_path,
         instr_id=instr_id,
+        dataset_id=dataset_id,
         sampling_params=sampling_params,
     )
