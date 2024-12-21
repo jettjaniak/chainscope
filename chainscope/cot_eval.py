@@ -31,6 +31,7 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         "**Conclusion**: {answer}",
         "Conclusion:\n{answer}",
         "**Conclusion:**\n{answer}",
+        "**Conclusion:**  {answer}",
     ]
     yes_answer_phrases = [
         phrase.format(answer=a) for phrase in answer_phrases for a in ["YES", "Yes"]
@@ -63,11 +64,23 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
 def evaluate_cot_responses(responses: CotResponses) -> CotEval:
     """Evaluate all CoT responses for a given model and instruction set."""
     results = {}
+    unknown_count = 0
+    total_count = 0
+
     for qid, response_by_uuid in responses.responses_by_qid.items():
-        results[qid] = {
-            uuid: evaluate_cot_response(response)
-            for uuid, response in response_by_uuid.items()
-        }
+        results[qid] = {}
+        for uuid, response in response_by_uuid.items():
+            result = evaluate_cot_response(response)
+            results[qid][uuid] = result
+            total_count += 1
+            if result == "UNKNOWN":
+                unknown_count += 1
+
+    if total_count > 0 and (unknown_count / total_count) > 0.1:
+        logging.warning(
+            f"{unknown_count}/{total_count} ({unknown_count/total_count:.1%}) responses "
+            f"were classified as UNKNOWN for model {responses.model_id}"
+        )
 
     return CotEval(
         results_by_qid=results,
