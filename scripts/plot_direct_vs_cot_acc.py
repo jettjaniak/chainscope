@@ -154,6 +154,27 @@ def plot_model_comparison_by_answer(
     return corr_yes, corr_no
 
 
+def plot_cot_answer_distribution(cot_eval: CotEval, model_id: str) -> dict[str, int]:
+    """Create histogram of CoT answer distributions."""
+    answer_counts = {"YES": 0, "NO": 0, "UNKNOWN": 0}
+
+    for qid in cot_eval.results_by_qid:
+        results = cot_eval.results_by_qid[qid]
+        for result in results.values():
+            answer_counts[result] += 1
+
+    return answer_counts
+
+
+def plot_direct_probability_distribution(
+    direct_eval: DirectEval, model_id: str
+) -> tuple[float, float]:
+    """Calculate cumulative P(YES) and P(NO) for a model."""
+    total_p_yes = sum(probs.p_yes for probs in direct_eval.probs_by_qid.values())
+    total_p_no = sum(probs.p_no for probs in direct_eval.probs_by_qid.values())
+    return total_p_yes, total_p_no
+
+
 @click.command()
 @click.option("-d", "--dataset-id", type=str, required=True)
 @click.option("-i", "--instr-id", type=str, default="instr-v0")
@@ -193,6 +214,9 @@ def main(
     }
     differences_by_model = {}
 
+    # Add data structure for probability distributions
+    probability_distributions = {}
+
     # Process each model
     for model_id in model_ids:
         try:
@@ -224,6 +248,12 @@ def main(
             correlations["yes"][model_id] = corr_yes
             correlations["no"][model_id] = corr_no
             differences_by_model[model_id] = cot_accs - direct_probs
+
+            # Add probability distribution calculation
+            total_p_yes, total_p_no = plot_direct_probability_distribution(
+                direct_eval, model_id
+            )
+            probability_distributions[model_id] = (total_p_yes, total_p_no)
 
         except Exception as e:
             logging.warning(f"Failed to process model {model_id}: {e}")
@@ -257,6 +287,65 @@ def main(
     plt.axhline(y=0, color="r", linestyle="--", alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_path / "cot_acc_diff_over_direct_all_models.png")
+    plt.close()
+
+    # Add histogram for CoT answer distribution
+    plt.figure(figsize=(12, 6))
+    model_names = list(correlations["combined"].keys())
+
+    answer_distributions = {}
+    for model_id in model_names:
+        try:
+            _, cot_eval = load_eval_pair(
+                dataset_id, model_id, instr_id, sampling_params
+            )
+            answer_distributions[model_id] = plot_cot_answer_distribution(
+                cot_eval, model_id
+            )
+        except Exception as e:
+            logging.warning(
+                f"Failed to get answer distribution for model {model_id}: {e}"
+            )
+
+    x = np.arange(len(model_names))
+    width = 0.25
+
+    yes_counts = [answer_distributions[m]["YES"] for m in model_names]
+    no_counts = [answer_distributions[m]["NO"] for m in model_names]
+    unknown_counts = [answer_distributions[m]["UNKNOWN"] for m in model_names]
+
+    plt.bar(x - width, yes_counts, width, label="YES")
+    plt.bar(x, no_counts, width, label="NO")
+    plt.bar(x + width, unknown_counts, width, label="UNKNOWN")
+
+    plt.xlabel("Models")
+    plt.ylabel("Number of Answers")
+    plt.title("Distribution of CoT Answers by Model")
+    plt.xticks(x, [m.split("/")[-1] for m in model_names], rotation=45)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_path / "cot_answer_distribution_all_models.png")
+    plt.close()
+
+    # Add new histogram for probability distributions
+    plt.figure(figsize=(12, 6))
+    model_names = list(probability_distributions.keys())
+    x = np.arange(len(model_names))
+    width = 0.35
+
+    p_yes_values = [probability_distributions[m][0] for m in model_names]
+    p_no_values = [probability_distributions[m][1] for m in model_names]
+
+    plt.bar(x - width / 2, p_yes_values, width, label="P(YES)")
+    plt.bar(x + width / 2, p_no_values, width, label="P(NO)")
+
+    plt.xlabel("Models")
+    plt.ylabel("Cumulative Probability")
+    plt.title("Distribution of Direct Answer Probabilities by Model")
+    plt.xticks(x, [m.split("/")[-1] for m in model_names], rotation=45)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_path / "direct_probability_distribution_all_models.png")
     plt.close()
 
 
