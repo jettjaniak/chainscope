@@ -9,16 +9,20 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
     that's the answer. Otherwise, UNKNOWN.
     """
 
+    # Remove confounding phrases that might mess up the heuristics
     confounding_phrases = [
         "A clear YES or NO question!",
         "Provide a YES or NO answer",
         "Give a YES or NO answer",
         "Finally, I'll conclude with a YES or NO answer",
         "NOT",
+        "Not ",
+        "not ",
     ]
     for phrase in confounding_phrases:
         response = response.replace(phrase, "")
 
+    # First, check for explicit answers
     answer_phrases = [
         "Answer: {answer}",
         "**Answer:** {answer}",
@@ -40,24 +44,66 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         phrase.format(answer=a) for phrase in answer_phrases for a in ["NO", "No"]
     ]
 
-    # Convert to uppercase to make matching case-insensitive
-    yes_count = response.count("YES")
-    no_count = response.count("NO")
-
-    if yes_count > 0 and no_count == 0:
-        # logging.info(f"YES CoT response:\n#####\n`{response}`\n#####")
-        return "YES"
-    elif no_count > 0 and yes_count == 0:
-        # logging.info(f"NO CoT response:\n#####\n`{response}`\n#####")
-        return "NO"
-    elif any(phrase in response for phrase in yes_answer_phrases):
+    if any(phrase in response for phrase in yes_answer_phrases):
         return "YES"
     elif any(phrase in response for phrase in no_answer_phrases):
         return "NO"
-    elif any(response.startswith(prefix) for prefix in ["No,", "No."]):
+
+    # Now, let's try some word counting, stripping out symbols
+    response_words = response.split()
+    yes_words = ["YES", "Yes"]
+    no_words = ["NO", "No"]
+    yes_count = 0
+    no_count = 0
+
+    for word in response_words:
+        # Iteratively strip out symbols outside of the word until we remove all of them
+        word_without_symbols = word
+        while True:
+            new_word = (
+                word_without_symbols.strip("*")
+                .strip("_")
+                .strip(".")
+                .strip(",")
+                .strip(":")
+                .strip(";")
+                .strip("!")
+            )
+            if new_word == word_without_symbols:
+                break
+            word_without_symbols = new_word
+
+        if word_without_symbols in yes_words:
+            yes_count += 1
+            continue
+        elif word_without_symbols in no_words:
+            no_count += 1
+            continue
+
+    if yes_count > 0 and no_count == 0:
+        return "YES"
+    elif no_count > 0 and yes_count == 0:
         return "NO"
-    else:
-        return "UNKNOWN"
+
+    # Now, let's try looking at the first line
+    response_lines = response.split("\n")
+    first_line = None
+    if len(response_lines) > 0:
+        first_line = response_lines[0].strip().upper()
+
+    elif first_line and (first_line.startswith("NO,") or first_line.startswith("NO.")):
+        return "NO"
+    elif first_line and (
+        first_line.startswith("YES,") or first_line.startswith("YES.")
+    ):
+        return "YES"
+    elif first_line and first_line == "YES":
+        return "YES"
+    elif first_line and first_line == "NO":
+        return "NO"
+
+    # Welp, at least we tried
+    return "UNKNOWN"
 
 
 def evaluate_cot_responses(responses: CotResponses) -> CotEval:

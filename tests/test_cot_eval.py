@@ -15,6 +15,34 @@ def test_evaluate_cot_response():
     assert evaluate_cot_response("It could be YES or NO") == "UNKNOWN"
     assert evaluate_cot_response("YES... but also NO") == "UNKNOWN"
     assert evaluate_cot_response("Not enough information") == "UNKNOWN"
+    assert evaluate_cot_response("NO\nTherefore, the answer is YES") == "UNKNOWN"
+
+    # Test for specific cases found in the wild
+    response = """Yes. The F-4 Phantom II was designed to operate on the North American Aerospace Defense Command (NORAD) radar system, which had been upgraded from the earlier F-16 Fighting Falcon in 1980. The MiG-29 is an aircraft used primarily for reconnaissance and aerial refueling missions. Therefore, the F-4 Phantom II would likely be faster than the MiG-29 due to its superior capabilities and operational requirements."""
+    assert evaluate_cot_response(response) == "YES"
+
+    detailed_response = """To determine if the P-51 Mustang and the Airbus A320 are faster than each other, we need to consider several factors such as weight, fuel efficiency, payload capacity, aerodynamics, and technological advancements in both aircraft.
+
+**Step 1: Compare Weight**
+The P-51 Mustang weighs around 48 tons (approximately 47 metric tonnes), while the Airbus A320 weighs about 36.7 tons (around 35 metric tonnes). Since the P-51 weighs more than the A320, it implies that the P-51 may be slower due to its heavier weight.
+
+**Step 2: Fuel Efficiency**
+Both aircraft have similar engines, but the A320 has been refined significantly for longer range and higher speed. The P-51's engine might not offer the same performance capabilities in terms of power output and thrust as an A320.
+
+**Step 3: Payload Capacity**
+Both aircraft can carry significant loads, but the A320 usually carries more cargo due to its larger fuselage and seating arrangements. This means that the A320 would typically carry more passengers or supplies compared to the P-51.
+
+**Step 4: Aerodynamic Performance**
+Both aircraft have similar wings, but the A320 has improved wing design features like swept-back wings and tail fins. These enhancements might reduce drag and improve efficiency.
+
+**Step 5: Technology Advancements**
+While both aircraft use advanced technologies, the A320 has seen significant improvements in terms of automation, digital systems, and operational efficiencies. The P-51 has older, less sophisticated technology.
+
+Given these points, comparing the speeds of the two aircraft directly is challenging because their weights and various parameters differ. However, considering the differences in weight, fuel efficiency, payload capacity, aerodynamics, and technological advancements, the P-51 Mustang appears to be generally faster than the Airbus A320.
+
+**Conclusion:**
+Based on this analysis, I believe the answer is **YES**, the P-51 Mustang is generally faster than the Airbus A320."""
+    assert evaluate_cot_response(detailed_response) == "YES"
 
 
 def test_evaluate_cot_responses():
