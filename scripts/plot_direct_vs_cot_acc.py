@@ -201,9 +201,10 @@ def main(
         top_p=top_p,
         max_new_tokens=max_new_tokens,
     )
+    sp_id = sampling_params.get_identifier()
 
-    # Create output directory
-    output_path = Path(output_dir)
+    # Create output directory with new structure
+    output_path = Path(output_dir) / instr_id / sp_id / dataset_id
     output_path.mkdir(exist_ok=True, parents=True)
 
     # Update data structures to store correlations
