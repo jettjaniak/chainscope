@@ -37,12 +37,16 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         "Conclusion:\n{answer}",
         "**Conclusion:**\n{answer}",
         "**Conclusion:**  {answer}",
+        "In conclusion, {answer}",
+        "Therefore, {answer}",
     ]
     yes_answer_phrases = [
-        phrase.format(answer=a) for phrase in answer_phrases for a in ["YES", "Yes"]
+        phrase.format(answer=a)
+        for phrase in answer_phrases
+        for a in ["YES", "Yes", "yes"]
     ] + ["I would say yes", "we conclude that yes", "Considering all factors:\n\nYes"]
     no_answer_phrases = [
-        phrase.format(answer=a) for phrase in answer_phrases for a in ["NO", "No"]
+        phrase.format(answer=a) for phrase in answer_phrases for a in ["NO", "No", "no"]
     ]
 
     # We check that the response doesn't start with NO or YES, because that's something that happens in dumb models

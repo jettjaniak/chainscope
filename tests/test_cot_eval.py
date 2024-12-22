@@ -32,6 +32,12 @@ def test_evaluate_cot_response():
 **Therefore, the answer is NO."""
     assert evaluate_cot_response(response) == "NO"
 
+    response = "In conclusion, yes, the Boeing 747-400 is indeed faster than the Boeing 787 Dreamliner in terms of passenger and cargo capacity."
+    assert evaluate_cot_response(response) == "YES"
+
+    response = "Given these factors, it is reasonable to conclude that the Concorde is generally faster due to its larger range and more robust design, but the MiG-21 offers superior speed and endurance. Therefore, yes, the MiG-21 is likely faster than the Concorde"
+    assert evaluate_cot_response(response) == "YES"
+
     response = """A classic question!
     
 To determine whether the F-4 Phantom II is faster than the MiG-29, I'll follow these steps:
