@@ -21,7 +21,32 @@ def test_evaluate_cot_response():
     response = """Yes. The F-4 Phantom II was designed to operate on the North American Aerospace Defense Command (NORAD) radar system, which had been upgraded from the earlier F-16 Fighting Falcon in 1980. The MiG-29 is an aircraft used primarily for reconnaissance and aerial refueling missions. Therefore, the F-4 Phantom II would likely be faster than the MiG-29 due to its superior capabilities and operational requirements."""
     assert evaluate_cot_response(response) == "YES"
 
-    detailed_response = """To determine if the P-51 Mustang and the Airbus A320 are faster than each other, we need to consider several factors such as weight, fuel efficiency, payload capacity, aerodynamics, and technological advancements in both aircraft.
+    response = """Here's how to approach this:
+
+1. **What is the F-16 Fighting Falcon?** It's a military fighter jet designed for speed and maneuverability.
+2. **What is the Concorde?**  It's a supersonic passenger jet.
+3. **What is supersonic speed?** It's faster than the speed of sound (approximately 767 mph).
+4. **Is the Concorde faster than the speed of sound?** Yes, it was designed to fly at supersonic speeds.
+5. **Is the F-16 Fighting Falcon designed for supersonic speeds?** No, it is primarily designed for air combat and is not optimized for supersonic flight.
+
+**Therefore, the answer is NO."""
+    assert evaluate_cot_response(response) == "NO"
+
+    response = """A classic question!
+    
+To determine whether the F-4 Phantom II is faster than the MiG-29, I'll follow these steps:
+
+1. Look up the top speeds of each aircraft:
+    * F-4 Phantom II: approximately 1,400 mph (2,250 km/h)
+    * MiG-29: approximately 1,300 mph (2,092 km/h)
+
+2. Compare the top speeds of the two aircraft. If the F-4 is faster, then the answer is YES.
+3. If the MiG-29 is faster, then the answer is NO.
+
+Comparing the top speeds, I can see that the F-4 Phantom II is actually faster than the MiG-29."""
+    assert evaluate_cot_response(response) == "UNKNOWN"
+
+    response = """To determine if the P-51 Mustang and the Airbus A320 are faster than each other, we need to consider several factors such as weight, fuel efficiency, payload capacity, aerodynamics, and technological advancements in both aircraft.
 
 **Step 1: Compare Weight**
 The P-51 Mustang weighs around 48 tons (approximately 47 metric tonnes), while the Airbus A320 weighs about 36.7 tons (around 35 metric tonnes). Since the P-51 weighs more than the A320, it implies that the P-51 may be slower due to its heavier weight.
@@ -42,7 +67,7 @@ Given these points, comparing the speeds of the two aircraft directly is challen
 
 **Conclusion:**
 Based on this analysis, I believe the answer is **YES**, the P-51 Mustang is generally faster than the Airbus A320."""
-    assert evaluate_cot_response(detailed_response) == "YES"
+    assert evaluate_cot_response(response) == "YES"
 
 
 def test_evaluate_cot_responses():

@@ -28,6 +28,7 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         "**Answer:** {answer}",
         "**Answer**: {answer}",
         "answer is: {answer}",
+        "answer is {answer}",
         "answer is: **{answer}**",
         "Answer:\n**{answer}**",
         "Conclusion: {answer}",
@@ -44,9 +45,20 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         phrase.format(answer=a) for phrase in answer_phrases for a in ["NO", "No"]
     ]
 
-    if any(phrase in response for phrase in yes_answer_phrases):
+    # We check that the response doesn't start with NO or YES, because that's something that happens in dumb models
+    found_yes_answer_phrase = any(phrase in response for phrase in yes_answer_phrases)
+    found_no_answer_phrase = any(phrase in response for phrase in no_answer_phrases)
+    if (
+        found_yes_answer_phrase
+        and not found_no_answer_phrase
+        and not response.startswith("NO")
+    ):
         return "YES"
-    elif any(phrase in response for phrase in no_answer_phrases):
+    elif (
+        found_no_answer_phrase
+        and not found_yes_answer_phrase
+        and not response.startswith("YES")
+    ):
         return "NO"
 
     # Now, let's try some word counting, stripping out symbols
