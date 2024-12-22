@@ -102,7 +102,7 @@ def compute_accuracies_by_answer(
 
 
 def plot_model_comparison(
-    direct_probs: np.ndarray, cot_accs: np.ndarray, model_id: str
+    direct_probs: np.ndarray, cot_accs: np.ndarray, model_id: str, dataset_id: str
 ):
     """Create scatter plot for a single model."""
     plt.figure(figsize=(8, 8))
@@ -115,7 +115,11 @@ def plot_model_comparison(
 
     # Calculate and display correlation coefficient
     corr, _ = stats.pearsonr(direct_probs, cot_accs)
-    plt.title(f"Model: {model_id}\nCorrelation: {corr:.3f}")
+    plt.title("P(correct) vs CoT Accuracy", fontsize=12)
+    plt.suptitle(
+        f"Model {model_id} on Dataset {dataset_id}\nCorrelation: {corr:.3f}",
+        fontsize=10,
+    )
 
     plt.xlabel("P(Correct) Direct Answer")
     plt.ylabel("CoT Accuracy")
@@ -129,6 +133,7 @@ def plot_model_comparison_by_answer(
     cot_yes_accs: np.ndarray,
     cot_no_accs: np.ndarray,
     model_id: str,
+    dataset_id: str,
 ) -> tuple[float, float]:
     """Create separate scatter plots for YES and NO answers."""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
@@ -149,7 +154,7 @@ def plot_model_comparison_by_answer(
     ax2.set_xlabel("P(NO) Direct Answer")
     ax2.set_ylabel("CoT NO Percentage")
 
-    plt.suptitle(f"Model: {model_id}")
+    plt.suptitle(f"Model {model_id} on Dataset {dataset_id}")
     plt.tight_layout()
     return corr_yes, corr_no
 
@@ -229,7 +234,7 @@ def main(
             direct_probs, cot_accs = compute_accuracies(
                 direct_eval, cot_eval, gt_answer
             )
-            corr = plot_model_comparison(direct_probs, cot_accs, model_id)
+            corr = plot_model_comparison(direct_probs, cot_accs, model_id, dataset_id)
             plt.savefig(output_path / f"{model_id.replace('/', '_')}_comparison.png")
             plt.close()
 
@@ -238,7 +243,12 @@ def main(
                 compute_accuracies_by_answer(direct_eval, cot_eval)
             )
             corr_yes, corr_no = plot_model_comparison_by_answer(
-                direct_yes_probs, direct_no_probs, cot_yes_accs, cot_no_accs, model_id
+                direct_yes_probs,
+                direct_no_probs,
+                cot_yes_accs,
+                cot_no_accs,
+                model_id,
+                dataset_id,
             )
             plt.savefig(
                 output_path / f"{model_id.replace('/', '_')}_comparison_by_answer.png"
@@ -271,7 +281,9 @@ def main(
     plt.bar(x, combined_corrs, width, label="Combined")
     plt.xticks(x, [m.split("/")[-1] for m in model_names], rotation=45)
     plt.ylabel("Correlation Coefficient")
-    plt.title("Correlation between P(correct) and CoT Accuracy")
+    plt.title(
+        f"Correlation between P(correct) and CoT Accuracy on Dataset {dataset_id}"
+    )
     plt.tight_layout()
     plt.savefig(output_path / "cot_acc_vs_direct_corr_all_models.png")
     plt.close()
@@ -284,7 +296,7 @@ def main(
     )
     plt.xticks(rotation=45)
     plt.ylabel("CoT acc - P(correct)")
-    plt.title("Difference between CoT Accuracy and P(correct)")
+    plt.title(f"Difference between CoT Accuracy and P(correct) on Dataset {dataset_id}")
     plt.axhline(y=0, color="r", linestyle="--", alpha=0.3)
     plt.tight_layout()
     plt.savefig(output_path / "cot_acc_diff_over_direct_all_models.png")
@@ -321,7 +333,7 @@ def main(
 
     plt.xlabel("Models")
     plt.ylabel("Number of Answers")
-    plt.title("Distribution of CoT Answers by Model")
+    plt.title(f"Distribution of CoT Answers by Model on Dataset {dataset_id}")
     plt.xticks(x, [m.split("/")[-1] for m in model_names], rotation=45)
     plt.legend()
     plt.tight_layout()
@@ -342,7 +354,9 @@ def main(
 
     plt.xlabel("Models")
     plt.ylabel("Cumulative Probability")
-    plt.title("Distribution of Direct Answer Probabilities by Model")
+    plt.title(
+        f"Distribution of Direct Answer Probabilities by Model on Dataset {dataset_id}"
+    )
     plt.xticks(x, [m.split("/")[-1] for m in model_names], rotation=45)
     plt.legend()
     plt.tight_layout()
