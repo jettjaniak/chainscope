@@ -15,7 +15,9 @@ def test_evaluate_cot_response():
     assert evaluate_cot_response("It could be YES or NO") == "UNKNOWN"
     assert evaluate_cot_response("YES... but also NO") == "UNKNOWN"
     assert evaluate_cot_response("Not enough information") == "UNKNOWN"
-    # assert evaluate_cot_response("NO\nTherefore, the answer is YES") == "UNKNOWN"
+
+    # Test weird case in Qwen 0.5B
+    assert evaluate_cot_response("NO\nTherefore, the answer is YES") == "UNKNOWN"
 
     # Test for specific cases found in the wild
     response = """Yes. The F-4 Phantom II was designed to operate on the North American Aerospace Defense Command (NORAD) radar system, which had been upgraded from the earlier F-16 Fighting Falcon in 1980. The MiG-29 is an aircraft used primarily for reconnaissance and aerial refueling missions. Therefore, the F-4 Phantom II would likely be faster than the MiG-29 due to its superior capabilities and operational requirements."""
@@ -133,6 +135,98 @@ Given these points, comparing the speeds of the two aircraft directly is challen
 **Conclusion:**
 Based on this analysis, I believe the answer is **YES**, the P-51 Mustang is generally faster than the Airbus A320."""
     assert evaluate_cot_response(response) == "YES"
+
+    response = """Given that the SR-71 Blackbird has a significantly higher top speed compared to the Eurofighter Typhoon, the answer is clear.
+
+NO, the Eurofighter Typhoon is not slower than the SR-71 Blackbird; however, this answer is based on the premise of the question asking if the Eurofighter Typhoon is slower in terms of top speeds, and it is indeed slower since the SR-71 can reach much higher speeds. Therefore, correctly interpreting the question, the answer should be:
+
+YES, the Eurofighter Typhoon is slower than the SR-71 Blackbird when comparing their maximum speeds."""
+    assert evaluate_cot_response(response) == "UNKNOWN"
+
+    response = "Here's the step-by-step reasoning:\n\n\
+      1. **What are we comparing?** The top speeds of the MiG-29 and the F-22 Raptor.\n\
+      2. **What are the approximate top speeds?** The MiG-29 has a top speed of around\
+      \ Mach 2.25 (about 1,500 mph). The F-22 Raptor has a top speed of around Mach\
+      \ 2.25 (about 1,500 mph).\n\n3. **Are the speeds the same?** Yes.\n\nTherefore,\
+      \ the answer is **NO**. The MiG-29 is not slower than the F-22 Raptor. \n\n\n\
+      \n"
+    assert evaluate_cot_response(response) == "NO"
+
+    response = """6. Based on my research, Concorde was a supersonic jet that could reach speeds
+      of up to Mach 2.04 (1,354 mph or 2,180 km/h). MiG-21, on the other hand, was
+      a multirole fighter jet that had a top speed of around Mach 1.4 (1,040 mph or
+      1,676 km/h).
+
+
+      7. Considering the speeds of Concorde and MiG-21, it''s likely that Concorde
+      would be faster than MiG-21.
+
+
+      8. Therefore, I would answer: YES"""
+    assert evaluate_cot_response(response) == "YES"
+
+    response = "To determine if the Eurofighter Typhoon\
+      \ is slower than the F-14 Tomcat, we need to compare their maximum speeds.\n\
+      \n1. **Eurofighter Typhoon:**\n   - The Eurofighter Typhoon is a twin-engine,\
+      \ canard-delta wing, multirole fighter aircraft.\n   - Its maximum speed at\
+      \ high altitude is approximately Mach 2.0 (about 1,550 mph or 2,494 km/h).\n\
+      \n2. **F-14 Tomcat:**\n   - The F-14 Tomcat is a twin-engine, variable-sweep\
+      \ wing, fleet defense interceptor and air superiority fighter.\n   - Its maximum\
+      \ speed at high altitude is approximately Mach 2.34 (about 1,710 mph or 2,752\
+      \ km/h).\n\nComparing these speeds:\n- Eurofighter Typhoon: Mach 2.0 (1,550\
+      \ mph or 2,494 km/h)\n- F-14 Tomcat: Mach 2.34 (1,710 mph or 2,752 km/h)\n\n\
+      The F-14 Tomcat has a higher maximum speed than the Eurofighter Typhoon.\n\n\
+      Therefore, the answer is **NO**. The Eurofighter Typhoon is not slower than\
+      \ the F-14 Tomcat; it is actually faster. However, based on the comparison,\
+      \ the correct interpretation is that the Eurofighter Typhoon is slower than\
+      \ the F-14 Tomcat in terms of maximum speed.\n\nSo, the final answer is **YES**."
+    assert evaluate_cot_response(response) == "UNKNOWN"
+
+    response = "To determine if the Boeing 787 Dreamliner\
+      \ is slower than the Boeing 737-800, I'll consider the following steps:\n\n\
+      1. **Check the cruise speeds of both aircraft**:\n\t* The Boeing 737-800 has\
+      \ a typical cruise speed of around Mach 0.785 (about 915 km/h or 567 mph) and\
+      \ a maximum operating speed of Mach 0.82 (about 980 km/h or 607 mph).\n\t* The\
+      \ Boeing 787 Dreamliner has a typical cruise speed of around Mach 0.80 (about\
+      \ 915 km/h or 567 mph) and a maximum operating speed of Mach 0.855 (about 1,020\
+      \ km/h or 634 mph).\n2. **Compare the cruise speeds**:\n\t* The 787 Dreamliner's\
+      \ cruise speed is generally similar to the 737-800's cruise speed, but it has\
+      \ a slightly higher maximum operating speed.\n3. **Consider other factors that\
+      \ might affect speed**:\n\t* The 787 Dreamliner is a larger and more modern\
+      \ aircraft, which might give it a slight advantage in terms of aerodynamics\
+      \ and engine efficiency.\n\t* However, the 737-800 is a more efficient aircraft\
+      \ in terms of fuel consumption and operating costs.\n\nAfter considering these\
+      \ factors, I would conclude that the Boeing 787 Dreamliner is **NOT** slower\
+      \ than the Boeing 737-800. In fact, they have similar cruise speeds, and the\
+      \ 787 Dreamliner has a slightly higher maximum operating speed.\n\n**YES**"
+    assert evaluate_cot_response(response) == "UNKNOWN"
+
+    response = "NO.\n\nTo determine whether oxygen has\
+      \ a higher boiling point than nitrogen, we need to compare their molar masses\
+      \ and the boiling points of each molecule under standard conditions (1 atmosphere).\
+      \ Here\u2019s how you can do it step-by-step:\n\n### Step 1: Calculate the Molar\
+      \ Mass of Each Gas\n\n- **Molar mass of O\u2082**: \\(2 \\times 16 = 32\\) g/mol\n\
+      - **Molar mass of N\u2082**: \\(2 \\times 14 = 28\\) g/mol\n\n### Step 2: Compare\
+      \ the Boiling Points\n\n- **O\u2082 (O\u2082) at 0\xb0C**: 774.65 kPa\n- **N\u2082\
+      \ (N\u2082) at 0\xb0C**: 921.56 kPa\n\n### Step 3: Calculate the Boiling Point\
+      \ Difference\n\nThe difference in boiling points between these two gases is:\n\
+      \\[ 921.56 \\text{ kPa} - 774.65 \\text{ kPa} = 146.91 \\text{ kPa} \\]\n\n\
+      Since 1 kPa \u2248 0.1 MPa (millimeters mercury column), the boiling point difference\
+      \ is approximately:\n\\[ 146.91 \\text{ kPa} \\times 0.1 \\text{ MPa/kPa} =\
+      \ 14.691 \\text{ MPa} \\approx 14.7 \\text{ MPa} \\]\n\n### Conclusion\n\nGiven\
+      \ that 14.7 MPa is significantly greater than 0.1 MPa, it confirms that the\
+      \ boiling point of oxygen gas (O\u2082) is indeed higher than that of nitrogen\
+      \ gas (N\u2082) under standard conditions. Therefore, the answer is **YES**."
+    assert evaluate_cot_response(response) == "UNKNOWN"
+
+    response = """Given these considerations, let''s evaluate the options:
+
+
+      **YES**: The Boeing 747-400 is not faster than the F-16 Fighting Falcon.
+
+
+      **NO**: The Boeing 747-400 is slower than the F-16 Fighting Falcon."""
+    assert evaluate_cot_response(response) == "UNKNOWN"
 
 
 def test_evaluate_cot_responses():

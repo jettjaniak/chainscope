@@ -27,6 +27,7 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         "answer is: {answer}",
         "answer is {answer}",
         "answer is: **{answer}**",
+        "answer is **{answer}**",
         "Answer:\n**{answer}**",
         "Conclusion: {answer}",
         "**Conclusion:** {answer}",
@@ -41,10 +42,15 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         phrase.format(answer=a)
         for phrase in answer_phrases
         for a in ["YES", "Yes", "yes"]
-    ] + ["I would say yes", "we conclude that yes", "Considering all factors:\n\nYes"]
+    ] + [
+        "I would say yes",
+        "we conclude that yes",
+        "Considering all factors:\n\nYes",
+        "**YES**",
+    ]
     no_answer_phrases = [
         phrase.format(answer=a) for phrase in answer_phrases for a in ["NO", "No", "no"]
-    ] + ["**NOT**"]
+    ] + ["**NOT**", "**NO**"]
 
     # We check that the response doesn't start with NO or YES, because that's something that happens in dumb models
     found_yes_answer_phrase = any(phrase in response for phrase in yes_answer_phrases)
@@ -61,14 +67,18 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         and not response.startswith("YES")
     ):
         return "NO"
+    elif found_yes_answer_phrase and found_no_answer_phrase:
+        return "UNKNOWN"
 
     # Now, let's try some word counting, stripping out symbols
     response_words = response.split()
-    no_count, yes_count = count_yes_and_no_words(response_words)
+    implication_sentence_no_count, implication_sentence_yes_count = (
+        count_yes_and_no_words(response_words)
+    )
 
-    if yes_count > 0 and no_count == 0:
+    if implication_sentence_yes_count > 0 and implication_sentence_no_count == 0:
         return "YES"
-    elif no_count > 0 and yes_count == 0:
+    elif implication_sentence_no_count > 0 and implication_sentence_yes_count == 0:
         return "NO"
 
     # Now, let's try looking at the first line
@@ -77,18 +87,30 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
     if len(response_lines) > 0:
         first_line = response_lines[0].strip().upper()
 
+    first_line_yes_count = 0
+    first_line_no_count = 0
     if first_line:
         first_line_words = first_line.split()
-        no_count, yes_count = count_yes_and_no_words(first_line_words)
+        first_line_no_count, first_line_yes_count = count_yes_and_no_words(
+            first_line_words
+        )
         first_line_starts_with_yes = first_line.startswith(
             "YES,"
         ) or first_line.startswith("YES.")
         first_line_starts_with_no = first_line.startswith(
             "NO,"
         ) or first_line.startswith("NO.")
-        if first_line_starts_with_yes and no_count == 0:
+        if (
+            first_line_starts_with_yes
+            and first_line_no_count == 0
+            and not found_no_answer_phrase
+        ):
             return "YES"
-        elif first_line_starts_with_no and yes_count == 0:
+        elif (
+            first_line_starts_with_no
+            and first_line_yes_count == 0
+            and not found_yes_answer_phrase
+        ):
             return "NO"
 
     # Now, let's look at the lines that have an implication in them
@@ -99,11 +121,30 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         if any(word in line for word in implication_words)
     ]
     if len(implication_lines) == 1:
-        words = implication_lines[0].split()
-        no_count, yes_count = count_yes_and_no_words(words)
-        if yes_count > 0 and no_count == 0:
+        # Split line by the implication word, we might have several sentences in the same line
+        implication_sentence = implication_lines[0]
+        for word in implication_words:
+            if word in implication_sentence:
+                parts = implication_sentence.split(word)
+                implication_sentence = word + parts[1] if len(parts) > 1 else parts[0]
+
+        words = implication_sentence.split()
+        implication_sentence_no_count, implication_sentence_yes_count = (
+            count_yes_and_no_words(words)
+        )
+
+        # We also check that first line is not NO or YES, because that's something that happens in dumb models (e.g., Qwen 0.5B)
+        if (
+            implication_sentence_yes_count > 0
+            and implication_sentence_no_count == 0
+            and first_line_no_count == 0
+        ):
             return "YES"
-        elif no_count > 0 and yes_count == 0:
+        elif (
+            implication_sentence_no_count > 0
+            and implication_sentence_yes_count == 0
+            and first_line_yes_count == 0
+        ):
             return "NO"
 
     # Welp, at least we tried
