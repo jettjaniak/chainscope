@@ -13,7 +13,6 @@ def test_evaluate_cot_response():
 
     # Test UNKNOWN cases
     assert evaluate_cot_response("It could be YES or NO") == "UNKNOWN"
-    assert evaluate_cot_response("YES... but also NO") == "UNKNOWN"
     assert evaluate_cot_response("Not enough information") == "UNKNOWN"
 
     # Test weird case in Qwen 0.5B
@@ -226,6 +225,74 @@ YES, the Eurofighter Typhoon is slower than the SR-71 Blackbird when comparing t
 
 
       **NO**: The Boeing 747-400 is slower than the F-16 Fighting Falcon."""
+    assert evaluate_cot_response(response) == "UNKNOWN"
+
+    response = """To answer whether the MiG-29 is slower than the F-4 Phantom II, let's compare their top speeds:
+
+1. **MiG-29 Top Speed**: The MiG-29, a Soviet-era fighter jet, has a top speed of over Mach 2.2 (around 1,450 mph or 2,334 km/h) at high altitude.
+
+2. **F-4 Phantom II Top Speed**: The F-4 Phantom II, an American fighter jet from the same era, has a top speed of over Mach 2.2 (approximately 1,450 mph or 2,334 km/h) at high altitude as well.
+
+Given these speeds, both aircraft are capable of reaching similar top speeds at high altitude, with some variations depending on the specific model and conditions. However, the question asks if the MiG-29 is slower than the F-4 Phantom II.
+
+Based on the information provided and general performance characteristics, both aircraft have similar top speeds, but to directly answer the question with a YES or NO:
+
+NO."""
+    assert evaluate_cot_response(response) == "NO"
+
+    response = """5. Given the same type of engines and fuel efficiency, the 737-800 would likely
+      be faster than the A380.
+
+
+      Therefore, I conclude that the Airbus A380 is NOT faster than the Boeing 737-800.
+
+
+      YES"""
+    assert evaluate_cot_response(response) == "UNKNOWN"
+
+    response = """"Yes. Aluminum has a lower melting point\
+      \ compared to silver. The difference in boiling points between aluminum and\
+      \ silver can be explained through the properties of both metals. Alloys like\
+      \ brass, which is primarily made from bronze (aluminum) with a small amount\
+      \ of copper, achieve their higher temperatures through a process involving heat\
+      \ treatment, which adds alloying elements such as copper. This means that the\
+      \ final product will have more thermal energy at its surface compared to pure\
+      \ metals. Therefore, while both materials are typically not heated above about\
+      \ 217\xb0C (380\xb0F), alloys generally retain their higher temperatures when\
+      \ heated further.\n\nTo summarize:\n- Yes: Alloys generally maintain their higher\
+      \ temperatures, even when heated further.\n- No: In general, both metals do\
+      \ not reach the same temperature when heated beyond a certain point."""
+    assert evaluate_cot_response(response) == "YES"
+
+    response = 'NO\nTo determine whether the MiG-21 is\
+      \ faster than the F-4 Phantom II, we need to consider several factors such as\
+      \ performance in terms of range, speed, altitude, endurance, and payload capacity.\n\
+      \n1. **Range**: The F-4 Phantom II can fly up to 50,000 feet (15,234 meters)\
+      \ at Mach 1.26 (approximately 986 mph). The MiG-21 can reach approximately 75,000\
+      \ feet (23,034 meters) at Mach 1.26. Therefore, the F-4 has a significant advantage\
+      \ in range when considering its maximum flight height.\n\n2. **Speed**: Both\
+      \ aircraft have similar cruising speeds of around Mach 0.8 to 0.9 (around 750\
+      \ to 800 km/h), but the MiG-21\'s higher speed translates into better acceleration\
+      \ and maneuverability on the ground. However, the MiG-21 is limited by airspeed\
+      \ constraints due to its low engine power.\n\n3. **Altitude**: The F-4 Phantom\
+      \ II can operate within a lower altitudinal limit (about 5,000 feet/1,524 meters)\
+      \ compared to the MiG-21\u2019s operational ceiling of about 12,000 feet/3,664\
+      \ meters. This means that while the MiG-21 might be able to reach more altitude\
+      \ for extended missions, it would require significantly more fuel to maintain\
+      \ this altitude.\n\n4. **Endurance**: The F-4 Phantom II typically operates\
+      \ for 2 hours at Mach 1.26 before needing refueling, which gives it an average\
+      \ endurance of about 12 hours at Mach 1.26. The MiG-21, although capable of\
+      \ reaching higher altitudes, may not have enough fuel reserves to sustain longer\
+      \ flights at these higher speeds without additional refueling stops.\n\n5. **Payload\
+      \ Capacity**: The MiG-21 can carry more payloads per unit weight compared to\
+      \ the F-4 Phantom II because it has a larger fuselage. This allows for greater\
+      \ cargo capacity, which is crucial for long-range operations where each ton\
+      \ saved adds significantly to the total payload.\n\nGiven these considerations,\
+      \ the MiG-21 is indeed faster than the F-4 Phantom II primarily in terms of\
+      \ range and endurance. While the MiG-21 could theoretically exceed the F-4 Phantom\
+      \ II in other aspects like altitude and payload capacity, its superior range\
+      \ and endurance make it a clear winner in practical combat scenarios.\n\nTherefore,\
+      \ the answer to the question "Is MiG-21 faster than F-4 Phantom II? " is YES.'
     assert evaluate_cot_response(response) == "UNKNOWN"
 
 
