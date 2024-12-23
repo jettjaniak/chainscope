@@ -53,7 +53,7 @@ def evaluate_direct(
     instructions = Instructions.load(instr_id)
     results = {}
     for qid, q in tqdm(
-        question_dataset.question_by_qid.items(), desc="Evaluating direct repsonses"
+        question_dataset.question_by_qid.items(), desc="Evaluating direct responses"
     ):
         results[qid] = get_direct_probs(
             model=model,
