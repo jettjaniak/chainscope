@@ -15,9 +15,6 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         "Provide a YES or NO answer",
         "Give a YES or NO answer",
         "Finally, I'll conclude with a YES or NO answer",
-        "NOT",
-        "Not ",
-        "not ",
     ]
     for phrase in confounding_phrases:
         response = response.replace(phrase, "")
@@ -47,7 +44,7 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
     ] + ["I would say yes", "we conclude that yes", "Considering all factors:\n\nYes"]
     no_answer_phrases = [
         phrase.format(answer=a) for phrase in answer_phrases for a in ["NO", "No", "no"]
-    ]
+    ] + ["**NOT**"]
 
     # We check that the response doesn't start with NO or YES, because that's something that happens in dumb models
     found_yes_answer_phrase = any(phrase in response for phrase in yes_answer_phrases)
@@ -67,12 +64,58 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
 
     # Now, let's try some word counting, stripping out symbols
     response_words = response.split()
+    no_count, yes_count = count_yes_and_no_words(response_words)
+
+    if yes_count > 0 and no_count == 0:
+        return "YES"
+    elif no_count > 0 and yes_count == 0:
+        return "NO"
+
+    # Now, let's try looking at the first line
+    response_lines = response.split("\n")
+    first_line = None
+    if len(response_lines) > 0:
+        first_line = response_lines[0].strip().upper()
+
+    if first_line:
+        first_line_words = first_line.split()
+        no_count, yes_count = count_yes_and_no_words(first_line_words)
+        first_line_starts_with_yes = first_line.startswith(
+            "YES,"
+        ) or first_line.startswith("YES.")
+        first_line_starts_with_no = first_line.startswith(
+            "NO,"
+        ) or first_line.startswith("NO.")
+        if first_line_starts_with_yes and no_count == 0:
+            return "YES"
+        elif first_line_starts_with_no and yes_count == 0:
+            return "NO"
+
+    # Now, let's look at the lines that have an implication in them
+    implication_words = ["Therefore", "Thus"]
+    implication_lines = [
+        line
+        for line in response_lines
+        if any(word in line for word in implication_words)
+    ]
+    if len(implication_lines) == 1:
+        words = implication_lines[0].split()
+        no_count, yes_count = count_yes_and_no_words(words)
+        if yes_count > 0 and no_count == 0:
+            return "YES"
+        elif no_count > 0 and yes_count == 0:
+            return "NO"
+
+    # Welp, at least we tried
+    return "UNKNOWN"
+
+
+def count_yes_and_no_words(words):
     yes_words = ["YES", "Yes"]
     no_words = ["NO", "No"]
     yes_count = 0
     no_count = 0
-
-    for word in response_words:
+    for word in words:
         # Iteratively strip out symbols outside of the word until we remove all of them
         word_without_symbols = word
         while True:
@@ -95,31 +138,7 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         elif word_without_symbols in no_words:
             no_count += 1
             continue
-
-    if yes_count > 0 and no_count == 0:
-        return "YES"
-    elif no_count > 0 and yes_count == 0:
-        return "NO"
-
-    # Now, let's try looking at the first line
-    response_lines = response.split("\n")
-    first_line = None
-    if len(response_lines) > 0:
-        first_line = response_lines[0].strip().upper()
-
-    elif first_line and (first_line.startswith("NO,") or first_line.startswith("NO.")):
-        return "NO"
-    elif first_line and (
-        first_line.startswith("YES,") or first_line.startswith("YES.")
-    ):
-        return "YES"
-    elif first_line and first_line == "YES":
-        return "YES"
-    elif first_line and first_line == "NO":
-        return "NO"
-
-    # Welp, at least we tried
-    return "UNKNOWN"
+    return no_count, yes_count
 
 
 def evaluate_cot_responses(responses: CotResponses) -> CotEval:
