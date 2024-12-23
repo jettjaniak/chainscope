@@ -13,7 +13,9 @@ def gen_qs(
 ) -> QsDataset:
     properties = Properties.load(prop_id)
     sorted_values = sorted(properties.value_by_name.items(), key=lambda x: x[1])
-    if answer == "YES":
+    if (answer == "YES" and comparison == "gt") or (
+        answer == "NO" and comparison == "lt"
+    ):
         sorted_values = sorted_values[::-1]
 
     logging.info(f"Sorted values: {sorted_values}")
