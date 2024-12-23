@@ -37,6 +37,8 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
         "**Conclusion:**  {answer}",
         "In conclusion, {answer}",
         "Therefore, {answer}",
+        "answer is: $\\boxed{{{answer}}}$",
+        "the answer to the question is: {answer}.",
     ]
     yes_answer_phrases = [
         phrase.format(answer=a)
