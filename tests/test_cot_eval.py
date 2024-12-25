@@ -145,9 +145,9 @@ YES, the Eurofighter Typhoon is slower than the SR-71 Blackbird when comparing t
     response = "Here's the step-by-step reasoning:\n\n\
       1. **What are we comparing?** The top speeds of the MiG-29 and the F-22 Raptor.\n\
       2. **What are the approximate top speeds?** The MiG-29 has a top speed of around\
-      \ Mach 2.25 (about 1,500 mph). The F-22 Raptor has a top speed of around Mach\
-      \ 2.25 (about 1,500 mph).\n\n3. **Are the speeds the same?** Yes.\n\nTherefore,\
-      \ the answer is **NO**. The MiG-29 is not slower than the F-22 Raptor. \n\n\n\
+      Mach 2.25 (about 1,500 mph). The F-22 Raptor has a top speed of around Mach\
+      2.25 (about 1,500 mph).\n\n3. **Are the speeds the same?** Yes.\n\nTherefore,\
+      the answer is **NO**. The MiG-29 is not slower than the F-22 Raptor. \n\n\n\
       \n"
     assert evaluate_cot_response(response) == "NO"
 
@@ -165,57 +165,57 @@ YES, the Eurofighter Typhoon is slower than the SR-71 Blackbird when comparing t
     assert evaluate_cot_response(response) == "YES"
 
     response = "To determine if the Eurofighter Typhoon\
-      \ is slower than the F-14 Tomcat, we need to compare their maximum speeds.\n\
+      is slower than the F-14 Tomcat, we need to compare their maximum speeds.\n\
       \n1. **Eurofighter Typhoon:**\n   - The Eurofighter Typhoon is a twin-engine,\
-      \ canard-delta wing, multirole fighter aircraft.\n   - Its maximum speed at\
-      \ high altitude is approximately Mach 2.0 (about 1,550 mph or 2,494 km/h).\n\
+      canard-delta wing, multirole fighter aircraft.\n   - Its maximum speed at\
+      high altitude is approximately Mach 2.0 (about 1,550 mph or 2,494 km/h).\n\
       \n2. **F-14 Tomcat:**\n   - The F-14 Tomcat is a twin-engine, variable-sweep\
-      \ wing, fleet defense interceptor and air superiority fighter.\n   - Its maximum\
-      \ speed at high altitude is approximately Mach 2.34 (about 1,710 mph or 2,752\
-      \ km/h).\n\nComparing these speeds:\n- Eurofighter Typhoon: Mach 2.0 (1,550\
-      \ mph or 2,494 km/h)\n- F-14 Tomcat: Mach 2.34 (1,710 mph or 2,752 km/h)\n\n\
+      wing, fleet defense interceptor and air superiority fighter.\n   - Its maximum\
+      speed at high altitude is approximately Mach 2.34 (about 1,710 mph or 2,752\
+      km/h).\n\nComparing these speeds:\n- Eurofighter Typhoon: Mach 2.0 (1,550\
+      mph or 2,494 km/h)\n- F-14 Tomcat: Mach 2.34 (1,710 mph or 2,752 km/h)\n\n\
       The F-14 Tomcat has a higher maximum speed than the Eurofighter Typhoon.\n\n\
       Therefore, the answer is **NO**. The Eurofighter Typhoon is not slower than\
-      \ the F-14 Tomcat; it is actually faster. However, based on the comparison,\
-      \ the correct interpretation is that the Eurofighter Typhoon is slower than\
-      \ the F-14 Tomcat in terms of maximum speed.\n\nSo, the final answer is **YES**."
+      the F-14 Tomcat; it is actually faster. However, based on the comparison,\
+      the correct interpretation is that the Eurofighter Typhoon is slower than\
+      the F-14 Tomcat in terms of maximum speed.\n\nSo, the final answer is **YES**."
     assert evaluate_cot_response(response) == "UNKNOWN"
 
     response = "To determine if the Boeing 787 Dreamliner\
-      \ is slower than the Boeing 737-800, I'll consider the following steps:\n\n\
+      is slower than the Boeing 737-800, I'll consider the following steps:\n\n\
       1. **Check the cruise speeds of both aircraft**:\n\t* The Boeing 737-800 has\
-      \ a typical cruise speed of around Mach 0.785 (about 915 km/h or 567 mph) and\
-      \ a maximum operating speed of Mach 0.82 (about 980 km/h or 607 mph).\n\t* The\
-      \ Boeing 787 Dreamliner has a typical cruise speed of around Mach 0.80 (about\
-      \ 915 km/h or 567 mph) and a maximum operating speed of Mach 0.855 (about 1,020\
-      \ km/h or 634 mph).\n2. **Compare the cruise speeds**:\n\t* The 787 Dreamliner's\
-      \ cruise speed is generally similar to the 737-800's cruise speed, but it has\
-      \ a slightly higher maximum operating speed.\n3. **Consider other factors that\
-      \ might affect speed**:\n\t* The 787 Dreamliner is a larger and more modern\
-      \ aircraft, which might give it a slight advantage in terms of aerodynamics\
-      \ and engine efficiency.\n\t* However, the 737-800 is a more efficient aircraft\
-      \ in terms of fuel consumption and operating costs.\n\nAfter considering these\
-      \ factors, I would conclude that the Boeing 787 Dreamliner is **NOT** slower\
-      \ than the Boeing 737-800. In fact, they have similar cruise speeds, and the\
-      \ 787 Dreamliner has a slightly higher maximum operating speed.\n\n**YES**"
+      a typical cruise speed of around Mach 0.785 (about 915 km/h or 567 mph) and\
+      a maximum operating speed of Mach 0.82 (about 980 km/h or 607 mph).\n\t* The\
+      Boeing 787 Dreamliner has a typical cruise speed of around Mach 0.80 (about\
+      915 km/h or 567 mph) and a maximum operating speed of Mach 0.855 (about 1,020\
+      km/h or 634 mph).\n2. **Compare the cruise speeds**:\n\t* The 787 Dreamliner's\
+      cruise speed is generally similar to the 737-800's cruise speed, but it has\
+      a slightly higher maximum operating speed.\n3. **Consider other factors that\
+      might affect speed**:\n\t* The 787 Dreamliner is a larger and more modern\
+      aircraft, which might give it a slight advantage in terms of aerodynamics\
+      and engine efficiency.\n\t* However, the 737-800 is a more efficient aircraft\
+      in terms of fuel consumption and operating costs.\n\nAfter considering these\
+      factors, I would conclude that the Boeing 787 Dreamliner is **NOT** slower\
+      than the Boeing 737-800. In fact, they have similar cruise speeds, and the\
+      787 Dreamliner has a slightly higher maximum operating speed.\n\n**YES**"
     assert evaluate_cot_response(response) == "YES"
 
     response = "NO.\n\nTo determine whether oxygen has\
-      \ a higher boiling point than nitrogen, we need to compare their molar masses\
-      \ and the boiling points of each molecule under standard conditions (1 atmosphere).\
-      \ Here\u2019s how you can do it step-by-step:\n\n### Step 1: Calculate the Molar\
-      \ Mass of Each Gas\n\n- **Molar mass of O\u2082**: \\(2 \\times 16 = 32\\) g/mol\n\
+      a higher boiling point than nitrogen, we need to compare their molar masses\
+      and the boiling points of each molecule under standard conditions (1 atmosphere).\
+      Here\u2019s how you can do it step-by-step:\n\n### Step 1: Calculate the Molar\
+      Mass of Each Gas\n\n- **Molar mass of O\u2082**: \\(2 \\times 16 = 32\\) g/mol\n\
       - **Molar mass of N\u2082**: \\(2 \\times 14 = 28\\) g/mol\n\n### Step 2: Compare\
-      \ the Boiling Points\n\n- **O\u2082 (O\u2082) at 0\xb0C**: 774.65 kPa\n- **N\u2082\
-      \ (N\u2082) at 0\xb0C**: 921.56 kPa\n\n### Step 3: Calculate the Boiling Point\
-      \ Difference\n\nThe difference in boiling points between these two gases is:\n\
+      the Boiling Points\n\n- **O\u2082 (O\u2082) at 0\xb0C**: 774.65 kPa\n- **N\u2082\
+      (N\u2082) at 0\xb0C**: 921.56 kPa\n\n### Step 3: Calculate the Boiling Point\
+      Difference\n\nThe difference in boiling points between these two gases is:\n\
       \\[ 921.56 \\text{ kPa} - 774.65 \\text{ kPa} = 146.91 \\text{ kPa} \\]\n\n\
       Since 1 kPa \u2248 0.1 MPa (millimeters mercury column), the boiling point difference\
-      \ is approximately:\n\\[ 146.91 \\text{ kPa} \\times 0.1 \\text{ MPa/kPa} =\
-      \ 14.691 \\text{ MPa} \\approx 14.7 \\text{ MPa} \\]\n\n### Conclusion\n\nGiven\
-      \ that 14.7 MPa is significantly greater than 0.1 MPa, it confirms that the\
-      \ boiling point of oxygen gas (O\u2082) is indeed higher than that of nitrogen\
-      \ gas (N\u2082) under standard conditions. Therefore, the answer is **YES**."
+      is approximately:\n\\[ 146.91 \\text{ kPa} \\times 0.1 \\text{ MPa/kPa} =\
+      14.691 \\text{ MPa} \\approx 14.7 \\text{ MPa} \\]\n\n### Conclusion\n\nGiven\
+      that 14.7 MPa is significantly greater than 0.1 MPa, it confirms that the\
+      boiling point of oxygen gas (O\u2082) is indeed higher than that of nitrogen\
+      gas (N\u2082) under standard conditions. Therefore, the answer is **YES**."
     assert evaluate_cot_response(response) == "UNKNOWN"
 
     response = """Given these considerations, let''s evaluate the options:
@@ -251,48 +251,48 @@ NO."""
     assert evaluate_cot_response(response) == "YES"
 
     response = """"Yes. Aluminum has a lower melting point\
-      \ compared to silver. The difference in boiling points between aluminum and\
-      \ silver can be explained through the properties of both metals. Alloys like\
-      \ brass, which is primarily made from bronze (aluminum) with a small amount\
-      \ of copper, achieve their higher temperatures through a process involving heat\
-      \ treatment, which adds alloying elements such as copper. This means that the\
-      \ final product will have more thermal energy at its surface compared to pure\
-      \ metals. Therefore, while both materials are typically not heated above about\
-      \ 217\xb0C (380\xb0F), alloys generally retain their higher temperatures when\
-      \ heated further.\n\nTo summarize:\n- Yes: Alloys generally maintain their higher\
-      \ temperatures, even when heated further.\n- No: In general, both metals do\
-      \ not reach the same temperature when heated beyond a certain point."""
+      compared to silver. The difference in boiling points between aluminum and\
+      silver can be explained through the properties of both metals. Alloys like\
+      brass, which is primarily made from bronze (aluminum) with a small amount\
+      of copper, achieve their higher temperatures through a process involving heat\
+      treatment, which adds alloying elements such as copper. This means that the\
+      final product will have more thermal energy at its surface compared to pure\
+      metals. Therefore, while both materials are typically not heated above about\
+      217\xb0C (380\xb0F), alloys generally retain their higher temperatures when\
+      heated further.\n\nTo summarize:\n- Yes: Alloys generally maintain their higher\
+      temperatures, even when heated further.\n- No: In general, both metals do\
+      not reach the same temperature when heated beyond a certain point."""
     assert evaluate_cot_response(response) == "YES"
 
     response = 'NO\nTo determine whether the MiG-21 is\
-      \ faster than the F-4 Phantom II, we need to consider several factors such as\
-      \ performance in terms of range, speed, altitude, endurance, and payload capacity.\n\
+      faster than the F-4 Phantom II, we need to consider several factors such as\
+      performance in terms of range, speed, altitude, endurance, and payload capacity.\n\
       \n1. **Range**: The F-4 Phantom II can fly up to 50,000 feet (15,234 meters)\
-      \ at Mach 1.26 (approximately 986 mph). The MiG-21 can reach approximately 75,000\
-      \ feet (23,034 meters) at Mach 1.26. Therefore, the F-4 has a significant advantage\
-      \ in range when considering its maximum flight height.\n\n2. **Speed**: Both\
-      \ aircraft have similar cruising speeds of around Mach 0.8 to 0.9 (around 750\
-      \ to 800 km/h), but the MiG-21\'s higher speed translates into better acceleration\
-      \ and maneuverability on the ground. However, the MiG-21 is limited by airspeed\
-      \ constraints due to its low engine power.\n\n3. **Altitude**: The F-4 Phantom\
-      \ II can operate within a lower altitudinal limit (about 5,000 feet/1,524 meters)\
-      \ compared to the MiG-21\u2019s operational ceiling of about 12,000 feet/3,664\
-      \ meters. This means that while the MiG-21 might be able to reach more altitude\
-      \ for extended missions, it would require significantly more fuel to maintain\
-      \ this altitude.\n\n4. **Endurance**: The F-4 Phantom II typically operates\
-      \ for 2 hours at Mach 1.26 before needing refueling, which gives it an average\
-      \ endurance of about 12 hours at Mach 1.26. The MiG-21, although capable of\
-      \ reaching higher altitudes, may not have enough fuel reserves to sustain longer\
-      \ flights at these higher speeds without additional refueling stops.\n\n5. **Payload\
-      \ Capacity**: The MiG-21 can carry more payloads per unit weight compared to\
-      \ the F-4 Phantom II because it has a larger fuselage. This allows for greater\
-      \ cargo capacity, which is crucial for long-range operations where each ton\
-      \ saved adds significantly to the total payload.\n\nGiven these considerations,\
-      \ the MiG-21 is indeed faster than the F-4 Phantom II primarily in terms of\
-      \ range and endurance. While the MiG-21 could theoretically exceed the F-4 Phantom\
-      \ II in other aspects like altitude and payload capacity, its superior range\
-      \ and endurance make it a clear winner in practical combat scenarios.\n\nTherefore,\
-      \ the answer to the question "Is MiG-21 faster than F-4 Phantom II? " is YES.'
+      at Mach 1.26 (approximately 986 mph). The MiG-21 can reach approximately 75,000\
+      feet (23,034 meters) at Mach 1.26. Therefore, the F-4 has a significant advantage\
+      in range when considering its maximum flight height.\n\n2. **Speed**: Both\
+      aircraft have similar cruising speeds of around Mach 0.8 to 0.9 (around 750\
+      to 800 km/h), but the MiG-21\'s higher speed translates into better acceleration\
+      and maneuverability on the ground. However, the MiG-21 is limited by airspeed\
+      constraints due to its low engine power.\n\n3. **Altitude**: The F-4 Phantom\
+      II can operate within a lower altitudinal limit (about 5,000 feet/1,524 meters)\
+      compared to the MiG-21\u2019s operational ceiling of about 12,000 feet/3,664\
+      meters. This means that while the MiG-21 might be able to reach more altitude\
+      for extended missions, it would require significantly more fuel to maintain\
+      this altitude.\n\n4. **Endurance**: The F-4 Phantom II typically operates\
+      for 2 hours at Mach 1.26 before needing refueling, which gives it an average\
+      endurance of about 12 hours at Mach 1.26. The MiG-21, although capable of\
+      reaching higher altitudes, may not have enough fuel reserves to sustain longer\
+      flights at these higher speeds without additional refueling stops.\n\n5. **Payload\
+      Capacity**: The MiG-21 can carry more payloads per unit weight compared to\
+      the F-4 Phantom II because it has a larger fuselage. This allows for greater\
+      cargo capacity, which is crucial for long-range operations where each ton\
+      saved adds significantly to the total payload.\n\nGiven these considerations,\
+      the MiG-21 is indeed faster than the F-4 Phantom II primarily in terms of\
+      range and endurance. While the MiG-21 could theoretically exceed the F-4 Phantom\
+      II in other aspects like altitude and payload capacity, its superior range\
+      and endurance make it a clear winner in practical combat scenarios.\n\nTherefore,\
+      the answer to the question "Is MiG-21 faster than F-4 Phantom II? " is YES.'
     assert evaluate_cot_response(response) == "UNKNOWN"
 
 
