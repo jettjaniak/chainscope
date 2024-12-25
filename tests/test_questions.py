@@ -15,9 +15,9 @@ def test_gen_qs(comparison, answer, prop_id):
     )
 
     assert len(dataset.question_by_qid) > 0
-    assert dataset.prop_id == prop_id
-    assert dataset.comparison == comparison
-    assert dataset.answer == answer
+    assert dataset.params.prop_id == prop_id
+    assert dataset.params.comparison == comparison
+    assert dataset.params.answer == answer
 
     for question in dataset.question_by_qid.values():
         if (answer == "YES" and comparison == "gt") or (

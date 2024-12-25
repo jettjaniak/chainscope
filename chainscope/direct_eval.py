@@ -66,4 +66,5 @@ def evaluate_direct(
         probs_by_qid=results,
         model_id=model.name_or_path,
         instr_id=instr_id,
+        ds_params=question_dataset.params,
     )

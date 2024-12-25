@@ -54,7 +54,7 @@ While both are supersonic, fighter jets like the MiG-21 are built for higher spe
 
 
 Therefore, mercury does **NOT** have a higher boiling point than lead."""
-    assert evaluate_cot_response(response) == "NO"
+    assert evaluate_cot_response(response) == "UNKNOWN"
 
     response = """Here's the step-by-step reasoning:
 
@@ -198,7 +198,7 @@ YES, the Eurofighter Typhoon is slower than the SR-71 Blackbird when comparing t
       \ factors, I would conclude that the Boeing 787 Dreamliner is **NOT** slower\
       \ than the Boeing 737-800. In fact, they have similar cruise speeds, and the\
       \ 787 Dreamliner has a slightly higher maximum operating speed.\n\n**YES**"
-    assert evaluate_cot_response(response) == "UNKNOWN"
+    assert evaluate_cot_response(response) == "YES"
 
     response = "NO.\n\nTo determine whether oxygen has\
       \ a higher boiling point than nitrogen, we need to compare their molar masses\
@@ -248,7 +248,7 @@ NO."""
 
 
       YES"""
-    assert evaluate_cot_response(response) == "UNKNOWN"
+    assert evaluate_cot_response(response) == "YES"
 
     response = """"Yes. Aluminum has a lower melting point\
       \ compared to silver. The difference in boiling points between aluminum and\
@@ -298,13 +298,15 @@ NO."""
 
 def test_evaluate_cot_responses():
     # Load actual responses from YAML file
-    dataset_id = "aircraft-speeds_gt_NO_1_377c39d3"
+    dataset_pre_id = "gt_NO_1"
+    dataset_id = f"aircraft-speeds_{dataset_pre_id}_377c39d3"
     instr_id = "instr-v0"
     responses_path = (
         DATA_DIR
         / "cot_responses"
         / instr_id
         / "T0.7_P0.9_M2000"
+        / dataset_pre_id
         / dataset_id
         / "google__gemma-2-2b-it.yaml"
     )
@@ -317,7 +319,7 @@ def test_evaluate_cot_responses():
     assert isinstance(eval_result, CotEval)
     assert eval_result.model_id == "google/gemma-2-2b-it"
     assert eval_result.instr_id == instr_id
-    assert eval_result.dataset_id == dataset_id
+    assert eval_result.ds_params == cot_responses.ds_params
     assert eval_result.sampling_params == cot_responses.sampling_params
 
     # Check that all questions and UUIDs are preserved

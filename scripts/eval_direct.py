@@ -24,7 +24,7 @@ def main(dataset_id: str, model_id: str, instr_id: str):
         question_dataset=question_dataset,
         instr_id=instr_id,
     )
-    path = direct_eval.save(dataset_id)
+    path = direct_eval.save()
     logging.warning(f"Saved direct eval to {path}")
 
 

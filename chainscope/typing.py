@@ -1,5 +1,5 @@
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -44,25 +44,57 @@ class Question(YAMLWizard):
 
 
 @dataclass
-class QsDataset(YAMLWizard):
-    question_by_qid: dict[str, Question]
+class DatasetParams(YAMLWizard):
     prop_id: str
     comparison: Literal["gt", "lt"]
     answer: Literal["YES", "NO"]
     max_comparisons: int
+    uuid: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
 
-    def save(self) -> str:
-        ds_uuid = uuid.uuid4().hex[:8]
-        name = f"{self.prop_id}_{self.comparison}_{self.answer}_{self.max_comparisons}_{ds_uuid}.yaml"
-        output_path = DATA_DIR / "questions" / name
-        self.to_yaml_file(output_path)
-        return name
+    @property
+    def pre_id(self) -> str:
+        return f"{self.comparison}_{self.answer}_{self.max_comparisons}"
+
+    @property
+    def id(self) -> str:
+        return f"{self.prop_id}_{self.pre_id}_{self.uuid}"
+
+    @property
+    def path(self) -> Path:
+        return DATA_DIR / "questions" / self.pre_id / f"{self.id}.yaml"
 
     @classmethod
-    def load(cls, name: str) -> "QsDataset":
-        qsds = cls.from_yaml_file(DATA_DIR / "questions" / f"{name}.yaml")
-        assert isinstance(qsds, cls)
+    def from_id(cls, dataset_id: str) -> "DatasetParams":
+        prop_id, comparison, answer, max_comparisons, uuid = dataset_id.split("_")
+        return cls(
+            prop_id=prop_id,
+            comparison=comparison,  # type: ignore
+            answer=answer,  # type: ignore
+            max_comparisons=int(max_comparisons),
+            uuid=uuid,
+        )
+
+    def load_dataset(self) -> "QsDataset":
+        qsds = QsDataset.from_yaml_file(self.path)
+        assert isinstance(qsds, QsDataset)
         return qsds
+
+
+@dataclass
+class QsDataset(YAMLWizard):
+    question_by_qid: dict[str, Question]
+    params: DatasetParams
+
+    @classmethod
+    def load(cls, dataset_id: str) -> "QsDataset":
+        params = DatasetParams.from_id(dataset_id)
+        qs_dataset = params.load_dataset()
+        assert qs_dataset.params == params
+        return qs_dataset
+
+    def save(self) -> Path:
+        self.to_yaml_file(self.params.path)
+        return self.params.path
 
 
 @dataclass
@@ -71,17 +103,29 @@ class DirectEvalProbs(YAMLWizard):
     p_no: float
 
 
+def get_path(directory: Path, model_id: str) -> Path:
+    directory.mkdir(exist_ok=True, parents=True)
+    model_id = model_id.replace("/", "__")
+    path = directory / f"{model_id}.yaml"
+    return path
+
+
 @dataclass
 class DirectEval(YAMLWizard):
     probs_by_qid: dict[str, DirectEvalProbs]
+    ds_params: DatasetParams
     model_id: str
     instr_id: str
 
-    def save(self, dataset_id: str) -> Path:
-        directory = DATA_DIR / "direct_eval" / self.instr_id / dataset_id
-        directory.mkdir(exist_ok=True, parents=True)
-        model_id = self.model_id.replace("/", "__")
-        path = directory / f"{model_id}.yaml"
+    def save(self) -> Path:
+        directory = (
+            DATA_DIR
+            / "direct_eval"
+            / self.instr_id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
         self.to_yaml_file(path)
         return path
 
@@ -92,7 +136,8 @@ class SamplingParams(YAMLWizard):
     top_p: float
     max_new_tokens: int
 
-    def get_identifier(self) -> str:
+    @property
+    def id(self) -> str:
         return f"T{self.temperature}_P{self.top_p}_M{self.max_new_tokens}"
 
 
@@ -101,15 +146,19 @@ class CotResponses(YAMLWizard):
     responses_by_qid: dict[str, dict[str, str]]  # qid -> {uuid -> response_str}
     model_id: str
     instr_id: str
-    dataset_id: str
+    ds_params: DatasetParams
     sampling_params: SamplingParams
 
     def save(self) -> Path:
-        sp_id = self.sampling_params.get_identifier()
-        directory = DATA_DIR / "cot_responses" / self.instr_id / sp_id / self.dataset_id
-        directory.mkdir(exist_ok=True, parents=True)
-        model_id = self.model_id.replace("/", "__")
-        path = directory / f"{model_id}.yaml"
+        directory = (
+            DATA_DIR
+            / "cot_responses"
+            / self.instr_id
+            / self.sampling_params.id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
         self.to_yaml_file(path)
         return path
 
@@ -127,14 +176,18 @@ class CotEval(YAMLWizard):
     ]  # qid -> {response_uuid -> result}
     model_id: str
     instr_id: str
-    dataset_id: str
+    ds_params: DatasetParams
     sampling_params: SamplingParams
 
     def save(self) -> Path:
-        sp_id = self.sampling_params.get_identifier()
-        directory = DATA_DIR / "cot_eval" / self.instr_id / sp_id / self.dataset_id
-        directory.mkdir(exist_ok=True, parents=True)
-        model_id = self.model_id.replace("/", "__")
-        path = directory / f"{model_id}.yaml"
+        directory = (
+            DATA_DIR
+            / "cot_eval"
+            / self.instr_id
+            / self.sampling_params.id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
         self.to_yaml_file(path)
         return path

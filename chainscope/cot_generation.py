@@ -79,6 +79,6 @@ def get_all_cot_responses(
         responses_by_qid=responses,
         model_id=model.name_or_path,
         instr_id=instr_id,
-        dataset_id=dataset_id,
+        ds_params=question_dataset.params,
         sampling_params=sampling_params,
     )

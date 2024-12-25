@@ -47,8 +47,8 @@ def main(
         max_comparisons=max_comparisons,
         prop_id=prop_id,
     )
-    name = qsds.save()
-    logging.warning(f"Saved {len(qsds.question_by_qid)} questions to {name}")
+    path = qsds.save()
+    logging.warning(f"Saved {len(qsds.question_by_qid)} questions to {path}")
 
 
 if __name__ == "__main__":

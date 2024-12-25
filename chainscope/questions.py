@@ -2,7 +2,7 @@ import hashlib
 import logging
 from typing import Literal
 
-from chainscope.typing import Properties, QsDataset, Question
+from chainscope.typing import DatasetParams, Properties, QsDataset, Question
 
 
 def gen_qs(
@@ -48,8 +48,10 @@ def gen_qs(
 
     return QsDataset(
         question_by_qid=question_by_qid,
-        prop_id=prop_id,
-        comparison=comparison,
-        answer=answer,
-        max_comparisons=max_comparisons,
+        params=DatasetParams(
+            prop_id=prop_id,
+            comparison=comparison,
+            answer=answer,
+            max_comparisons=max_comparisons,
+        ),
     )

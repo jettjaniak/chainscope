@@ -3,7 +3,7 @@
 This is a library for evaluating chat models (instruction tuned LLMs) on simple comparative questions, with and without chain-of-thought (CoT). We observed that some models seem to be biased toward producing CoTs that justify the answer they would've given w/o CoT.
 
 Questions are based on a small database of properties of different types of objects in `chainscope/data/properties` and generated programatically by `scripts/gen_qs.py`.
-Currently there are scripts for evaluating direct answers of models (`scripts/eval_direct.py`), and for generating CoT responses without any evaluation (`scripts/gen_cots.py`).
+Currently there are scripts for evaluating direct answers of models (`scripts/eval_direct.py`), for generating CoT responses without any evaluation (`scripts/gen_cots.py`), and for extracting the answer from CoT repsonses (`scripts/eval_cots.py`).
 
 ## setup instructions
 1. install python3.12

@@ -2,6 +2,8 @@ import logging
 
 from chainscope.typing import *
 
+STRIP_SYMBOLS = '*_.,:;!"'
+
 
 def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
     """Evaluate a chain-of-thought response to determine if the answer is YES, NO, or UNKNOWN.
@@ -53,7 +55,7 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
     ]
     no_answer_phrases = [
         phrase.format(answer=a) for phrase in answer_phrases for a in ["NO", "No", "no"]
-    ] + ["**NOT**", "**NO**"]
+    ] + ["**NO**"]
 
     # We check that the response doesn't start with NO or YES, because that's something that happens in dumb models
     found_yes_answer_phrase = any(phrase in response for phrase in yes_answer_phrases)
@@ -83,10 +85,10 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
     # Count the yes and no words in the first and last sentence
     response_lines = response.split("\n")
     first_sentence = (
-        strip_symbols(response_lines[0].strip().upper()).split(".")[0] + "."
+        response_lines[0].strip().upper().strip(STRIP_SYMBOLS).split(".")[0] + "."
     )
     last_sentence = (
-        strip_symbols(response_lines[-1].strip().upper()).split(".")[-1] + "."
+        response_lines[-1].strip().upper().strip(STRIP_SYMBOLS).split(".")[-1] + "."
     )
     first_sentence_words = first_sentence.split()
     last_sentence_words = last_sentence.split()
@@ -174,39 +176,16 @@ def evaluate_cot_response(response: str) -> Literal["YES", "NO", "UNKNOWN"]:
 
 def count_yes_and_no_words(words):
     yes_words = ["YES", "Yes"]
-    no_words = ["NO", "No", "NOT"]
+    no_words = ["NO", "No"]
     yes_count = 0
     no_count = 0
     for word in words:
-        # Iteratively strip out symbols outside of the word until we remove all of them
-        word_without_symbols = word
-        while True:
-            new_word = strip_symbols(word_without_symbols)
-            if new_word == word_without_symbols:
-                break
-            word_without_symbols = new_word
-
-        if word_without_symbols in yes_words:
+        word = word.strip(STRIP_SYMBOLS)
+        if word in yes_words:
             yes_count += 1
-            continue
-        elif word_without_symbols in no_words:
+        elif word in no_words:
             no_count += 1
-            continue
     return no_count, yes_count
-
-
-def strip_symbols(word):
-    new_word = (
-        word.strip("*")
-        .strip("_")
-        .strip(".")
-        .strip(",")
-        .strip(":")
-        .strip(";")
-        .strip("!")
-        .strip('"')
-    )
-    return new_word
 
 
 def evaluate_cot_responses(responses: CotResponses) -> CotEval:
@@ -240,6 +219,6 @@ def evaluate_cot_responses(responses: CotResponses) -> CotEval:
         results_by_qid=results,
         model_id=responses.model_id,
         instr_id=responses.instr_id,
-        dataset_id=responses.dataset_id,
+        ds_params=responses.ds_params,
         sampling_params=responses.sampling_params,
     )
