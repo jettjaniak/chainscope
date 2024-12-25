@@ -16,37 +16,15 @@ def load_eval_pair(
     dataset_id: str, model_id: str, instr_id: str, sampling_params: SamplingParams
 ) -> tuple[DirectEval, CotEval]:
     """Load corresponding direct and CoT evaluations for a model/dataset pair."""
-    # Load direct eval
-    direct_path = (
-        DATA_DIR
-        / "direct_eval"
-        / instr_id
-        / dataset_id
-        / f"{model_id.replace('/', '__')}.yaml"
-    )
-    direct_eval = DirectEval.from_yaml_file(direct_path)
-    if isinstance(direct_eval, list):
-        direct_eval = direct_eval[0]
-
-    # Load CoT eval
-    sp_id = sampling_params.get_identifier()
-    cot_path = (
-        DATA_DIR
-        / "cot_eval"
-        / instr_id
-        / sp_id
-        / dataset_id
-        / f"{model_id.replace('/', '__')}.yaml"
-    )
-    cot_eval = CotEval.from_yaml_file(cot_path)
-    if isinstance(cot_eval, list):
-        cot_eval = cot_eval[0]
+    dataset_params = DatasetParams.from_id(dataset_id)
+    direct_eval = dataset_params.load_direct_eval(instr_id, model_id)
+    cot_eval = dataset_params.load_cot_eval(instr_id, model_id, sampling_params)
 
     return direct_eval, cot_eval
 
 
 def compute_accuracies(
-    direct_eval: DirectEval, cot_eval: CotEval, gt_answer: Literal["YES", "NO"]
+    direct_eval: DirectEval, cot_eval: CotEval, correct_answer: Literal["YES", "NO"]
 ):
     """Compute direct probabilities and CoT accuracies for each question."""
     direct_probs = []
@@ -55,12 +33,12 @@ def compute_accuracies(
     for qid in direct_eval.probs_by_qid:
         # Get direct probability of correct answer
         probs = direct_eval.probs_by_qid[qid]
-        direct_prob = probs.p_yes if gt_answer == "YES" else probs.p_no
+        direct_prob = probs.p_yes if correct_answer == "YES" else probs.p_no
         direct_probs.append(direct_prob)
 
         # Calculate CoT accuracy for this question
         cot_results = cot_eval.results_by_qid[qid]
-        correct = sum(1 for r in cot_results.values() if r == gt_answer)
+        correct = sum(1 for r in cot_results.values() if r == correct_answer)
         total = len(cot_results)
         cot_acc = correct / total if total > 0 else 0
         cot_accs.append(cot_acc)
@@ -156,6 +134,8 @@ def plot_model_comparison_by_answer(
 
     plt.suptitle(f"Model {model_id} on Dataset {dataset_id}")
     plt.tight_layout()
+    assert isinstance(corr_yes, float)
+    assert isinstance(corr_no, float)
     return corr_yes, corr_no
 
 
@@ -197,19 +177,18 @@ def main(
 ):
     model_ids: list[str] = list(MODELS_MAP.values())
 
-    # Load dataset to get ground truth answer
-    qs_dataset = QsDataset.load(dataset_id)
-    gt_answer = qs_dataset.answer
+    # Load dataset params to get ground truth answer
+    dataset_params = DatasetParams.from_id(dataset_id)
+    correct_answer = dataset_params.answer
 
     sampling_params = SamplingParams(
         temperature=temperature,
         top_p=top_p,
         max_new_tokens=max_new_tokens,
     )
-    sp_id = sampling_params.get_identifier()
 
     # Create output directory with new structure
-    output_path = Path(output_dir) / instr_id / sp_id / dataset_id
+    output_path = Path(output_dir) / instr_id / sampling_params.id / dataset_id
     output_path.mkdir(exist_ok=True, parents=True)
 
     # Update data structures to store correlations
@@ -232,7 +211,7 @@ def main(
 
             # Original combined analysis
             direct_probs, cot_accs = compute_accuracies(
-                direct_eval, cot_eval, gt_answer
+                direct_eval, cot_eval, correct_answer
             )
             corr = plot_model_comparison(direct_probs, cot_accs, model_id, dataset_id)
             plt.savefig(output_path / f"{model_id.replace('/', '_')}_comparison.png")
@@ -292,7 +271,7 @@ def main(
     plt.figure(figsize=(12, 6))
     plt.boxplot(
         [differences_by_model[m] for m in model_names],
-        labels=[m.split("/")[-1] for m in model_names],
+        tick_labels=[m.split("/")[-1] for m in model_names],
     )
     plt.xticks(rotation=45)
     plt.ylabel("CoT acc - P(correct)")

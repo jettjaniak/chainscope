@@ -44,6 +44,17 @@ class Question(YAMLWizard):
 
 
 @dataclass
+class SamplingParams(YAMLWizard):
+    temperature: float
+    top_p: float
+    max_new_tokens: int
+
+    @property
+    def id(self) -> str:
+        return f"T{self.temperature}_P{self.top_p}_M{self.max_new_tokens}"
+
+
+@dataclass
 class DatasetParams(YAMLWizard):
     prop_id: str
     comparison: Literal["gt", "lt"]
@@ -60,8 +71,31 @@ class DatasetParams(YAMLWizard):
         return f"{self.prop_id}_{self.pre_id}_{self.uuid}"
 
     @property
-    def path(self) -> Path:
+    def qs_dataset_path(self) -> Path:
         return DATA_DIR / "questions" / self.pre_id / f"{self.id}.yaml"
+
+    def direct_eval_path(self, instr_id: str, model_id: str) -> Path:
+        return (
+            DATA_DIR
+            / "direct_eval"
+            / instr_id
+            / self.pre_id
+            / self.id
+            / f"{model_id.replace('/', '__')}.yaml"
+        )
+
+    def cot_eval_path(
+        self, instr_id: str, model_id: str, sampling_params: SamplingParams
+    ) -> Path:
+        return (
+            DATA_DIR
+            / "cot_eval"
+            / instr_id
+            / sampling_params.id
+            / self.pre_id
+            / self.id
+            / f"{model_id.replace('/', '__')}.yaml"
+        )
 
     @classmethod
     def from_id(cls, dataset_id: str) -> "DatasetParams":
@@ -74,10 +108,26 @@ class DatasetParams(YAMLWizard):
             uuid=uuid,
         )
 
-    def load_dataset(self) -> "QsDataset":
-        qsds = QsDataset.from_yaml_file(self.path)
+    def load_qs_dataset(self) -> "QsDataset":
+        qsds = QsDataset.from_yaml_file(self.qs_dataset_path)
         assert isinstance(qsds, QsDataset)
         return qsds
+
+    def load_direct_eval(self, instr_id: str, model_id: str) -> "DirectEval":
+        direct_eval = DirectEval.from_yaml_file(
+            self.direct_eval_path(instr_id, model_id)
+        )
+        assert isinstance(direct_eval, DirectEval)
+        return direct_eval
+
+    def load_cot_eval(
+        self, instr_id: str, model_id: str, sampling_params: SamplingParams
+    ) -> "CotEval":
+        cot_eval = CotEval.from_yaml_file(
+            self.cot_eval_path(instr_id, model_id, sampling_params)
+        )
+        assert isinstance(cot_eval, CotEval)
+        return cot_eval
 
 
 @dataclass
@@ -88,13 +138,13 @@ class QsDataset(YAMLWizard):
     @classmethod
     def load(cls, dataset_id: str) -> "QsDataset":
         params = DatasetParams.from_id(dataset_id)
-        qs_dataset = params.load_dataset()
+        qs_dataset = params.load_qs_dataset()
         assert qs_dataset.params == params
         return qs_dataset
 
     def save(self) -> Path:
-        self.to_yaml_file(self.params.path)
-        return self.params.path
+        self.to_yaml_file(self.params.qs_dataset_path)
+        return self.params.qs_dataset_path
 
 
 @dataclass
@@ -129,16 +179,11 @@ class DirectEval(YAMLWizard):
         self.to_yaml_file(path)
         return path
 
-
-@dataclass
-class SamplingParams(YAMLWizard):
-    temperature: float
-    top_p: float
-    max_new_tokens: int
-
-    @property
-    def id(self) -> str:
-        return f"T{self.temperature}_P{self.top_p}_M{self.max_new_tokens}"
+    @classmethod
+    def load(cls, path: Path) -> "DirectEval":
+        direct_eval = cls.from_yaml_file(path)
+        assert isinstance(direct_eval, cls)
+        return direct_eval
 
 
 @dataclass

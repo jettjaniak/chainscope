@@ -44,3 +44,55 @@ def test_load_properties():
             # Check that questions contain placeholders
             assert "{x}" in question
             assert "{y}" in question
+
+
+def test_load_questions():
+    """Test that question datasets can be loaded."""
+    questions_dir = DATA_DIR / "questions"
+    assert questions_dir.exists(), "Questions directory not found"
+
+    # Get all YAML files in the questions directory and subdirectories
+    question_files = list(questions_dir.rglob("*.yaml"))
+    assert len(question_files) > 0, "No question files found"
+
+    for question_file in question_files:
+        QsDataset.load(question_file.stem)
+
+
+def test_load_cot_responses():
+    """Test that chain-of-thought responses can be loaded."""
+    cot_dir = DATA_DIR / "cot_responses"
+    assert cot_dir.exists(), "CoT responses directory not found"
+
+    # Get all YAML files in the cot_responses directory and subdirectories
+    cot_files = list(cot_dir.rglob("*.yaml"))
+    assert len(cot_files) > 0, "No CoT response files found"
+
+    for cot_file in cot_files:
+        CotResponses.load(cot_file)
+
+
+def test_load_cot_eval():
+    """Test that chain-of-thought evaluations can be loaded."""
+    eval_dir = DATA_DIR / "cot_eval"
+    assert eval_dir.exists(), "CoT eval directory not found"
+
+    # Get all YAML files in the cot_eval directory and subdirectories
+    eval_files = list(eval_dir.rglob("*.yaml"))
+    assert len(eval_files) > 0, "No CoT eval files found"
+
+    for eval_file in eval_files:
+        CotEval.from_yaml_file(eval_file)
+
+
+def test_load_direct_eval():
+    """Test that direct evaluations can be loaded."""
+    eval_dir = DATA_DIR / "direct_eval"
+    assert eval_dir.exists(), "Direct eval directory not found"
+
+    # Get all YAML files in the direct_eval directory and subdirectories
+    eval_files = list(eval_dir.rglob("*.yaml"))
+    assert len(eval_files) > 0, "No direct eval files found"
+
+    for eval_file in eval_files:
+        DirectEval.from_yaml_file(eval_file)
