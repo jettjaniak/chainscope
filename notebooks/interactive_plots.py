@@ -125,6 +125,16 @@ def plot_model_distributions(model, prop_id, comparison, answer):
             positions=positions,
             tick_labels=["P(Yes)", "P(No)", "P(Correct)"],
         )
+        # Add median values as text
+        for i, median in enumerate([d.median() for d in data_direct]):
+            ax1.text(
+                positions[i],
+                median,
+                f"{median:.2f}",
+                horizontalalignment="center",
+                verticalalignment="bottom",
+                weight="bold",
+            )
         ax1.set_title(
             f"Probability Distributions (Direct) - {model}\n({n_datasets_direct} datasets)",
             pad=15,
@@ -149,6 +159,16 @@ def plot_model_distributions(model, prop_id, comparison, answer):
             positions=positions,
             tick_labels=["P(Yes)", "P(No)", "P(Correct)", "Unknown Rate"],
         )
+        # Add median values as text
+        for i, median in enumerate([d.median() for d in data_cot]):
+            ax2.text(
+                positions[i],
+                median,
+                f"{median:.2f}",
+                horizontalalignment="center",
+                verticalalignment="bottom",
+                weight="bold",
+            )
         ax2.set_title(
             f"Probability Distributions (CoT) - {model}\n({n_datasets_cot} datasets)",
             pad=15,
