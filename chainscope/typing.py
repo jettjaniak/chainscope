@@ -99,6 +99,7 @@ class DatasetParams(YAMLWizard):
 
     @classmethod
     def from_id(cls, dataset_id: str) -> "DatasetParams":
+        assert len(dataset_id.split("_")) == 5, f"Invalid dataset_id: {dataset_id}"
         prop_id, comparison, answer, max_comparisons, uuid = dataset_id.split("_")
         return cls(
             prop_id=prop_id,
