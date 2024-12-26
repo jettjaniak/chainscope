@@ -31,11 +31,11 @@ def get_param_count(model_name: str) -> float:
 
 
 # Get unique values for dropdowns
-available_models = sorted(
+available_models = ["All"] + sorted(
     (model_id.split("/")[-1] for model_id in df["model_id"].unique()),
     key=lambda x: (x.split("-")[0].lower(), get_param_count(x)),
 )
-print(available_models)
+
 available_props = sorted(["All"] + list(df["prop_id"].unique()))
 available_comparisons = sorted(["All"] + list(df["comparison"].unique()))
 available_answers = sorted(["All"] + list(df["answer"].unique()))
@@ -68,16 +68,17 @@ answer_dropdown = widgets.Dropdown(
     style={"description_width": "initial"},
 )
 
-# Create horizontal box for model and checkbox
-model_row = widgets.HBox([model_dropdown])
-
-# Create horizontal box for filter dropdowns
-filter_row = widgets.HBox([prop_dropdown, comparison_dropdown, answer_dropdown])
+# Create a single horizontal box containing all dropdowns
+all_dropdowns_row = widgets.HBox(
+    [model_dropdown, prop_dropdown, comparison_dropdown, answer_dropdown]
+)
 
 
 def plot_model_distributions(model, prop_id, comparison, answer):
-    # Filter data for selected model
-    model_data = df[df["model_id"].str.endswith(model)]
+    if model == "All":
+        model_data = df.copy()
+    else:
+        model_data = df[df["model_id"].str.endswith(model)]
 
     # Apply filters (removed all_datasets condition)
     if prop_id != "All":
@@ -89,11 +90,17 @@ def plot_model_distributions(model, prop_id, comparison, answer):
 
     # Create figure with 2x2 subplots
     fig = plt.figure(figsize=(15, 12))
-    gs = fig.add_gridspec(2, 2)
-    ax1 = fig.add_subplot(gs[0, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax3 = fig.add_subplot(gs[1, 0])
-    ax4 = fig.add_subplot(gs[1, 1])
+    if model == "All":
+        gs = fig.add_gridspec(2, 2)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax3 = fig.add_subplot(gs[1, :])
+    else:
+        gs = fig.add_gridspec(2, 2)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
+        ax3 = fig.add_subplot(gs[1, 0])
+        ax4 = fig.add_subplot(gs[1, 1])
 
     # Check if we have any data for direct and cot modes
     direct_data = model_data[model_data["mode"] == "direct"]
@@ -154,28 +161,59 @@ def plot_model_distributions(model, prop_id, comparison, answer):
     # Add difference plot and scatter plot only if we have both types of data
     if has_data_for_comparison:
         model_data_pivot = model_data.pivot(
-            index=["dataset_id", "qid"], columns="mode", values="p_correct"
+            index=["dataset_id", "qid", "model_id"], columns="mode", values="p_correct"
         )
-        differences = model_data_pivot["cot"] - model_data_pivot["direct"]
-        ax3.boxplot(differences, positions=[1], tick_labels=[model])
+
+        if model == "All":
+            # Group differences by model
+            differences = []
+            x_labels = []
+            for model_id in sorted(
+                model_data_pivot.index.get_level_values("model_id").unique(),
+                key=lambda x: (
+                    x.split("/")[-1].split("-")[0].lower(),
+                    get_param_count(x.split("/")[-1]),
+                ),
+            ):
+                model_differences = model_data_pivot.loc[
+                    model_data_pivot.index.get_level_values("model_id") == model_id
+                ]
+                differences.append(
+                    model_differences["cot"] - model_differences["direct"]
+                )
+                x_labels.append(model_id.split("/")[-1])
+
+            ax3.boxplot(differences, tick_labels=x_labels)
+            plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha="right")
+        else:
+            # Single boxplot for selected model
+            differences = model_data_pivot["cot"] - model_data_pivot["direct"]
+            ax3.boxplot(
+                differences,
+                positions=[1],
+                tick_labels=[model],
+            )
+
         ax3.axhline(y=0, color="red", linestyle="--", alpha=0.5)
         ax3.set_title("Distribution of Median Differences (CoT - Direct)")
         ax3.set_ylabel("Difference in Prob")
 
-        correlation = model_data_pivot["cot"].corr(model_data_pivot["direct"])
-        ax4.scatter(model_data_pivot["direct"], model_data_pivot["cot"], alpha=0.5)
-        ax4.plot([0, 1], [0, 1], "r--", alpha=0.5)  # diagonal line
-        ax4.set_xlabel("P(Correct) - Direct")
-        ax4.set_ylabel("P(Correct) - CoT")
-        ax4.set_title(f"Direct vs CoT Performance\nCorrelation: {correlation:.3f}")
-        ax4.set_xlim(0, 1)
-        ax4.set_ylim(0, 1)
+        if model != "All":
+            correlation = model_data_pivot["cot"].corr(model_data_pivot["direct"])
+            ax4.scatter(model_data_pivot["direct"], model_data_pivot["cot"], alpha=0.5)
+            ax4.plot([0, 1], [0, 1], "r--", alpha=0.5)  # diagonal line
+            ax4.set_xlabel("P(Correct) - Direct")
+            ax4.set_ylabel("P(Correct) - CoT")
+            ax4.set_title(f"Direct vs CoT Performance\nCorrelation: {correlation:.3f}")
+            ax4.set_xlim(0, 1)
+            ax4.set_ylim(0, 1)
     else:
         ax3.text(0.5, 0.5, "Missing Data for Comparison", ha="center", va="center")
         ax3.set_title("Distribution of Median Differences (CoT - Direct)")
 
-        ax4.text(0.5, 0.5, "Missing Data for Comparison", ha="center", va="center")
-        ax4.set_title("Direct vs CoT Performance")
+        if model != "All":
+            ax4.text(0.5, 0.5, "Missing Data for Comparison", ha="center", va="center")
+            ax4.set_title("Direct vs CoT Performance")
 
     # Ensure axes are cleared for missing data cases
     if not has_direct:
@@ -206,8 +244,7 @@ interactive_plot = widgets.interactive(
 # Create a VBox container for all widgets
 container = widgets.VBox(
     [
-        model_row,
-        filter_row,
+        all_dropdowns_row,
         interactive_plot.children[-1],  # The output widget
     ]
 )
