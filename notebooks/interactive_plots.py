@@ -47,12 +47,6 @@ model_dropdown = widgets.Dropdown(
     style={"description_width": "initial"},
 )
 
-all_datasets_checkbox = widgets.Checkbox(
-    value=True,
-    description="All datasets",
-    style={"description_width": "initial"},
-)
-
 prop_dropdown = widgets.Dropdown(
     options=available_props,
     value="All",
@@ -75,24 +69,23 @@ answer_dropdown = widgets.Dropdown(
 )
 
 # Create horizontal box for model and checkbox
-model_row = widgets.HBox([model_dropdown, all_datasets_checkbox])
+model_row = widgets.HBox([model_dropdown])
 
 # Create horizontal box for filter dropdowns
 filter_row = widgets.HBox([prop_dropdown, comparison_dropdown, answer_dropdown])
 
 
-def plot_model_distributions(model, all_datasets, prop_id, comparison, answer):
+def plot_model_distributions(model, prop_id, comparison, answer):
     # Filter data for selected model
     model_data = df[df["model_id"].str.endswith(model)]
 
-    # Apply additional filters if not using all datasets
-    if not all_datasets:
-        if prop_id != "All":
-            model_data = model_data[model_data["prop_id"] == prop_id]
-        if comparison != "All":
-            model_data = model_data[model_data["comparison"] == comparison]
-        if answer != "All":
-            model_data = model_data[model_data["answer"] == answer]
+    # Apply filters (removed all_datasets condition)
+    if prop_id != "All":
+        model_data = model_data[model_data["prop_id"] == prop_id]
+    if comparison != "All":
+        model_data = model_data[model_data["comparison"] == comparison]
+    if answer != "All":
+        model_data = model_data[model_data["answer"] == answer]
 
     # Create figure with 2x2 subplots
     fig = plt.figure(figsize=(15, 12))
@@ -107,6 +100,9 @@ def plot_model_distributions(model, all_datasets, prop_id, comparison, answer):
     cot_data = model_data[model_data["mode"] == "cot"]
     has_direct = len(direct_data) > 0
     has_cot = len(cot_data) > 0
+    has_data_for_comparison = (
+        has_direct and has_cot and len(direct_data) == len(cot_data)
+    )
 
     # Plot for direct mode
     if has_direct:
@@ -156,12 +152,12 @@ def plot_model_distributions(model, all_datasets, prop_id, comparison, answer):
         ax2.set_title(f"Probability Distributions (CoT) - {model}", pad=15)
 
     # Add difference plot and scatter plot only if we have both types of data
-    if has_direct and has_cot:
+    if has_data_for_comparison:
         model_data_pivot = model_data.pivot(
             index=["dataset_id", "qid"], columns="mode", values="p_correct"
         )
         differences = model_data_pivot["cot"] - model_data_pivot["direct"]
-        ax3.boxplot(differences, positions=[1], tick_labels=["CoT - Direct"])
+        ax3.boxplot(differences, positions=[1], tick_labels=[model])
         ax3.axhline(y=0, color="red", linestyle="--", alpha=0.5)
         ax3.set_title("Distribution of Median Differences (CoT - Direct)")
         ax3.set_ylabel("Difference in Prob")
@@ -198,21 +194,10 @@ def plot_model_distributions(model, all_datasets, prop_id, comparison, answer):
     plt.show()
 
 
-# Create interactive widget with conditional display
-def update_visibility(change):
-    filter_row.layout.display = "none" if change["new"] else "flex"
-
-
-all_datasets_checkbox.observe(update_visibility, "value")
-
-# Initialize filter row as hidden since checkbox starts as True
-filter_row.layout.display = "none"
-
-# Create the interactive widget
+# Create the interactive widget with removed all_datasets parameter
 interactive_plot = widgets.interactive(
     plot_model_distributions,
     model=model_dropdown,
-    all_datasets=all_datasets_checkbox,
     prop_id=prop_dropdown,
     comparison=comparison_dropdown,
     answer=answer_dropdown,
