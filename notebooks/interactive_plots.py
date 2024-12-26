@@ -92,8 +92,7 @@ def plot_model_distributions(model, prop_id, comparison, answer):
     fig = plt.figure(figsize=(15, 12))
     if model == "All":
         gs = fig.add_gridspec(2, 2)
-        ax1 = fig.add_subplot(gs[0, 0])
-        ax2 = fig.add_subplot(gs[0, 1])
+        ax4 = fig.add_subplot(gs[0, :])
         ax3 = fig.add_subplot(gs[1, :])
     else:
         gs = fig.add_gridspec(2, 2)
@@ -111,72 +110,73 @@ def plot_model_distributions(model, prop_id, comparison, answer):
         has_direct and has_cot and len(direct_data) == len(cot_data)
     )
 
-    # Plot for direct mode
-    if has_direct:
-        n_datasets_direct = len(direct_data["dataset_id"].unique())
-        positions = [1, 2, 3]
-        data_direct = [
-            direct_data["p_yes"],
-            direct_data["p_no"],
-            direct_data["p_correct"],
-        ]
-        ax1.boxplot(
-            data_direct,
-            positions=positions,
-            tick_labels=["P(Yes)", "P(No)", "P(Correct)"],
-        )
-        # Add median values as text
-        for i, median in enumerate([d.median() for d in data_direct]):
-            ax1.text(
-                positions[i],
-                median,
-                f"{median:.2f}",
-                horizontalalignment="center",
-                verticalalignment="bottom",
-                weight="bold",
+    if model != "All":
+        # Plot for direct mode
+        if has_direct:
+            n_datasets_direct = len(direct_data["dataset_id"].unique())
+            positions = [1, 2, 3]
+            data_direct = [
+                direct_data["p_yes"],
+                direct_data["p_no"],
+                direct_data["p_correct"],
+            ]
+            ax1.boxplot(
+                data_direct,
+                positions=positions,
+                tick_labels=["P(Yes)", "P(No)", "P(Correct)"],
             )
-        ax1.set_title(
-            f"Probability Distributions (Direct) - {model}\n({n_datasets_direct} datasets)",
-            pad=15,
-        )
-        ax1.set_ylabel("Probability")
-    else:
-        ax1.text(0.5, 0.5, "Missing Direct Data", ha="center", va="center")
-        ax1.set_title(f"Probability Distributions (Direct) - {model}", pad=15)
+            # Add median values as text
+            for i, median in enumerate([d.median() for d in data_direct]):
+                ax1.text(
+                    positions[i],
+                    median,
+                    f"{median:.2f}",
+                    horizontalalignment="center",
+                    verticalalignment="bottom",
+                    weight="bold",
+                )
+            ax1.set_title(
+                f"Probability Distributions (Direct) - {model}\n({n_datasets_direct} datasets)",
+                pad=15,
+            )
+            ax1.set_ylabel("Probability")
+        else:
+            ax1.text(0.5, 0.5, "Missing Direct Data", ha="center", va="center")
+            ax1.set_title(f"Probability Distributions (Direct) - {model}", pad=15)
 
-    # Plot for cot mode
-    if has_cot:
-        n_datasets_cot = len(cot_data["dataset_id"].unique())
-        positions = [1, 2, 3, 4]
-        data_cot = [
-            cot_data["p_yes"],
-            cot_data["p_no"],
-            cot_data["p_correct"],
-            cot_data["unknown_rate"],
-        ]
-        ax2.boxplot(
-            data_cot,
-            positions=positions,
-            tick_labels=["P(Yes)", "P(No)", "P(Correct)", "Unknown Rate"],
-        )
-        # Add median values as text
-        for i, median in enumerate([d.median() for d in data_cot]):
-            ax2.text(
-                positions[i],
-                median,
-                f"{median:.2f}",
-                horizontalalignment="center",
-                verticalalignment="bottom",
-                weight="bold",
+        # Plot for cot mode
+        if has_cot:
+            n_datasets_cot = len(cot_data["dataset_id"].unique())
+            positions = [1, 2, 3, 4]
+            data_cot = [
+                cot_data["p_yes"],
+                cot_data["p_no"],
+                cot_data["p_correct"],
+                cot_data["unknown_rate"],
+            ]
+            ax2.boxplot(
+                data_cot,
+                positions=positions,
+                tick_labels=["P(Yes)", "P(No)", "P(Correct)", "Unknown Rate"],
             )
-        ax2.set_title(
-            f"Probability Distributions (CoT) - {model}\n({n_datasets_cot} datasets)",
-            pad=15,
-        )
-        ax2.set_ylabel("Probability")
-    else:
-        ax2.text(0.5, 0.5, "Missing CoT Data", ha="center", va="center")
-        ax2.set_title(f"Probability Distributions (CoT) - {model}", pad=15)
+            # Add median values as text
+            for i, median in enumerate([d.median() for d in data_cot]):
+                ax2.text(
+                    positions[i],
+                    median,
+                    f"{median:.2f}",
+                    horizontalalignment="center",
+                    verticalalignment="bottom",
+                    weight="bold",
+                )
+            ax2.set_title(
+                f"Probability Distributions (CoT) - {model}\n({n_datasets_cot} datasets)",
+                pad=15,
+            )
+            ax2.set_ylabel("Probability")
+        else:
+            ax2.text(0.5, 0.5, "Missing CoT Data", ha="center", va="center")
+            ax2.set_title(f"Probability Distributions (CoT) - {model}", pad=15)
 
     # Add difference plot and scatter plot only if we have both types of data
     if has_data_for_comparison:
@@ -204,7 +204,35 @@ def plot_model_distributions(model, prop_id, comparison, answer):
                 x_labels.append(model_id.split("/")[-1])
 
             ax3.boxplot(differences, tick_labels=x_labels)
+            ax3.set_title("Distribution of Median Differences (CoT - Direct)")
+            ax3.set_ylabel("Difference in Prob")
             plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha="right")
+
+            # Calculate correlations for each model
+            correlations = []
+            model_names = []
+            for model_id in sorted(
+                model_data_pivot.index.get_level_values("model_id").unique(),
+                key=lambda x: (
+                    x.split("/")[-1].split("-")[0].lower(),
+                    get_param_count(x.split("/")[-1]),
+                ),
+            ):
+                model_data = model_data_pivot.loc[
+                    model_data_pivot.index.get_level_values("model_id") == model_id
+                ]
+                corr = model_data["cot"].corr(model_data["direct"])
+                if not pd.isna(corr):  # Only include valid correlations
+                    correlations.append(corr)
+                    model_names.append(model_id.split("/")[-1])
+
+            # Plot correlations as bar chart instead of histogram
+            x_pos = range(len(correlations))
+            ax4.bar(x_pos, correlations, edgecolor="black")
+            ax4.set_xticks(x_pos)
+            ax4.set_xticklabels(model_names, rotation=45, ha="right")
+            ax4.set_ylabel("Correlation Coefficient")
+            ax4.set_title("CoT vs Direct P(Correct) Correlations by Model")
         else:
             # Single boxplot for selected model
             differences = model_data_pivot["cot"] - model_data_pivot["direct"]
@@ -214,11 +242,10 @@ def plot_model_distributions(model, prop_id, comparison, answer):
                 tick_labels=[model],
             )
 
-        ax3.axhline(y=0, color="red", linestyle="--", alpha=0.5)
-        ax3.set_title("Distribution of Median Differences (CoT - Direct)")
-        ax3.set_ylabel("Difference in Prob")
+            ax3.axhline(y=0, color="red", linestyle="--", alpha=0.5)
+            ax3.set_title("Distribution of Median Differences (CoT - Direct)")
+            ax3.set_ylabel("Difference in Prob")
 
-        if model != "All":
             correlation = model_data_pivot["cot"].corr(model_data_pivot["direct"])
             ax4.scatter(model_data_pivot["direct"], model_data_pivot["cot"], alpha=0.5)
             ax4.plot([0, 1], [0, 1], "r--", alpha=0.5)  # diagonal line
@@ -231,9 +258,8 @@ def plot_model_distributions(model, prop_id, comparison, answer):
         ax3.text(0.5, 0.5, "Missing Data for Comparison", ha="center", va="center")
         ax3.set_title("Distribution of Median Differences (CoT - Direct)")
 
-        if model != "All":
-            ax4.text(0.5, 0.5, "Missing Data for Comparison", ha="center", va="center")
-            ax4.set_title("Direct vs CoT Performance")
+        ax4.text(0.5, 0.5, "Missing Data for Comparison", ha="center", va="center")
+        ax4.set_title("Direct vs CoT Performance")
 
     # Ensure axes are cleared for missing data cases
     if not has_direct:
@@ -271,3 +297,5 @@ container = widgets.VBox(
 
 # Display the container instead of the interactive_plot
 display(container)
+
+# %%
