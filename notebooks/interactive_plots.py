@@ -204,6 +204,7 @@ def plot_model_distributions(model, prop_id, comparison, answer):
                 x_labels.append(model_id.split("/")[-1])
 
             ax3.boxplot(differences, tick_labels=x_labels)
+            ax3.axhline(y=0, color="red", linestyle="--", alpha=0.5)
             ax3.set_title("Distribution of Median Differences (CoT - Direct)")
             ax3.set_ylabel("Difference in Prob")
             plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha="right")
