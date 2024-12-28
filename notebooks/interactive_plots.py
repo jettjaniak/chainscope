@@ -195,6 +195,7 @@ def plot_all_models_comparison(
     differences = []
     correlations = []
     x_labels = []
+    high_diff_percentages = []  # New list for storing percentages
     model_ids = sort_models(
         model_data_pivot.index.get_level_values("model_id").unique()
     )
@@ -204,7 +205,8 @@ def plot_all_models_comparison(
             model_data_pivot.index.get_level_values("model_id") == model_id
         ]
         # Calculate differences
-        differences.append(model_data["cot"] - model_data["direct"])
+        diff = model_data["cot"] - model_data["direct"]
+        differences.append(diff)
         x_labels.append(get_model_display_name(model_id))
 
         # Calculate correlation
@@ -212,25 +214,57 @@ def plot_all_models_comparison(
         if not pd.isna(corr):
             correlations.append((get_model_display_name(model_id), corr))
 
-    # Plot differences
-    setup_boxplot(
-        ax3,
-        differences,
-        x_labels,
-        "Distribution of Median Differences (CoT - Direct)",
-        y_label="Difference in Prob",
-    )
-    plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha="right")
+        # Calculate percentage of differences between 0.5 and 1
+        high_diff_percentage = (diff.between(0.5, 1.0).sum() / len(diff)) * 100
+        high_diff_percentages.append(high_diff_percentage)
 
-    # Plot correlations
-    corr_values = [c[1] for c in correlations]
-    corr_names = [c[0] for c in correlations]
-    x_pos = range(len(corr_values))
-    ax4.bar(x_pos, corr_values, edgecolor="black")
-    ax4.set_xticks(x_pos)
-    ax4.set_xticklabels(corr_names, rotation=45, ha="right")
-    ax4.set_ylabel("Correlation Coefficient")
-    ax4.set_title("CoT vs Direct P(Correct) Correlations by Model")
+    # Plot differences using violin plot instead of boxplot
+    positions = list(range(1, len(differences) + 1))
+    violin_parts = ax3.violinplot(differences, positions=positions, showmedians=True)
+
+    # Customize violin plot appearance
+    for pc in violin_parts["bodies"]:
+        pc.set_facecolor("lightblue")
+        pc.set_alpha(0.7)
+    violin_parts["cmedians"].set_color("red")
+
+    # Add median values as text
+    for i, diff_series in enumerate(differences):
+        median = diff_series.median()
+        ax3.text(
+            positions[i],
+            median,
+            f"{median:.2f}",
+            horizontalalignment="center",
+            verticalalignment="bottom",
+            weight="bold",
+        )
+
+    ax3.set_xticks(positions)
+    ax3.set_xticklabels(x_labels, rotation=45, ha="right")
+    ax3.set_ylabel("Difference in Prob")
+    ax3.set_title("Distribution of Differences (CoT - Direct)")
+    ax3.axhline(y=0, color="red", linestyle="--", alpha=0.5)
+
+    # Replace correlation plot with high difference percentage histogram
+    ax4.bar(x_labels, high_diff_percentages, edgecolor="black")
+    ax4.set_xticklabels(x_labels, rotation=45, ha="right")
+    ax4.set_ylabel("Percentage of data points (%)")
+    ax4.set_title(
+        "Percentage of questions with CoT - Direct Differences between 0.5 and 1.0"
+    )
+    ax4.set_ylim(0, 100)  # Set y-axis from 0 to 100%
+
+    # Add percentage values on top of bars
+    for i, percentage in enumerate(high_diff_percentages):
+        ax4.text(
+            i,
+            percentage + 1,  # Slightly above the bar
+            f"{percentage:.1f}%",
+            ha="center",
+            va="bottom",
+            rotation=0,
+        )
 
 
 def plot_single_model_comparison(
@@ -241,20 +275,31 @@ def plot_single_model_comparison(
 ) -> None:
     """Plot comparison metrics for a single model."""
     differences = model_data_pivot["cot"] - model_data_pivot["direct"]
-    setup_boxplot(
-        ax3,
-        [differences],
-        [model],
-        "Distribution of Median Differences (CoT - Direct)",
-        y_label="Difference in Prob",
-    )
 
+    # Create histogram instead of boxplot
+    ax3.hist(differences, bins=30, edgecolor="black")
+    ax3.axvline(
+        x=differences.median(),
+        color="red",
+        linestyle="--",
+        label=f"Median: {differences.median():.3f}",
+    )
+    ax3.set_xlabel("Difference in P(Correct) (CoT - Direct)")
+    ax3.set_ylabel("Count")
+    ax3.set_title(
+        f"Distribution of Differences (CoT - Direct) - {model}\nTotal data points: {len(differences)}"
+    )
+    ax3.legend()
+
+    # Scatter plot remains the same
     correlation = model_data_pivot["cot"].corr(model_data_pivot["direct"])
     ax4.scatter(model_data_pivot["direct"], model_data_pivot["cot"], alpha=0.5)
     ax4.plot([0, 1], [0, 1], "r--", alpha=0.5)
-    ax4.set_xlabel("P(Correct) - Direct")
-    ax4.set_ylabel("P(Correct) - CoT")
-    ax4.set_title(f"Direct vs CoT Performance\nCorrelation: {correlation:.3f}")
+    ax4.set_xlabel("Direct P(Correct)")
+    ax4.set_ylabel("CoT accuracy")
+    ax4.set_title(
+        f"Direct vs CoT Performance - {model}\nCorrelation: {correlation:.3f}"
+    )
     ax4.set_xlim(0, 1)
     ax4.set_ylim(0, 1)
 
