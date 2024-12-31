@@ -9,6 +9,8 @@ from IPython.display import display
 from chainscope.typing import *
 
 df = pd.read_pickle(DATA_DIR / "df.pkl")
+filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
+df = df[~df.prop_id.isin(filter_prop_ids)]
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 
@@ -55,7 +57,6 @@ def filter_data(
 ) -> pd.DataFrame:
     """Filter DataFrame based on selected criteria."""
     data = df.copy()
-
     if model != "All":
         data = data[data["model_id"].str.endswith(model)]
     if prop_id != "All":
