@@ -177,3 +177,123 @@ def plot_model_biases(df: pd.DataFrame):
 plot_model_biases(df)
 
 # %%
+
+
+def find_largest_discrepancy_pairs():
+    # Group by model and find pairs with largest accuracy difference
+    results = []
+
+    for model_id in df.model_id.unique():
+        model_df = df[(df.model_id == model_id) & (df["mode"] == "cot")]
+
+        # Group by prop_id and answer
+        for prop_id in model_df.prop_id.unique():
+            prop_df = model_df[model_df.prop_id == prop_id]
+
+            for answer in ["YES", "NO"]:
+                answer_df = prop_df[prop_df.answer == answer]
+                if len(answer_df) < 2:
+                    continue
+
+                # Find pairs with different comparison types (gt vs lt)
+                max_diff = 0
+                max_pair = None
+
+                # Get unique qids
+                qids = sorted(answer_df.qid.unique())
+
+                for qid in qids:
+                    # Get row for this qid
+                    q_df = answer_df[answer_df.qid == qid]
+                    # print("Processing qid:", qid)
+
+                    # Find another row that has x_name as y_name and y_name as x_name, and different comparison
+                    other_q_df = answer_df[
+                        (answer_df.x_name == q_df.y_name.iloc[0])
+                        & (answer_df.y_name == q_df.x_name.iloc[0])
+                        & (answer_df.comparison != q_df.comparison.iloc[0])
+                    ]
+
+                    if len(other_q_df) == 0:
+                        # print("No other q_df found")
+                        # print(q_df)
+                        continue
+
+                    diff = abs(q_df.p_correct.iloc[0] - other_q_df.p_correct.iloc[0])
+                    if diff > max_diff:
+                        max_diff = diff
+                        max_pair = (q_df, other_q_df)
+
+                if max_pair is not None:
+                    results.append(
+                        {
+                            "model_id": model_id,
+                            "prop_id": prop_id,
+                            "answer": answer,
+                            "diff": max_diff,
+                            "qid1": max_pair[0].qid.values[0],
+                            "qid2": max_pair[1].qid.values[0],
+                            "dataset_id1": max_pair[0].dataset_id.values[0],
+                            "dataset_id2": max_pair[1].dataset_id.values[0],
+                            "q_str1": max_pair[0].q_str.values[0],
+                            "q_str2": max_pair[1].q_str.values[0],
+                            "comparison1": max_pair[0].comparison.values[0],
+                            "comparison2": max_pair[1].comparison.values[0],
+                        }
+                    )
+
+    return pd.DataFrame(results)
+
+
+def load_cot_response(
+    model_id: str, prop_id: str, answer: str, dataset_id: str, comparison: str, qid: str
+) -> list[str]:
+    responses_path = (
+        DATA_DIR
+        / "cot_responses"
+        / "instr-v0"
+        / "T0.7_P0.9_M2000"
+        / f"{comparison}_{answer}_1"
+        / dataset_id
+        / f"{model_id.replace('/', '__')}.yaml"
+    )
+
+    cot_responses = CotResponses.load(Path(responses_path))
+    return list(cot_responses.responses_by_qid[qid].values())
+
+
+# Find the pairs with largest discrepancies
+discrepancies = find_largest_discrepancy_pairs()
+
+# Sort by difference and show top examples
+top_examples = discrepancies.sort_values("diff", ascending=False).head(5)
+
+# Print examples
+for _, row in top_examples.iterrows():
+    print(f"\nModel: {row.model_id}")
+    print(f"Property: {row.prop_id}")
+    print(f"Expected answer: {row.answer}")
+    print(f"Accuracy difference: {row['diff']:.2f}")
+    print("\nQuestion 1:", row.q_str1)
+    responses1 = load_cot_response(
+        row.model_id,
+        row.prop_id,
+        row.answer,
+        row.dataset_id1,
+        row.comparison1,
+        row.qid1,
+    )
+    print("Sample response 1:", responses1)
+    print("\nQuestion 2:", row.q_str2)
+    responses2 = load_cot_response(
+        row.model_id,
+        row.prop_id,
+        row.answer,
+        row.dataset_id2,
+        row.comparison2,
+        row.qid2,
+    )
+    print("Sample response 2:", responses2)
+    print("\n" + "=" * 80)
+
+# %%
