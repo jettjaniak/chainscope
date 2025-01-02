@@ -88,12 +88,16 @@ plt.show()
 
 # Create a figure showing bias patterns across models
 def plot_model_biases(df: pd.DataFrame):
-    # Filter for relevant models and calculate mean accuracies
+    # Bottom to top
     model_order = [
         "P",  # Phi
         "Q72",
         "Q32",
-        "Q14",  # Qwens
+        "Q14",
+        "Q7",
+        "Q3",
+        "Q1.5",
+        "Q0.5",  # Qwens
         "G27",
         "G9",
         "G2",  # Gemmas
@@ -103,19 +107,7 @@ def plot_model_biases(df: pd.DataFrame):
         "L1",  # Llamas
     ]
 
-    model_labels = [
-        "Phi 3.5",
-        "Qwen 72B",
-        "Qwen 32B",
-        "Qwen 14B",
-        "Gemma 27B",
-        "Gemma 9B",
-        "Gemma 2B",
-        "Llama 70B",
-        "Llama 8B",
-        "Llama 3B",
-        "Llama 1B",
-    ]
+    model_labels = [MODELS_MAP[model_key].split("/")[-1] for model_key in model_order]
 
     results = []
     for model_key in model_order:
@@ -146,24 +138,24 @@ def plot_model_biases(df: pd.DataFrame):
         # Plot arrows
         plt.arrow(
             direct.yes_acc,
-            idx - 0.1,
+            idx + 0.1,
             direct.no_acc - direct.yes_acc,
             0,
             head_width=0.15,
             head_length=0.02,
-            color="#4f97c4",
+            color="#2ecc71",
             length_includes_head=True,
             label="Direct" if idx == 0 else None,
         )
 
         plt.arrow(
             cot.yes_acc,
-            idx + 0.1,
+            idx - 0.1,
             cot.no_acc - cot.yes_acc,
             0,
             head_width=0.15,
             head_length=0.02,
-            color="#c4774f",
+            color="#9b59b6",
             length_includes_head=True,
             label="CoT" if idx == 0 else None,
         )
