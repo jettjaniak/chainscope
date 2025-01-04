@@ -11,83 +11,12 @@ filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"
 df = df[~df.prop_id.isin(filter_prop_ids)]
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
-# %%
-
-# Direct responses are biased toward YES
-
-# Filter for Gemma models and direct responses
-gemma_df = df[
-    df.model_id.isin([MODELS_MAP["G9"], MODELS_MAP["G27"]]) & (df["mode"] == "direct")
-]
-
-# show number of samples
-print(len(gemma_df))
-
-# Define colors for expected answers
-colors = {
-    "YES": "#4f97c4",  # blue
-    "NO": "#c4774f",  # orange
-}
-
-plt.figure(figsize=(10, 5))
-
-# Create boxplots for YES and NO answers
-boxes = []  # Store box plots for legend
-labels = []  # Store labels for legend
-for i, answer in enumerate(["YES", "NO"]):
-    answer_data = gemma_df[gemma_df["answer"] == answer]
-    positions = [i * 2, i * 2 + 1]
-
-    key_for_data = "p_yes" if answer == "YES" else "p_no"
-    g9_data = answer_data[answer_data.model_id == MODELS_MAP["G9"]][key_for_data]
-    g27_data = answer_data[answer_data.model_id == MODELS_MAP["G27"]][key_for_data]
-
-    p_label = "P(YES)" if answer == "YES" else "P(NO)"
-
-    bplot = plt.boxplot(
-        [g9_data, g27_data],
-        positions=positions,
-        tick_labels=[
-            f"Gemma-2-9B\n{p_label}",
-            f"Gemma-2-27B\n{p_label}",
-        ],
-        widths=0.6,
-        patch_artist=True,
-        boxprops=dict(facecolor=colors[answer], color="black"),
-        medianprops=dict(color="red", linewidth=1.5),
-    )
-
-    boxes.append(bplot["boxes"][0])  # Add first box to legend
-    labels.append(f"Expected answer: {answer}")
-
-    # Add median values as text
-    for idx, box in enumerate([g9_data, g27_data]):
-        median = box.median()
-        plt.text(
-            positions[idx],
-            median,
-            f"{median:.2f}",
-            horizontalalignment="center",
-            verticalalignment="bottom",
-            fontweight="bold",
-        )
-
-plt.title("Gemma Models Performance on Direct Responses")
-plt.ylabel("Probability")
-plt.ylim(-0.04, 1.17)
-plt.grid(True, alpha=0.3)
-
-# Add legend
-plt.legend(boxes, labels, loc="upper right")
-
-plt.tight_layout()
-plt.show()
 
 # %%
-
-
 # Create a figure showing bias patterns across models
-def plot_model_biases(df: pd.DataFrame):
+def plot_model_biases(
+    df: pd.DataFrame, biases: Literal["direct", "cot", "both"] = "both"
+):
     # Bottom to top
     model_order = [
         "P",  # Phi
@@ -131,40 +60,66 @@ def plot_model_biases(df: pd.DataFrame):
     for idx, model in enumerate(model_order):
         model_data = results_df[results_df["model"] == model]
 
-        # Direct response arrow
-        direct = model_data[model_data["mode"] == "direct"].iloc[0]
-        cot = model_data[model_data["mode"] == "cot"].iloc[0]
+        if biases == "cot" or biases == "both":
+            cot = model_data[model_data["mode"] == "cot"].iloc[0]
+            cot_acc_diff = cot.no_acc - cot.yes_acc
 
-        # Plot arrows
-        plt.arrow(
-            direct.yes_acc,
-            idx + 0.1,
-            direct.no_acc - direct.yes_acc,
-            0,
-            head_width=0.15,
-            head_length=0.02,
-            color="#2ecc71",
-            length_includes_head=True,
-            label="Direct" if idx == 0 else None,
-        )
+            if abs(cot_acc_diff) < 0.05:
+                bias_str = "W/O COT BIAS"
+            elif cot_acc_diff > 0:
+                bias_str = "COT BIAS to NO"
+            else:
+                bias_str = "COT BIAS to YES"
+            print(
+                f"Model: {MODELS_MAP[model].split("/")[-1]}, CoT: yes_acc: {cot.yes_acc:.2f}, no_acc: {cot.no_acc:.2f}, diff: {cot_acc_diff:.2f} -> {bias_str}"
+            )
 
-        plt.arrow(
-            cot.yes_acc,
-            idx - 0.1,
-            cot.no_acc - cot.yes_acc,
-            0,
-            head_width=0.15,
-            head_length=0.02,
-            color="#9b59b6",
-            length_includes_head=True,
-            label="CoT" if idx == 0 else None,
-        )
+            plt.arrow(
+                cot.yes_acc,
+                idx + (0.1 if biases == "both" else 0),
+                cot_acc_diff,
+                0,
+                head_width=0.12,
+                head_length=0.01,
+                linewidth=2,
+                color="#9b59b6",
+                length_includes_head=True,
+                label="CoT" if idx == 0 else None,
+            )
+
+        if biases == "direct" or biases == "both":
+            direct = model_data[model_data["mode"] == "direct"].iloc[0]
+            direct_acc_diff = direct.no_acc - direct.yes_acc
+
+            if abs(direct_acc_diff) < 0.05:
+                bias_str = "W/O DIRECT BIAS"
+            elif direct_acc_diff > 0:
+                bias_str = "DIRECT BIAS to NO"
+            else:
+                bias_str = "DIRECT BIAS to YES"
+            print(
+                f"Model: {MODELS_MAP[model].split("/")[-1]}, Direct: yes_acc: {direct.yes_acc:.2f}, no_acc: {direct.no_acc:.2f}, diff: {direct_acc_diff:.2f} -> {bias_str}"
+            )
+
+            plt.arrow(
+                direct.yes_acc,
+                idx - (0.1 if biases == "both" else 0),
+                direct_acc_diff,
+                0,
+                head_width=0.12,
+                head_length=0.01,
+                linewidth=2,
+                color="#2ecc71",
+                length_includes_head=True,
+                label="Direct" if idx == 0 else None,
+            )
 
     plt.yticks(y_positions, model_labels)
     plt.xlabel("Accuracy")
     plt.title("Model Biases: Average accuracy from YES to NO questions")
     plt.grid(True, alpha=0.3)
-    plt.legend()
+    if biases == "both":
+        plt.legend()
 
     # Add vertical line at 0.5 for reference
     plt.axvline(0.5, color="gray", linestyle="--", alpha=0.5)
@@ -174,126 +129,6 @@ def plot_model_biases(df: pd.DataFrame):
 
 
 # Call the function
-plot_model_biases(df)
-
-# %%
-
-
-def find_largest_discrepancy_pairs():
-    # Group by model and find pairs with largest accuracy difference
-    results = []
-
-    for model_id in df.model_id.unique():
-        model_df = df[(df.model_id == model_id) & (df["mode"] == "cot")]
-
-        # Group by prop_id and answer
-        for prop_id in model_df.prop_id.unique():
-            prop_df = model_df[model_df.prop_id == prop_id]
-
-            for answer in ["YES", "NO"]:
-                answer_df = prop_df[prop_df.answer == answer]
-                if len(answer_df) < 2:
-                    continue
-
-                # Find pairs with different comparison types (gt vs lt)
-                max_diff = 0
-                max_pair = None
-
-                # Get unique qids
-                qids = sorted(answer_df.qid.unique())
-
-                for qid in qids:
-                    # Get row for this qid
-                    q_df = answer_df[answer_df.qid == qid]
-                    # print("Processing qid:", qid)
-
-                    # Find another row that has x_name as y_name and y_name as x_name, and different comparison
-                    other_q_df = answer_df[
-                        (answer_df.x_name == q_df.y_name.iloc[0])
-                        & (answer_df.y_name == q_df.x_name.iloc[0])
-                        & (answer_df.comparison != q_df.comparison.iloc[0])
-                    ]
-
-                    if len(other_q_df) == 0:
-                        # print("No other q_df found")
-                        # print(q_df)
-                        continue
-
-                    diff = abs(q_df.p_correct.iloc[0] - other_q_df.p_correct.iloc[0])
-                    if diff > max_diff:
-                        max_diff = diff
-                        max_pair = (q_df, other_q_df)
-
-                if max_pair is not None:
-                    results.append(
-                        {
-                            "model_id": model_id,
-                            "prop_id": prop_id,
-                            "answer": answer,
-                            "diff": max_diff,
-                            "qid1": max_pair[0].qid.values[0],
-                            "qid2": max_pair[1].qid.values[0],
-                            "dataset_id1": max_pair[0].dataset_id.values[0],
-                            "dataset_id2": max_pair[1].dataset_id.values[0],
-                            "q_str1": max_pair[0].q_str.values[0],
-                            "q_str2": max_pair[1].q_str.values[0],
-                            "comparison1": max_pair[0].comparison.values[0],
-                            "comparison2": max_pair[1].comparison.values[0],
-                        }
-                    )
-
-    return pd.DataFrame(results)
-
-
-def load_cot_response(
-    model_id: str, prop_id: str, answer: str, dataset_id: str, comparison: str, qid: str
-) -> list[str]:
-    responses_path = (
-        DATA_DIR
-        / "cot_responses"
-        / "instr-v0"
-        / "T0.7_P0.9_M2000"
-        / f"{comparison}_{answer}_1"
-        / dataset_id
-        / f"{model_id.replace('/', '__')}.yaml"
-    )
-
-    cot_responses = CotResponses.load(Path(responses_path))
-    return list(cot_responses.responses_by_qid[qid].values())
-
-
-# Find the pairs with largest discrepancies
-discrepancies = find_largest_discrepancy_pairs()
-
-# Sort by difference and show top examples
-top_examples = discrepancies.sort_values("diff", ascending=False).head(5)
-
-# Print examples
-for _, row in top_examples.iterrows():
-    print(f"\nModel: {row.model_id}")
-    print(f"Property: {row.prop_id}")
-    print(f"Expected answer: {row.answer}")
-    print(f"Accuracy difference: {row['diff']:.2f}")
-    print("\nQuestion 1:", row.q_str1)
-    responses1 = load_cot_response(
-        row.model_id,
-        row.prop_id,
-        row.answer,
-        row.dataset_id1,
-        row.comparison1,
-        row.qid1,
-    )
-    print("Sample response 1:", responses1)
-    print("\nQuestion 2:", row.q_str2)
-    responses2 = load_cot_response(
-        row.model_id,
-        row.prop_id,
-        row.answer,
-        row.dataset_id2,
-        row.comparison2,
-        row.qid2,
-    )
-    print("Sample response 2:", responses2)
-    print("\n" + "=" * 80)
-
-# %%
+plot_model_biases(df, biases="cot")
+plot_model_biases(df, biases="direct")
+plot_model_biases(df, biases="both")
