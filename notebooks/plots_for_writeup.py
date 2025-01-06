@@ -485,6 +485,66 @@ def save_model_biases(
     plt.close()
 
 
+def save_yes_vs_no_bias_plot(df: pd.DataFrame, save_dir: Path) -> None:
+    """Save plots showing the accuracy on YES vs NO questions for each model."""
+    # Calculate accuracy for YES and NO questions for each model and mode
+    results = []
+    # Use sort_models to get consistent model ordering
+    model_ids = sort_models(df["model_id"].unique())
+
+    for model_id in model_ids:
+        for mode in ["direct", "cot"]:
+            model_data = df[(df["model_id"] == model_id) & (df["mode"] == mode)]
+            yes_acc = model_data[model_data["answer"] == "YES"]["p_correct"].mean()
+            no_acc = model_data[model_data["answer"] == "NO"]["p_correct"].mean()
+            results.append(
+                {
+                    "Model": get_model_display_name(model_id),
+                    "Mode": mode,
+                    "YES accuracy": yes_acc,
+                    "NO accuracy": no_acc,
+                }
+            )
+
+    results_df = pd.DataFrame(results)
+
+    # Create separate plots for each mode
+    for mode in ["direct", "cot"]:
+        mode_df = results_df[results_df["Mode"] == mode]
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Plot dots for YES and NO accuracy
+        x = range(len(mode_df))
+        ax.scatter(
+            x, mode_df["YES accuracy"], color="green", label="Answer is YES", s=100
+        )
+        ax.scatter(x, mode_df["NO accuracy"], color="red", label="Answer is NO", s=100)
+
+        # Add a horizontal line at 0.5
+        ax.axhline(y=0.5, color="black", linestyle="--", alpha=0.5)
+
+        # Customize the plot
+        if mode == "direct":
+            ax.set_title("P(Correct) on questions with answer YES (or NO)")
+        else:
+            ax.set_title("CoT Accuracy on questions with answer YES (or NO)")
+        ax.set_ylabel("P(Model is correct)")
+        ax.set_xlabel("Model")
+        ax.set_ylim(0, 1)
+
+        # Legend in bottom right corner
+        ax.legend(loc="lower right")
+
+        # Set x-axis labels
+        ax.set_xticks(x)
+        ax.set_xticklabels(mode_df["Model"], rotation=45, ha="right")
+
+        plt.tight_layout()
+        plt.savefig(save_dir / f"yes_vs_no_bias_{mode}.png")
+        plt.close()
+
+
 def save_all_plots(
     df: pd.DataFrame,
     save_dir: Path,
@@ -547,6 +607,7 @@ def save_all_plots(
         save_model_biases(filtered_df, save_dir, "direct")
         save_model_biases(filtered_df, save_dir, "cot")
         save_model_biases(filtered_df, save_dir, "both")
+        save_yes_vs_no_bias_plot(filtered_df, save_dir)
 
 
 # Save plots for all models
