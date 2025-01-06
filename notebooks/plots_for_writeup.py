@@ -545,6 +545,94 @@ def save_yes_vs_no_bias_plot(df: pd.DataFrame, save_dir: Path) -> None:
         plt.close()
 
 
+def save_yes_proportion_plot(df: pd.DataFrame, save_dir: Path) -> None:
+    """Save a plot showing the proportion of YES answers for each model."""
+    for mode in ["direct", "cot"]:
+        results = []
+        model_ids = sort_models(df["model_id"].unique())
+
+        # Add a Ground Truth row
+        results.append(
+            {
+                "Model": "Ground Truth",
+                "P(YES)": 0.5,
+                "Raw": 0.5,
+            }
+        )
+
+        for model_id in model_ids:
+            model_data = df[(df["model_id"] == model_id) & (df["mode"] == mode)]
+            p_yes_mean = model_data["p_yes"].mean()
+            # print(f"Model: {model_id}, Mode: {mode}, P(YES): {p_yes_mean}")
+            results.append(
+                {
+                    "Model": get_model_display_name(model_id),
+                    "P(YES)": p_yes_mean,
+                    "Raw": p_yes_mean,
+                }
+            )
+
+        results_df = pd.DataFrame(results)
+
+        # Create figure with 1 row, 2 columns
+        fig, (ax, cax) = plt.subplots(
+            nrows=1,
+            ncols=2,
+            figsize=(15, 8),
+            gridspec_kw={"width_ratios": [20, 1]},
+        )
+
+        # Create colormap
+        import matplotlib.cm as cm
+        import matplotlib.colors as mcolors
+
+        colors = [(0, 0, 1), (1, 1, 1), (1, 0, 0)]  # Blue -> White -> Red
+        n_bins = 100
+        cmap = mcolors.LinearSegmentedColormap.from_list("custom", colors, N=n_bins)
+        norm = mcolors.Normalize(vmin=0, vmax=1)
+
+        # Create bars with colors
+        for idx, row in enumerate(results_df.itertuples()):
+            height = row.Raw - 0.5
+            bottom = 0.5 if height > 0 else row.Raw
+            abs_height = abs(height)
+
+            color = cmap(norm(row.Raw))
+            ax.bar(idx, abs_height, bottom=bottom, color=color)
+
+            # Add raw probability values
+            if row.Raw > 0.05:
+                text_height = row.Raw + 0.01 if row.Raw >= 0.5 else row.Raw - 0.01
+                va = "bottom" if row.Raw >= 0.5 else "top"
+                ax.text(idx, text_height, f"{row.Raw:.2f}", ha="center", va=va)
+
+        # Add colorbar
+        plt.colorbar(
+            cm.ScalarMappable(norm=norm, cmap=cmap),
+            cax=cax,
+            ticks=[0, 0.5, 1],
+        )
+        cax.set_yticklabels(["Biased\ntowards NO", "Neutral", "Biased\ntowards YES"])
+
+        # Rest of plot customization
+        if mode == "direct":
+            title = "Average P(YES) across all datasets"
+        else:
+            title = "Proportion of CoT YES answers across all datasets"
+
+        ax.set_title(title)
+        ax.set_xticks(range(len(results_df)))
+        ax.set_xticklabels(results_df["Model"], rotation=45, ha="right")
+        ax.axhline(y=0.5, color="black", linestyle="--", alpha=0.5)
+
+        ax.set_xlabel("Model")
+        ax.set_ylabel("P(YES)")
+        ax.set_ylim(0, 1)
+        plt.tight_layout()
+        plt.savefig(save_dir / f"yes_proportion_{mode}.png", bbox_inches="tight")
+        plt.close()
+
+
 def save_all_plots(
     df: pd.DataFrame,
     save_dir: Path,
@@ -608,6 +696,7 @@ def save_all_plots(
         save_model_biases(filtered_df, save_dir, "cot")
         save_model_biases(filtered_df, save_dir, "both")
         save_yes_vs_no_bias_plot(filtered_df, save_dir)
+        save_yes_proportion_plot(filtered_df, save_dir)
 
 
 # Save plots for all models
