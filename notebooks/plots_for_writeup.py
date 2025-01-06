@@ -555,8 +555,8 @@ def save_yes_proportion_plot(df: pd.DataFrame, save_dir: Path) -> None:
         results.append(
             {
                 "Model": "Ground Truth",
-                "P(YES)": 0.5,
-                "Raw": 0.5,
+                "P(YES)": df["answer"].value_counts()["YES"] / len(df),
+                "Raw": df["answer"].value_counts()["YES"] / len(df),
             }
         )
 
