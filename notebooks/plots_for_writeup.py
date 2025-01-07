@@ -610,7 +610,7 @@ def save_yes_proportion_plot(df: pd.DataFrame, save_dir: Path) -> None:
 
         # Rest of plot customization
         if mode == "direct":
-            title = "Average frequency of YES across all datasets"
+            title = "Average P(YES) across all datasets"
         else:
             title = "Frequency of CoT YES answers across all datasets"
 
