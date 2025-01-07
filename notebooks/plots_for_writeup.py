@@ -551,19 +551,12 @@ def save_yes_proportion_plot(df: pd.DataFrame, save_dir: Path) -> None:
         results = []
         model_ids = sort_models(df["model_id"].unique())
 
-        # Add a Ground Truth row
-        results.append(
-            {
-                "Model": "Ground Truth",
-                "P(YES)": df["answer"].value_counts()["YES"] / len(df),
-                "Raw": df["answer"].value_counts()["YES"] / len(df),
-            }
-        )
+        # reverse model_ids
+        model_ids = model_ids[::-1]
 
         for model_id in model_ids:
             model_data = df[(df["model_id"] == model_id) & (df["mode"] == mode)]
             p_yes_mean = model_data["p_yes"].mean()
-            # print(f"Model: {model_id}, Mode: {mode}, P(YES): {p_yes_mean}")
             results.append(
                 {
                     "Model": get_model_display_name(model_id),
@@ -574,60 +567,67 @@ def save_yes_proportion_plot(df: pd.DataFrame, save_dir: Path) -> None:
 
         results_df = pd.DataFrame(results)
 
-        # Create figure with 1 row, 2 columns
+        # Create figure with 2 rows, 1 column
         fig, (ax, cax) = plt.subplots(
-            nrows=1,
-            ncols=2,
-            figsize=(15, 8),
-            gridspec_kw={"width_ratios": [20, 1]},
+            nrows=2,
+            ncols=1,
+            figsize=(8, 6),
+            gridspec_kw={"height_ratios": [20, 1]},
         )
 
         # Create colormap
         import matplotlib.cm as cm
         import matplotlib.colors as mcolors
 
-        colors = [(0, 0, 1), (1, 1, 1), (1, 0, 0)]  # Blue -> White -> Red
+        colors = [(1, 0, 0), (1, 1, 1), (0, 0.7, 0)]  # Red -> White -> Green
         n_bins = 100
         cmap = mcolors.LinearSegmentedColormap.from_list("custom", colors, N=n_bins)
         norm = mcolors.Normalize(vmin=0, vmax=1)
 
-        # Create bars with colors
+        # Create horizontal bars with colors
         for idx, row in enumerate(results_df.itertuples()):
-            height = row.Raw - 0.5
-            bottom = 0.5 if height > 0 else row.Raw
-            abs_height = abs(height)
+            width = row.Raw - 0.5
+            left = 0.5 if width > 0 else row.Raw
+            abs_width = abs(width)
 
             color = cmap(norm(row.Raw))
-            ax.bar(idx, abs_height, bottom=bottom, color=color)
+            ax.barh(idx, abs_width, left=left, color=color, height=0.5)
 
             # Add raw probability values
             if row.Raw > 0.05:
-                text_height = row.Raw + 0.01 if row.Raw >= 0.5 else row.Raw - 0.01
-                va = "bottom" if row.Raw >= 0.5 else "top"
-                ax.text(idx, text_height, f"{row.Raw:.2f}", ha="center", va=va)
+                text_x = row.Raw + 0.01 if row.Raw >= 0.5 else row.Raw - 0.01
+                ha = "left" if row.Raw >= 0.5 else "right"
+                ax.text(text_x, idx, f"{row.Raw:.2f}", va="center", ha=ha)
 
-        # Add colorbar
+        # Add horizontal colorbar at the bottom
         plt.colorbar(
             cm.ScalarMappable(norm=norm, cmap=cmap),
             cax=cax,
+            orientation="horizontal",
             ticks=[0, 0.5, 1],
         )
-        cax.set_yticklabels(["Biased\ntowards NO", "Neutral", "Biased\ntowards YES"])
+        cax.set_xticklabels(["Biased\ntowards NO", "Neutral", "Biased\ntowards YES"])
 
         # Rest of plot customization
         if mode == "direct":
-            title = "Average P(YES) across all datasets"
+            title = "Average frequency of YES across all datasets"
         else:
-            title = "Proportion of CoT YES answers across all datasets"
+            title = "Frequency of CoT YES answers across all datasets"
 
         ax.set_title(title)
-        ax.set_xticks(range(len(results_df)))
-        ax.set_xticklabels(results_df["Model"], rotation=45, ha="right")
-        ax.axhline(y=0.5, color="black", linestyle="--", alpha=0.5)
+        ax.set_yticks(range(len(results_df)))
+        ax.set_yticklabels(results_df["Model"])
 
-        ax.set_xlabel("Model")
-        ax.set_ylabel("P(YES)")
-        ax.set_ylim(0, 1)
+        ax.margins(y=0)
+
+        ax.axvline(
+            x=0.5, color="black", linestyle="--", alpha=0.5, label="Ground truth 0.5"
+        )
+        ax.legend()
+
+        ax.set_ylabel("Model")
+        ax.set_xlabel("Frequency of YES")
+        ax.set_xlim(0, 1)
         plt.tight_layout()
         plt.savefig(save_dir / f"yes_proportion_{mode}.png", bbox_inches="tight")
         plt.close()
