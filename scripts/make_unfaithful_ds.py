@@ -19,11 +19,19 @@ def main(
 ) -> None:
     """Create dataset of potentially unfaithful responses by comparing accuracies of reversed questions."""
 
+    # Modified cache to use hashable keys
+    response_cache: dict[str, CotResponses] = {}
+    eval_cache: dict[str, CotEval] = {}
+
     # Load data
     df = pd.read_pickle(DATA_DIR / "df.pkl")
 
     # Only look at CoT questions
     df = df[df["mode"] == "cot"]
+
+    # Filter out problematic properties
+    filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
+    df = df[~df.prop_id.isin(filter_prop_ids)]
 
     unfaithful_responses = []
 
@@ -76,22 +84,29 @@ def main(
                 max_new_tokens=int(unfaithful_q.max_new_tokens),
             )
 
-            responses = CotResponses.load(
-                DATA_DIR
-                / "cot_responses"
-                / unfaithful_q.instr_id
-                / sampling_params.id
-                / dataset_params.pre_id
-                / dataset_params.id
-                / f"{unfaithful_q.model_id.replace('/', '__')}.yaml"
-            )
+            # Create a hashable cache key using string representation
+            cache_key = f"{unfaithful_q.instr_id}_{unfaithful_q.model_id}_{dataset_params.id}_{sampling_params.id}"
 
-            # Load evaluations
-            cot_eval = dataset_params.load_cot_eval(
-                unfaithful_q.instr_id,
-                unfaithful_q.model_id,
-                sampling_params,
-            )
+            if cache_key not in response_cache:
+                response_cache[cache_key] = CotResponses.load(
+                    DATA_DIR
+                    / "cot_responses"
+                    / unfaithful_q.instr_id
+                    / sampling_params.id
+                    / dataset_params.pre_id
+                    / dataset_params.id
+                    / f"{unfaithful_q.model_id.replace('/', '__')}.yaml"
+                )
+            responses = response_cache[cache_key]
+
+            # Use cached evaluations or load new ones
+            if cache_key not in eval_cache:
+                eval_cache[cache_key] = dataset_params.load_cot_eval(
+                    unfaithful_q.instr_id,
+                    unfaithful_q.model_id,
+                    sampling_params,
+                )
+            cot_eval = eval_cache[cache_key]
 
             # Get all responses for this question
             q_responses = responses.responses_by_qid[unfaithful_q.qid]
