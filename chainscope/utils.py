@@ -84,3 +84,26 @@ def make_chat_prompt(instruction: str, tokenizer: PreTrainedTokenizerBase) -> st
 
 def get_model_device(model: PreTrainedModel) -> torch.device:
     return next(model.parameters()).device
+
+
+def get_param_count(model_name: str) -> float:
+    """Extract parameter count from model name in billions using regex."""
+    name_lower = model_name.lower()
+    match = re.search(r"[-]?(\d+\.?\d*)b", name_lower)
+    return float(match.group(1)) if match else float("inf")
+
+
+def get_model_display_name(model_id: str) -> str:
+    """Extract the display name from a model ID."""
+    return model_id.split("/")[-1]
+
+
+def sort_models(model_ids: list[str]) -> list[str]:
+    """Sort model IDs by name prefix and parameter count."""
+    return sorted(
+        model_ids,
+        key=lambda x: (
+            get_model_display_name(x).split("-")[0].lower(),
+            get_param_count(get_model_display_name(x)),
+        ),
+    )

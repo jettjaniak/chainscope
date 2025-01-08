@@ -149,6 +149,9 @@ def main():
 
     # Create DataFrame and save
     df = pd.DataFrame(all_results)
+    filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
+    df = df[~df.prop_id.isin(filter_prop_ids)]
+    df = df[df["model_id"] != "Qwen/Qwen2.5-0.5B-Instruct"]
     out_path = DATA_DIR / "df.pkl"
     df.to_pickle(out_path)
     print(f"Saved analysis results to {out_path}")
