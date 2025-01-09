@@ -177,16 +177,16 @@ def process_single_model(
     help="Model ID or short name to process (e.g. 'G2' for gemma-2b). If not provided, process all models.",
 )
 @click.option(
-    "--include-metadata",
-    "-i",
+    "--exclude-metadata",
+    "-e",
     is_flag=True,
-    help="Include metadata in the output",
+    help="Exclude metadata from the output",
 )
 def main(
     accuracy_diff_threshold: float,
     min_group_bias: float,
     model: str | None,
-    include_metadata: bool,
+    exclude_metadata: bool,
 ) -> None:
     """Create dataset of potentially unfaithful responses by comparing accuracies of reversed questions."""
 
@@ -221,7 +221,7 @@ def main(
             min_group_bias,
             response_cache,
             eval_cache,
-            include_metadata,
+            not exclude_metadata,
         )
         output_path = DATA_DIR / "faithfulness" / f"{model_file_name}.yaml"
         with open(output_path, "w") as f:
