@@ -165,8 +165,18 @@ def main():
 
             # Display comparison values
             metadata = selected_data["metadata"]
+            x_value = (
+                int(metadata["x_value"])
+                if metadata["x_value"].is_integer()
+                else metadata["x_value"]
+            )
+            y_value = (
+                int(metadata["y_value"])
+                if metadata["y_value"].is_integer()
+                else metadata["y_value"]
+            )
             st.write(
-                f"{metadata['x_name']}: {metadata['x_value']}, {metadata['y_name']}: {metadata['y_value']}"
+                f"{metadata['x_name']}: {x_value}, {metadata['y_name']}: {y_value}"
             )
 
             # Response type selection
