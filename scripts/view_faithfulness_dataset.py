@@ -45,6 +45,7 @@ def random_sample_response(
 def main():
     st.title("Faithfulness dataset viewer")
 
+    # Initialize session state variables
     if "current_question" not in st.session_state:
         st.session_state.current_question = None
     if "current_response_id" not in st.session_state:
@@ -57,6 +58,16 @@ def main():
         st.session_state.current_comparison = None
     if "current_prop_id" not in st.session_state:
         st.session_state.current_prop_id = None
+    if "previous_model" not in st.session_state:
+        st.session_state.previous_model = None
+    if "filter_answer" not in st.session_state:
+        st.session_state.filter_answer = "All"
+    if "filter_comparison" not in st.session_state:
+        st.session_state.filter_comparison = "All"
+    if "filter_prop_id" not in st.session_state:
+        st.session_state.filter_prop_id = "All"
+    if "previous_filters" not in st.session_state:
+        st.session_state.previous_filters = ("All", "All", "All")
 
     # Get all YAML files
     faithfulness_dir = DATA_DIR / "faithfulness"
@@ -66,6 +77,15 @@ def main():
 
     # Model selection
     selected_model = st.selectbox("Select Model", model_names)
+
+    # Reset filters if model changes
+    if selected_model != st.session_state.previous_model:
+        st.session_state.filter_answer = "All"
+        st.session_state.filter_comparison = "All"
+        st.session_state.filter_prop_id = "All"
+        st.session_state.current_question = None
+        st.session_state.previous_model = selected_model
+        st.rerun()
 
     if selected_model:
         data = load_yaml(faithfulness_dir / f"{selected_model}.yaml")
@@ -102,41 +122,61 @@ def main():
         # Filters
         col1, col2, col3 = st.columns(3)
         with col1:
-            filter_answer = st.selectbox(
+            new_filter_answer = st.selectbox(
                 "Filter by Answer",
                 ["All"] + unique_answers,
-                index=unique_answers.index(st.session_state.current_answer) + 1
-                if st.session_state.current_answer in unique_answers
-                else 0,
+                index=0
+                if st.session_state.filter_answer == "All"
+                else unique_answers.index(st.session_state.filter_answer) + 1,
             )
+            if new_filter_answer != st.session_state.filter_answer:
+                st.session_state.filter_answer = new_filter_answer
+                st.session_state.current_question = None
+                st.rerun()
+
         with col2:
-            filter_comparison = st.selectbox(
+            new_filter_comparison = st.selectbox(
                 "Filter by Comparison",
                 ["All"] + unique_comparisons,
-                index=unique_comparisons.index(st.session_state.current_comparison) + 1
-                if st.session_state.current_comparison in unique_comparisons
-                else 0,
+                index=0
+                if st.session_state.filter_comparison == "All"
+                else unique_comparisons.index(st.session_state.filter_comparison) + 1,
             )
+            if new_filter_comparison != st.session_state.filter_comparison:
+                st.session_state.filter_comparison = new_filter_comparison
+                st.session_state.current_question = None
+                st.rerun()
+
         with col3:
-            filter_prop_id = st.selectbox(
+            new_filter_prop_id = st.selectbox(
                 "Filter by Property ID",
                 ["All"] + unique_prop_ids,
-                index=unique_prop_ids.index(st.session_state.current_prop_id) + 1
-                if st.session_state.current_prop_id in unique_prop_ids
-                else 0,
+                index=0
+                if st.session_state.filter_prop_id == "All"
+                else unique_prop_ids.index(st.session_state.filter_prop_id) + 1,
             )
+            if new_filter_prop_id != st.session_state.filter_prop_id:
+                st.session_state.filter_prop_id = new_filter_prop_id
+                st.session_state.current_question = None
+                st.rerun()
 
         # Filter questions
         filtered_data = {}
         for k, v in data.items():
             metadata = v["metadata"]
             if (
-                (filter_answer == "All" or metadata["answer"] == filter_answer)
-                and (
-                    filter_comparison == "All"
-                    or metadata["comparison"] == filter_comparison
+                (
+                    st.session_state.filter_answer == "All"
+                    or metadata["answer"] == st.session_state.filter_answer
                 )
-                and (filter_prop_id == "All" or metadata["prop_id"] == filter_prop_id)
+                and (
+                    st.session_state.filter_comparison == "All"
+                    or metadata["comparison"] == st.session_state.filter_comparison
+                )
+                and (
+                    st.session_state.filter_prop_id == "All"
+                    or metadata["prop_id"] == st.session_state.filter_prop_id
+                )
             ):
                 filtered_data[k] = v
 
@@ -146,21 +186,28 @@ def main():
             # If we have a randomly sampled question that's not in the filtered set,
             # add it to the options
             current_question = cast(str | None, st.session_state.current_question)
-            if current_question and current_question not in questions:
+            if current_question is not None and current_question not in questions:
                 questions = [current_question] + questions
 
-            selected_question = st.selectbox(
+            # Calculate index for selectbox
+            index = 0
+            if current_question is not None and current_question in questions:
+                index = questions.index(current_question)
+
+            new_selected_question = st.selectbox(
                 "Select Question",
                 questions,
-                index=questions.index(current_question)
-                if current_question in questions
-                else 0,
+                index=index,
             )
-            st.session_state.current_question = selected_question
+            if new_selected_question != st.session_state.current_question:
+                st.session_state.current_question = new_selected_question
+                st.rerun()
 
             # Find the data for selected question
             selected_data = next(
-                v for v in data.values() if v["metadata"]["q_str"] == selected_question
+                v
+                for v in data.values()
+                if v["metadata"]["q_str"] == st.session_state.current_question
             )
 
             # Display comparison values
@@ -180,13 +227,15 @@ def main():
             )
 
             # Response type selection
-            response_type = st.radio(
+            new_response_type = st.radio(
                 "Response Type",
                 ["Faithful", "Unfaithful"],
                 index=0 if st.session_state.is_faithful else 1,
                 horizontal=True,
             )
-            st.session_state.is_faithful = response_type == "Faithful"
+            if (new_response_type == "Faithful") != st.session_state.is_faithful:
+                st.session_state.is_faithful = new_response_type == "Faithful"
+                st.rerun()
 
             # Get responses of selected type
             responses = selected_data[
@@ -197,26 +246,26 @@ def main():
 
             # Response ID selection
             response_ids = list(responses.keys())
-            current_response_id = cast(str | None, st.session_state.current_response_id)
-            if current_response_id not in response_ids:
+            if st.session_state.current_response_id not in response_ids:
                 st.session_state.current_response_id = (
                     response_ids[0] if response_ids else None
                 )
-                current_response_id = st.session_state.current_response_id
 
             if response_ids:
-                selected_response_id = st.selectbox(
+                new_selected_response_id = st.selectbox(
                     "Select Response ID",
                     response_ids,
-                    index=response_ids.index(current_response_id)
-                    if current_response_id in response_ids
+                    index=response_ids.index(st.session_state.current_response_id)
+                    if st.session_state.current_response_id in response_ids
                     else 0,
                 )
-                st.session_state.current_response_id = selected_response_id
+                if new_selected_response_id != st.session_state.current_response_id:
+                    st.session_state.current_response_id = new_selected_response_id
+                    st.rerun()
 
                 # Display selected response
                 st.subheader("Response")
-                st.text(responses[selected_response_id])
+                st.text(responses[st.session_state.current_response_id])
         else:
             st.warning("No questions match the selected filters.")
 
