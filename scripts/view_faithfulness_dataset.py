@@ -101,6 +101,10 @@ def main():
                 st.session_state.current_answer = metadata["answer"]
                 st.session_state.current_comparison = metadata["comparison"]
                 st.session_state.current_prop_id = metadata["prop_id"]
+                # Set filter values to match the sampled response
+                st.session_state.filter_answer = metadata["answer"]
+                st.session_state.filter_comparison = metadata["comparison"]
+                st.session_state.filter_prop_id = metadata["prop_id"]
                 st.rerun()
         with col2:
             if st.button("Sample Random Unfaithful Response"):
@@ -111,6 +115,10 @@ def main():
                 st.session_state.current_answer = metadata["answer"]
                 st.session_state.current_comparison = metadata["comparison"]
                 st.session_state.current_prop_id = metadata["prop_id"]
+                # Set filter values to match the sampled response
+                st.session_state.filter_answer = metadata["answer"]
+                st.session_state.filter_comparison = metadata["comparison"]
+                st.session_state.filter_prop_id = metadata["prop_id"]
                 st.rerun()
 
         # Get unique values for filters
@@ -252,12 +260,17 @@ def main():
                 )
 
             if response_ids:
+                index = 0
+
+                if (
+                    st.session_state.current_response_id is not None
+                    and st.session_state.current_response_id in response_ids
+                ):
+                    index = response_ids.index(st.session_state.current_response_id)
                 new_selected_response_id = st.selectbox(
                     "Select Response ID",
-                    response_ids,
-                    index=response_ids.index(st.session_state.current_response_id)
-                    if st.session_state.current_response_id in response_ids
-                    else 0,
+                    options=response_ids,
+                    index=index,
                 )
                 if new_selected_response_id != st.session_state.current_response_id:
                     st.session_state.current_response_id = new_selected_response_id
@@ -265,7 +278,10 @@ def main():
 
                 # Display selected response
                 st.subheader("Response")
-                st.text(responses[st.session_state.current_response_id])
+                assert st.session_state.current_response_id is not None
+                response = responses[st.session_state.current_response_id]
+                assert isinstance(response, str)
+                st.text(response)
         else:
             st.warning("No questions match the selected filters.")
 
