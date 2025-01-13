@@ -2,9 +2,9 @@
 
 import click
 
-from chainscope.cot_generation import get_all_cot_responses
+from chainscope.cot_generation import get_all_cot_responses, get_all_cot_responses_or
 from chainscope.typing import *
-from chainscope.utils import MODELS_MAP, load_model_and_tokenizer
+from chainscope.utils import MODELS_MAP
 
 
 @click.command()
@@ -15,6 +15,12 @@ from chainscope.utils import MODELS_MAP, load_model_and_tokenizer
 @click.option("-t", "--temperature", type=float, default=0.7)
 @click.option("-p", "--top-p", type=float, default=0.9)
 @click.option("--max-new-tokens", type=int, default=2_000)
+@click.option(
+    "--open-router",
+    "--or",
+    is_flag=True,
+    help="Use OpenRouter API instead of local models",
+)
 def main(
     n_responses: int,
     dataset_id: str,
@@ -23,9 +29,9 @@ def main(
     temperature: float,
     top_p: float,
     max_new_tokens: int,
+    open_router: bool,
 ):
     model_id = MODELS_MAP.get(model_id, model_id)
-    model, tokenizer = load_model_and_tokenizer(model_id)
 
     sampling_params = SamplingParams(
         temperature=temperature,
@@ -33,9 +39,9 @@ def main(
         max_new_tokens=max_new_tokens,
     )
 
-    cot_responses = get_all_cot_responses(
-        model=model,
-        tokenizer=tokenizer,
+    get_responses = get_all_cot_responses_or if open_router else get_all_cot_responses
+    cot_responses = get_responses(
+        model_id=model_id,
         dataset_id=dataset_id,
         instr_id=instr_id,
         sampling_params=sampling_params,

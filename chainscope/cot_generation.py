@@ -1,12 +1,18 @@
+from typing import Any
 from uuid import uuid4
 
+import openai
 import torch
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
 from chainscope.questions import QsDataset
 from chainscope.typing import *
-from chainscope.utils import get_model_device, make_chat_prompt
+from chainscope.utils import (
+    get_model_device,
+    load_model_and_tokenizer,
+    make_chat_prompt,
+)
 
 
 def get_question_cot_responses(
@@ -49,14 +55,43 @@ def get_question_cot_responses(
     return responses
 
 
+def get_question_cot_responses_or(
+    client: openai.OpenAI,
+    question_str: str,
+    cot_instruction: str,
+    sampling_params: SamplingParams,
+    n_responses: int,
+    model_id: str,
+) -> dict[str, str]:
+    """OpenRouter version of get_question_cot_responses."""
+    # Prepare messages - using dict type that OpenAI/OpenRouter accepts
+    messages: list[Any] = [
+        {"role": "user", "content": cot_instruction.format(question=question_str)}
+    ]
+
+    responses = {}
+    for _ in range(n_responses):
+        response = client.chat.completions.create(
+            model=model_id,  # OpenRouter uses format like "openai/gpt-3.5-turbo"
+            messages=messages,
+            max_tokens=sampling_params.max_new_tokens,
+            temperature=sampling_params.temperature,
+            top_p=sampling_params.top_p,
+            n=1,
+        )
+        responses[str(uuid4())] = response.choices[0].message.content
+
+    return responses
+
+
 def get_all_cot_responses(
-    model: PreTrainedModel,
-    tokenizer: PreTrainedTokenizerBase,
-    instr_id: str,
+    model_id: str,
     dataset_id: str,
+    instr_id: str,
     sampling_params: SamplingParams,
     n_responses: int,
 ) -> CotResponses:
+    model, tokenizer = load_model_and_tokenizer(model_id)
     instructions = Instructions.load(instr_id)
     responses = {}
 
@@ -77,7 +112,45 @@ def get_all_cot_responses(
 
     return CotResponses(
         responses_by_qid=responses,
-        model_id=model.name_or_path,
+        model_id=model_id,
+        instr_id=instr_id,
+        ds_params=question_dataset.params,
+        sampling_params=sampling_params,
+    )
+
+
+def get_all_cot_responses_or(
+    model_id: str,
+    dataset_id: str,
+    instr_id: str,
+    sampling_params: SamplingParams,
+    n_responses: int,
+) -> CotResponses:
+    """OpenRouter version of get_all_cot_responses."""
+    # Initialize OpenAI client with OpenRouter configuration
+    client = openai.OpenAI(base_url="https://openrouter.ai/api/v1")
+
+    instructions = Instructions.load(instr_id)
+    responses = {}
+
+    question_dataset = QsDataset.load(dataset_id)
+    # Process each question
+    for qid, q in tqdm(
+        question_dataset.question_by_qid.items(),
+        desc="Generating CoT responses",
+    ):
+        responses[qid] = get_question_cot_responses_or(
+            client=client,
+            question_str=q.q_str,
+            cot_instruction=instructions.cot,
+            sampling_params=sampling_params,
+            n_responses=n_responses,
+            model_id=model_id,  # Should be in format "openai/gpt-3.5-turbo"
+        )
+
+    return CotResponses(
+        responses_by_qid=responses,
+        model_id=model_id,
         instr_id=instr_id,
         ds_params=question_dataset.params,
         sampling_params=sampling_params,
