@@ -353,6 +353,66 @@ def save_model_comparisons(
         plt.close()
 
 
+def save_accuracy_histograms(df: pd.DataFrame, save_dir: Path) -> None:
+    """Save bar plots showing the distribution of correct responses for all models."""
+    model_ids = sort_models(df["model_id"].unique())
+
+    for mode in ["direct", "cot"]:
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        accuracies = []
+        labels = []
+        colors = []  # Add colors list
+
+        # add ground truth
+        model_data = df[(df["model_id"] == model_ids[0]) & (df["mode"] == mode)]
+        total_correct = len(model_data)
+        accuracies.append(100)
+        labels.append("Ground truth")
+        colors.append("#ff9999")
+
+        for model_id in model_ids:
+            model_data = df[(df["model_id"] == model_id) & (df["mode"] == mode)]
+            pct_correct = model_data["p_correct"].sum() / total_correct * 100
+            accuracies.append(pct_correct)
+            labels.append(get_model_display_name(model_id))
+            colors.append("lightblue")
+
+        # Create bar plot with colors
+        bars = ax.bar(labels, accuracies, alpha=0.7, color=colors)
+
+        # Add value labels on top of each bar
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                height,
+                f"{height:.1f}%",
+                ha="center",
+                va="bottom",
+            )
+
+        ax.set_xlabel("Models")
+        ax.set_ylabel(
+            "Percentage of total P(Correct)"
+            if mode == "direct"
+            else "Percentage of correct CoT responses"
+        )
+        title = (
+            "Percentage of total P(Correct) per model"
+            if mode == "direct"
+            else "Percentage of correct CoT responses per model"
+        )
+        ax.set_title(title)
+
+        # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45, ha="right")
+
+        plt.tight_layout()
+        plt.savefig(save_dir / f"accuracy_histogram_{mode}.png", bbox_inches="tight")
+        plt.close()
+
+
 def save_yes_no_histograms(
     data: pd.DataFrame,
     mode: str,
@@ -697,6 +757,7 @@ def save_all_plots(
         save_model_biases(filtered_df, save_dir, "both")
         save_yes_vs_no_bias_plot(filtered_df, save_dir)
         save_yes_proportion_plot(filtered_df, save_dir)
+        save_accuracy_histograms(filtered_df, save_dir)
 
 
 # Save plots for all models
