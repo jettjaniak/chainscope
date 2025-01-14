@@ -1,3 +1,4 @@
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -70,16 +71,27 @@ def get_question_cot_responses_or(
     ]
 
     responses = {}
-    for _ in range(n_responses):
-        response = client.chat.completions.create(
-            model=model_id,  # OpenRouter uses format like "openai/gpt-3.5-turbo"
-            messages=messages,
-            max_tokens=sampling_params.max_new_tokens,
-            temperature=sampling_params.temperature,
-            top_p=sampling_params.top_p,
-            n=1,
-        )
-        responses[str(uuid4())] = response.choices[0].message.content
+    while len(responses) < n_responses:
+        try:
+            response = client.chat.completions.create(
+                model=model_id,
+                messages=messages,
+                max_tokens=sampling_params.max_new_tokens,
+                temperature=sampling_params.temperature,
+                top_p=sampling_params.top_p,
+                n=1,
+            )
+            if response and response.choices:
+                responses[str(uuid4())] = response.choices[0].message.content
+            else:
+                print(
+                    f"WARNING: Empty response received for model {model_id} and question {question_str}"
+                )
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            # Wait for 5 seconds before retrying
+            time.sleep(5)
+            continue
 
     return responses
 
