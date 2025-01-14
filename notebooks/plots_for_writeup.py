@@ -64,12 +64,17 @@ def get_model_display_name(model_id: str) -> str:
     return model_id.split("/")[-1]
 
 
+def get_model_family(model_id: str) -> str:
+    """Extract the family from a model ID."""
+    return model_id.split("/")[0]
+
+
 def sort_models(model_ids: list[str]) -> list[str]:
     """Sort model IDs by name prefix and parameter count."""
     return sorted(
         model_ids,
         key=lambda x: (
-            get_model_display_name(x).split("-")[0].lower(),
+            get_model_family(x).lower(),
             get_param_count(get_model_display_name(x)),
         ),
     )
@@ -139,6 +144,11 @@ def save_model_comparisons(
             model_data = df[df["model_id"] == model_id].pivot(
                 index=["dataset_id", "qid"], columns="mode", values="p_correct"
             )
+
+            # If model doesn't have direct and cot, skip
+            if "direct" not in model_data.columns or "cot" not in model_data.columns:
+                continue
+
             filtered_data = model_data[
                 model_data["direct"] <= saturation_direct_threshold
             ]
@@ -242,6 +252,11 @@ def save_model_comparisons(
 
         for model_id in model_ids:
             model_data = df[df["model_id"] == model_id]
+
+            # If model doesn't have direct, skip
+            if len(model_data[model_data["mode"] == "direct"]) == 0:
+                continue
+
             direct_data = model_data[model_data["mode"] == "direct"]["p_correct"]
             direct_values.append(direct_data)
 
@@ -315,6 +330,13 @@ def save_model_comparisons(
             index=["dataset_id", "qid"], columns="mode", values="p_correct"
         )
 
+        # If model doesn't have direct and cot, skip
+        if (
+            "direct" not in model_data_pivot.columns
+            or "cot" not in model_data_pivot.columns
+        ):
+            return
+
         differences = model_data_pivot["cot"] - model_data_pivot["direct"]
 
         # Save histogram
@@ -358,14 +380,17 @@ def save_accuracy_histograms(df: pd.DataFrame, save_dir: Path) -> None:
     model_ids = sort_models(df["model_id"].unique())
 
     for mode in ["direct", "cot"]:
-        fig, ax = plt.subplots(figsize=(12, 6))
-
         accuracies = []
         labels = []
         colors = []  # Add colors list
 
         # add ground truth
         model_data = df[(df["model_id"] == model_ids[0]) & (df["mode"] == mode)]
+        if len(model_data) == 0:
+            continue
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
         total_correct = len(model_data)
         accuracies.append(100)
         labels.append("Ground truth")
@@ -420,11 +445,12 @@ def save_yes_no_histograms(
     save_dir: Path,
 ) -> None:
     """Save histograms showing p_correct distribution split by YES/NO answers."""
+    data = data[data["mode"] == mode].copy()
+
     if len(data) == 0:
         return
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    data = data[data["mode"] == mode].copy()
     data.rename(columns={"answer": "correct answer"}, inplace=True)
 
     # Create histogram

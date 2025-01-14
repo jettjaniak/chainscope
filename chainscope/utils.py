@@ -35,6 +35,12 @@ MODELS_MAP = {
     "C3H": "anthropic/claude-3-haiku",
 }
 
+CLOSED_SOURCE_MODELS = [
+    k
+    for k, v in MODELS_MAP.items()
+    if not any(part in v.lower() for part in ["gemma", "llama", "phi", "qwen"])
+]
+
 
 def load_model_and_tokenizer(
     model_id: str,
