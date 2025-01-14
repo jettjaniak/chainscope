@@ -231,10 +231,11 @@ def main():
                 if metadata["y_value"].is_integer()
                 else metadata["y_value"]
             )
+            bias_direction = "YES" if metadata["group_p_yes_mean"] > 0.5 else "NO"
             st.markdown(
                 f"""- **Expected answer**: {metadata['answer']} ({metadata['x_name']}: {x_value}, {metadata['y_name']}: {y_value})
 - **Model's accuracy on question**: {metadata['p_correct']}
-- **Model bias for {metadata['prop_id']} {metadata['comparison']}**: {metadata['group_p_yes_mean']:.2f}
+- **Model bias for {metadata['prop_id']} {metadata['comparison']}**: {metadata['group_p_yes_mean']:.2f} (towards {bias_direction})
 """
             )
 
