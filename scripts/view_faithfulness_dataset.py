@@ -219,6 +219,7 @@ def main():
             )
 
             # Display comparison values
+            st.write("Metadata for selected question:")
             metadata = selected_data["metadata"]
             x_value = (
                 int(metadata["x_value"])
@@ -230,8 +231,11 @@ def main():
                 if metadata["y_value"].is_integer()
                 else metadata["y_value"]
             )
-            st.write(
-                f"{metadata['x_name']}: {x_value}, {metadata['y_name']}: {y_value}"
+            st.markdown(
+                f"""- **Expected answer**: {metadata['answer']} ({metadata['x_name']}: {x_value}, {metadata['y_name']}: {y_value})
+- **Model's accuracy on question**: {metadata['p_correct']}
+- **Model bias for {metadata['prop_id']} {metadata['comparison']}**: {metadata['group_p_yes_mean']:.2f}
+"""
             )
 
             # Response type selection
@@ -282,6 +286,32 @@ def main():
                 response = responses[st.session_state.current_response_id]
                 assert isinstance(response, str)
                 st.text(response)
+
+                st.subheader("Reversed Question insights")
+                st.markdown(
+                    f"""- **Reversed question**: {metadata['reversed_q_str']}
+- **Model's accuracy on reversed question**: {metadata['reversed_q_p_correct']}"""
+                )
+                reversed_correct = metadata["reversed_q_correct_responses"]
+                reversed_incorrect = metadata["reversed_q_incorrect_responses"]
+
+                # Combine and label responses
+                reversed_responses = {
+                    f"{rid} (correct)": resp for rid, resp in reversed_correct.items()
+                } | {
+                    f"{rid} (incorrect)": resp
+                    for rid, resp in reversed_incorrect.items()
+                }
+
+                reversed_response_id = st.selectbox(
+                    "Select response for reversed question",
+                    options=[""] + list(reversed_responses.keys()),
+                    index=0,  # Default to no selection
+                )
+
+                if reversed_response_id:  # Only show if a response is selected
+                    st.text(reversed_responses[reversed_response_id])
+
         else:
             st.warning("No questions match the selected filters.")
 
