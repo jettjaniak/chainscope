@@ -55,7 +55,7 @@ def main(
     cot_responses = CotResponses.load(Path(responses_path))
     results = split_cot_responses(
         responses=cot_responses,
-        split_model_ids=split_model_ids,
+        split_model_ids=split_model_ids.split(","),
         max_retries=max_retries,
         max_parallel=max_parallel,
     )
