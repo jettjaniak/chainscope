@@ -216,6 +216,37 @@ class CotResponses(YAMLWizard):
 
 
 @dataclass
+class SplitCotResponses(YAMLWizard):
+    split_responses_by_qid: dict[
+        str, dict[str, list[str]]
+    ]  # qid -> {uuid -> [step_str]}
+    model_id: str
+    split_model_id: str
+    instr_id: str
+    ds_params: DatasetParams
+    sampling_params: SamplingParams
+
+    def save(self) -> Path:
+        directory = (
+            DATA_DIR
+            / "split_cot_responses"
+            / self.instr_id
+            / self.sampling_params.id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, path: Path) -> "SplitCotResponses":
+        split_cot_responses = cls.from_yaml_file(path)
+        assert isinstance(split_cot_responses, cls)
+        return split_cot_responses
+
+
+@dataclass
 class CotEval(YAMLWizard):
     results_by_qid: dict[
         str, dict[str, Literal["YES", "NO", "UNKNOWN"]]
