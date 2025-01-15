@@ -110,7 +110,7 @@ async def split_cot_response_async(
         return None
 
     for model_id in split_model_ids:
-        for attempt in range(max_retries + 1):
+        for attempt in range(max_retries):
             try:
                 if attempt > 0:
                     logging.info(
