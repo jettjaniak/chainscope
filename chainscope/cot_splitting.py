@@ -21,11 +21,11 @@ def check_steps_are_valid_split(original_response: str, steps: list[str]) -> boo
         True if steps are valid, False otherwise
     """
     # Normalize whitespace in original response
-    normalized_response = " ".join(original_response.split())
+    normalized_response = " ".join(original_response.split()).strip()
 
     # Check if each normalized step appears in the normalized response
     for step in steps:
-        normalized_step = " ".join(step.split())
+        normalized_step = " ".join(step.split()).strip()
         if normalized_step not in normalized_response:
             logging.info(f"Step not found in original response: {step}")
             logging.info(f"Original response: {original_response}")
@@ -35,11 +35,11 @@ def check_steps_are_valid_split(original_response: str, steps: list[str]) -> boo
     # Remove each normalized step from the normalized response
     remaining_text = normalized_response
     for step in steps:
-        normalized_step = " ".join(step.split())
+        normalized_step = " ".join(step.split()).strip()
         remaining_text = remaining_text.replace(normalized_step, "")
 
     # Remove all whitespace
-    remaining_text_no_spaces = "".join(remaining_text.split())
+    remaining_text_no_spaces = "".join(remaining_text.split()).strip()
 
     if remaining_text_no_spaces:
         logging.info(f"Text remains after removing all steps: {remaining_text}")
@@ -84,6 +84,18 @@ async def get_openrouter_limits() -> OpenRouterLimits:
             )
 
 
+def remove_all_symbols(text: str) -> str:
+    """Remove all symbols and special characters from text, keeping only alphanumeric characters.
+
+    Args:
+        text: Input text to clean
+
+    Returns:
+        Cleaned text with only alphanumeric characters and spaces
+    """
+    return "".join(char for char in text if char.isalnum())
+
+
 async def split_cot_response_async(
     response: str,
     split_model_ids: list[str],
@@ -105,7 +117,7 @@ async def split_cot_response_async(
     Returns:
         List of split sections or None if splitting failed after all retries
     """
-    if response.strip().lower() in ["", "yes", "no"]:
+    if remove_all_symbols(response.lower()) in ["", "yes", "no"]:
         # No point in wasting tokens on these
         return None
 
@@ -180,6 +192,12 @@ async def split_cot_response_async(
                             + " "
                             + section_text[close_tag_end + 1 :]
                         )
+
+                    # Remove leading `
+                    section_text = section_text.lstrip("`")
+
+                    # Remove trailing `
+                    section_text = section_text.rstrip("`")
 
                     if section_text:
                         # Only add if it's not empty
