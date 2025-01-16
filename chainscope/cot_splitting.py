@@ -27,9 +27,7 @@ def check_steps_are_valid_split(original_response: str, steps: list[str]) -> boo
     for step in steps:
         normalized_step = " ".join(step.split()).strip()
         if normalized_step not in normalized_response:
-            logging.info(f"Step not found in original response: {step}")
-            logging.info(f"Original response: {original_response}")
-            logging.info(f"Step not found: {step}")
+            logging.warning(f"Step not found in original response: {step}")
             return False
 
     # Remove each normalized step from the normalized response
@@ -42,10 +40,7 @@ def check_steps_are_valid_split(original_response: str, steps: list[str]) -> boo
     remaining_text_no_spaces = "".join(remaining_text.split()).strip()
 
     if remaining_text_no_spaces:
-        logging.info(f"Text remains after removing all steps: {remaining_text}")
-        logging.info(f"Original response: {original_response}")
-        steps_str = "\n".join(steps)
-        logging.info(f"Steps:\n{steps_str}")
+        logging.warning(f"Text remains after removing all steps: {remaining_text}")
         return False
 
     return True
@@ -96,6 +91,68 @@ def remove_all_symbols(text: str) -> str:
     return "".join(char for char in text if char.isalnum())
 
 
+def parse_model_split_response(split_text: str) -> list[str]:
+    """Parse the model split response into a list of steps."""
+    # Extract sections between <section N> tags
+    sections = []
+    current_pos = 0
+
+    # Find if there is any text before the first section
+    first_section_start = split_text.find("<section")
+    if first_section_start > 0:
+        sections.append(split_text[:first_section_start].strip())
+
+    while True:
+        # Find the start of the next section
+        start = split_text.find("<section", current_pos)
+        if start == -1:
+            break
+
+        # Find the end of the section tag
+        tag_end = split_text.find(">", start)
+        if tag_end == -1:
+            break
+
+        # Find the start of the next section (if any)
+        next_start = split_text.find("<section", tag_end)
+
+        # Extract the section content
+        if next_start == -1:
+            # This is the last section
+            section_text = split_text[tag_end + 1 :]
+        else:
+            section_text = split_text[tag_end + 1 : next_start]
+
+        # Remove any closing section tags with or without numbers
+        while True:
+            close_tag_start = section_text.find("</section")
+            if close_tag_start == -1:
+                break
+            close_tag_end = section_text.find(">", close_tag_start)
+            if close_tag_end == -1:
+                break
+            section_text = (
+                section_text[:close_tag_start] + " " + section_text[close_tag_end + 1 :]
+            )
+
+        # Remove leading `
+        section_text = section_text.lstrip("`")
+
+        # Remove trailing `
+        section_text = section_text.rstrip("`")
+
+        # Remove leading and trailing whitespace
+        section_text = section_text.strip()
+
+        if section_text:
+            # Only add if it's not empty
+            sections.append(section_text)
+
+        current_pos = next_start if next_start != -1 else len(split_text)
+
+    return sections
+
+
 async def split_cot_response_async(
     response: str,
     split_model_ids: list[str],
@@ -120,6 +177,8 @@ async def split_cot_response_async(
     if remove_all_symbols(response.lower()) in ["", "yes", "no"]:
         # No point in wasting tokens on these
         return None
+
+    logging.info(f"Splitting response:\n{response}")
 
     for model_id in split_model_ids:
         for attempt in range(max_retries):
@@ -154,58 +213,15 @@ async def split_cot_response_async(
 
                 split_text = split_response.choices[0].message.content
 
-                # Extract sections between <section N> tags
-                sections = []
-                current_pos = 0
+                logging.info(f"Model {model_id} split text:\n{split_text}")
 
-                while True:
-                    # Find the start of the next section
-                    start = split_text.find("<section", current_pos)
-                    if start == -1:
-                        break
+                sections = parse_model_split_response(split_text)
+                steps_str = "\n".join(sections)
+                logging.info(f"Parsed sections:\n{steps_str}")
 
-                    # Find the end of the section tag
-                    tag_end = split_text.find(">", start)
-                    if tag_end == -1:
-                        break
-
-                    # Find the start of the next section (if any)
-                    next_start = split_text.find("<section", tag_end)
-
-                    # Extract the section content
-                    if next_start == -1:
-                        # This is the last section
-                        section_text = split_text[tag_end + 1 :]
-                    else:
-                        section_text = split_text[tag_end + 1 : next_start]
-
-                    # Remove any closing section tags with or without numbers
-                    while True:
-                        close_tag_start = section_text.find("</section")
-                        if close_tag_start == -1:
-                            break
-                        close_tag_end = section_text.find(">", close_tag_start)
-                        if close_tag_end == -1:
-                            break
-                        section_text = (
-                            section_text[:close_tag_start]
-                            + " "
-                            + section_text[close_tag_end + 1 :]
-                        )
-
-                    # Remove leading `
-                    section_text = section_text.lstrip("`")
-
-                    # Remove trailing `
-                    section_text = section_text.rstrip("`")
-
-                    if section_text:
-                        # Only add if it's not empty
-                        sections.append(section_text)
-
-                    current_pos = next_start if next_start != -1 else len(split_text)
-
-                if check_steps_are_valid_split(response, sections):
+                validation_result = check_steps_are_valid_split(response, sections)
+                if validation_result:
+                    logging.info("Found valid split!")
                     return sections
 
                 logging.info(
