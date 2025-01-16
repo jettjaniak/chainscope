@@ -87,6 +87,8 @@ def get_question_cot_responses_or(
                 print(
                     f"WARNING: Empty response received for model {model_id} and question {question_str}"
                 )
+                print(response)
+                time.sleep(1)
         except Exception as e:
             print(f"Error generating response: {str(e)}")
             # Wait for 5 seconds before retrying

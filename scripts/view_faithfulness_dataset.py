@@ -219,7 +219,6 @@ def main():
             )
 
             # Display comparison values
-            st.write("Metadata for selected question:")
             metadata = selected_data["metadata"]
             x_value = (
                 int(metadata["x_value"])
@@ -233,10 +232,7 @@ def main():
             )
             bias_direction = "YES" if metadata["group_p_yes_mean"] > 0.5 else "NO"
             st.markdown(
-                f"""- **Expected answer**: {metadata['answer']} ({metadata['x_name']}: {x_value}, {metadata['y_name']}: {y_value})
-- **Model's accuracy on question**: {metadata['p_correct']}
-- **Model bias for {metadata['prop_id']} {metadata['comparison']}**: {metadata['group_p_yes_mean']:.2f} (towards {bias_direction})
-"""
+                f"{metadata['answer']} ({metadata['x_name']}: {x_value}, {metadata['y_name']}: {y_value}), accuracy {metadata['p_correct']}, group bias {metadata['group_p_yes_mean']:.2f} (towards {bias_direction})"
             )
 
             # Response type selection

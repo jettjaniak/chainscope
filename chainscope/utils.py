@@ -22,7 +22,7 @@ MODELS_MAP = {
     # Phi models
     "P": "microsoft/Phi-3.5-mini-instruct",
     # Qwen models
-    "Q0.5": "Qwen/Qwen2.5-0.5B-Instruct",
+    # "Q0.5": "Qwen/Qwen2.5-0.5B-Instruct",
     "Q1.5": "Qwen/Qwen2.5-1.5B-Instruct",
     "Q3": "Qwen/Qwen2.5-3B-Instruct",
     "Q7": "Qwen/Qwen2.5-7B-Instruct",
@@ -30,9 +30,12 @@ MODELS_MAP = {
     "Q32": "Qwen/Qwen2.5-32B-Instruct",
     "Q72": "Qwen/Qwen2.5-72B-Instruct",
     # OpenRouter models
-    "GPT3.5": "openai/gpt-3.5-turbo",
+    # "GPT3.5": "openai/gpt-3.5-turbo",
+    "GPT4OM": "openai/gpt-4o-mini",
     "GF1.5": "google/gemini-flash-1.5-8b",
+    "GF2": "google/gemini-2.0-flash-exp:free",
     "C3H": "anthropic/claude-3-haiku",
+    "C3.5H": "anthropic/claude-3.5-haiku",
 }
 
 CLOSED_SOURCE_MODELS = [

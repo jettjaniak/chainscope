@@ -1,7 +1,6 @@
 #!/bin/bash
 for file in d/questions/**/*.yaml; do
-    for model_id in GF1.5 C3H; do
-        # :t gets the tail (filename), :r removes extension
+    for model_id in C3.5H; do
         dataset_id="${file##d/questions/*/}"
         dataset_id="${dataset_id%.yaml}"
         if [[ $dataset_id = *tests* ]]; then
