@@ -13,6 +13,8 @@ from chainscope import DATA_DIR
 class Properties(YAMLWizard):
     gt_question: str
     lt_question: str
+    gt_open_ended_question: str
+    lt_open_ended_question: str
     value_by_name: dict[str, int | float]
 
     @classmethod
@@ -37,6 +39,7 @@ class Instructions(YAMLWizard):
 @dataclass
 class Question(YAMLWizard):
     q_str: str
+    q_str_open_ended: str
     x_name: str
     y_name: str
     x_value: int | float

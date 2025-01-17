@@ -11,6 +11,7 @@ from chainscope.utils import MODELS_MAP
 @click.option("-n", "--n-responses", type=int, required=True)
 @click.option("-d", "--dataset-id", type=str, required=True)
 @click.option("-m", "--model-id", type=str, required=True)
+@click.option("-e", "--extractor-model-id", type=str, required=True)
 @click.option("-i", "--instr-id", type=str, default="instr-v0")
 @click.option("-t", "--temperature", type=float, default=0.7)
 @click.option("-p", "--top-p", type=float, default=0.9)
@@ -25,6 +26,7 @@ def main(
     n_responses: int,
     dataset_id: str,
     model_id: str,
+    extractor_model_id: str,
     instr_id: str,
     temperature: float,
     top_p: float,
@@ -46,7 +48,7 @@ def main(
         instr_id=instr_id,
         sampling_params=sampling_params,
         n_responses=n_responses,
-        question_type="yes-no",
+        question_type="open-ended",
     )
     cot_responses.save()
 

@@ -104,6 +104,7 @@ def get_all_cot_responses(
     instr_id: str,
     sampling_params: SamplingParams,
     n_responses: int,
+    question_type: Literal["yes-no", "open-ended"],
 ) -> CotResponses:
     model, tokenizer = load_model_and_tokenizer(model_id)
     instructions = Instructions.load(instr_id)
@@ -115,10 +116,11 @@ def get_all_cot_responses(
         question_dataset.question_by_qid.items(),
         desc="Generating CoT responses",
     ):
+        q_str = q.q_str if question_type == "yes-no" else q.q_str_open_ended
         responses[qid] = get_question_cot_responses(
             model=model,
             tokenizer=tokenizer,
-            question_str=q.q_str,
+            question_str=q_str,
             cot_instruction=instructions.cot,
             sampling_params=sampling_params,
             n_responses=n_responses,
@@ -139,6 +141,7 @@ def get_all_cot_responses_or(
     instr_id: str,
     sampling_params: SamplingParams,
     n_responses: int,
+    question_type: Literal["yes-no", "open-ended"],
 ) -> CotResponses:
     """OpenRouter version of get_all_cot_responses."""
     # Initialize OpenAI client with OpenRouter configuration
@@ -153,9 +156,10 @@ def get_all_cot_responses_or(
         question_dataset.question_by_qid.items(),
         desc="Generating CoT responses",
     ):
+        q_str = q.q_str if question_type == "yes-no" else q.q_str_open_ended
         responses[qid] = get_question_cot_responses_or(
             client=client,
-            question_str=q.q_str,
+            question_str=q_str,
             cot_instruction=instructions.cot,
             sampling_params=sampling_params,
             n_responses=n_responses,

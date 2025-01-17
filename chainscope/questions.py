@@ -33,12 +33,17 @@ def gen_qs(
 
             if comparison == "gt":
                 question_template = properties.gt_question
+                open_ended_question_template = properties.gt_open_ended_question
             else:
                 question_template = properties.lt_question
+                open_ended_question_template = properties.lt_open_ended_question
             q_str = question_template.format(x=x_name, y=y_name)
+            q_str_open_ended = open_ended_question_template.format(x=x_name, y=y_name)
+
             qid = hashlib.sha256(q_str.encode()).hexdigest()
             question_by_qid[qid] = Question(
                 q_str=q_str,
+                q_str_open_ended=q_str_open_ended,
                 x_name=x_name,
                 y_name=y_name,
                 x_value=x_value,
