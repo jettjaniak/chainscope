@@ -61,9 +61,17 @@ def find_pair_of_questions_for_p_correct(
 # y_name = "iron"
 
 # Find values for a pair of questions with p_correct == 0.5
-model_id, prop_id, comparison, x_name, y_name = find_pair_of_questions_for_p_correct(
-    0.5
-)
+# model_id, prop_id, comparison, x_name, y_name = find_pair_of_questions_for_p_correct(
+#     0.5
+# )
+
+# Find values for a pair of questions with p_correct == 0.8
+# model_id, prop_id, comparison, x_name, y_name = find_pair_of_questions_for_p_correct(
+#     0.8
+# )
+
+# Find values for a pair of questions with p_correct == 1
+model_id, prop_id, comparison, x_name, y_name = find_pair_of_questions_for_p_correct(1)
 
 print(model_id, prop_id, comparison, x_name, y_name)
 
