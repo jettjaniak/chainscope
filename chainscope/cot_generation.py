@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Any
 from uuid import uuid4
@@ -7,6 +8,7 @@ import torch
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
+from chainscope.open_router_utils import ORBatchProcessor, ORRateLimiter
 from chainscope.questions import QsDataset
 from chainscope.typing import *
 from chainscope.utils import (
@@ -135,36 +137,62 @@ def get_all_cot_responses(
     )
 
 
-def get_all_cot_responses_or(
+async def get_all_cot_responses_or_async(
     model_id: str,
     dataset_id: str,
     instr_id: str,
     sampling_params: SamplingParams,
     n_responses: int,
     question_type: Literal["yes-no", "open-ended"],
+    max_parallel: int | None = None,
+    max_retries: int = 1,
 ) -> CotResponses:
-    """OpenRouter version of get_all_cot_responses."""
-    # Initialize OpenAI client with OpenRouter configuration
-    client = openai.OpenAI(base_url="https://openrouter.ai/api/v1")
-
+    """Async version of get_all_cot_responses_or that processes requests in parallel."""
     instructions = Instructions.load(instr_id)
-    responses = {}
-
     question_dataset = QsDataset.load(dataset_id)
-    # Process each question
-    for qid, q in tqdm(
-        question_dataset.question_by_qid.items(),
-        desc="Generating CoT responses",
-    ):
-        q_str = q.q_str if question_type == "yes-no" else q.q_str_open_ended
-        responses[qid] = get_question_cot_responses_or(
-            client=client,
-            question_str=q_str,
-            cot_instruction=instructions.cot,
-            sampling_params=sampling_params,
-            n_responses=n_responses,
-            model_id=model_id,  # Should be in format "openai/gpt-3.5-turbo"
+
+    # Create rate limiter if max_parallel is specified
+    or_rate_limiter = None
+    if max_parallel is not None:
+        or_rate_limiter = ORRateLimiter(
+            requests_per_interval=max_parallel,
+            interval_seconds=1,
         )
+
+    def process_response(or_response: str, item: tuple[str, int]) -> str | None:
+        """Process a single response from the model."""
+        qid, response_idx = item
+        return or_response if or_response else None
+
+    processor = ORBatchProcessor[tuple[str, int], str](
+        or_model_ids=[model_id],  # Wrap in list for consistency with ORBatchProcessor
+        temperature=sampling_params.temperature,
+        max_new_tokens=sampling_params.max_new_tokens,
+        or_rate_limiter=or_rate_limiter,
+        max_retries=max_retries,
+        process_response=process_response,
+    )
+
+    # Prepare batch items - one for each question and response combination
+    batch_items = []
+    for qid, q in question_dataset.question_by_qid.items():
+        q_str = q.q_str if question_type == "yes-no" else q.q_str_open_ended
+        prompt = instructions.cot.format(question=q_str)
+
+        # Create n_responses items for this question
+        for i in range(n_responses):
+            batch_items.append(((qid, i), prompt))
+
+    # Process all requests in parallel
+    results = await processor.process_batch(batch_items)
+
+    # Organize results by question ID
+    responses: dict[str, dict[str, str]] = {}
+    for (qid, _), response in results:
+        if response is not None:
+            if qid not in responses:
+                responses[qid] = {}
+            responses[qid][str(uuid4())] = response
 
     return CotResponses(
         responses_by_qid=responses,
@@ -172,4 +200,27 @@ def get_all_cot_responses_or(
         instr_id=instr_id,
         ds_params=question_dataset.params,
         sampling_params=sampling_params,
+    )
+
+
+def get_all_cot_responses_or(
+    model_id: str,
+    dataset_id: str,
+    instr_id: str,
+    sampling_params: SamplingParams,
+    n_responses: int,
+    question_type: Literal["yes-no", "open-ended"],
+    max_parallel: int | None = None,
+) -> CotResponses:
+    """OpenRouter version of get_all_cot_responses that processes requests in parallel."""
+    return asyncio.run(
+        get_all_cot_responses_or_async(
+            model_id=model_id,
+            dataset_id=dataset_id,
+            instr_id=instr_id,
+            sampling_params=sampling_params,
+            n_responses=n_responses,
+            question_type=question_type,
+            max_parallel=max_parallel,
+        )
     )
