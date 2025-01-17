@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+
 import click
 
 from chainscope.cot_generation import get_all_cot_responses, get_all_cot_responses_or
@@ -21,6 +23,7 @@ from chainscope.utils import MODELS_MAP
     is_flag=True,
     help="Use OpenRouter API instead of local models",
 )
+@click.option("-v", "--verbose", is_flag=True)
 def main(
     n_responses: int,
     dataset_id: str,
@@ -30,7 +33,9 @@ def main(
     top_p: float,
     max_new_tokens: int,
     open_router: bool,
+    verbose: bool,
 ):
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
     model_id = MODELS_MAP.get(model_id, model_id)
 
     sampling_params = SamplingParams(

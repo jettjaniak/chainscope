@@ -213,6 +213,7 @@ def get_all_cot_responses_or(
     max_parallel: int | None = None,
 ) -> CotResponses:
     """OpenRouter version of get_all_cot_responses that processes requests in parallel."""
+
     return asyncio.run(
         get_all_cot_responses_or_async(
             model_id=model_id,

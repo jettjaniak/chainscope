@@ -171,6 +171,9 @@ class ORBatchProcessor(Generic[ORBatchItem, ORBatchResult]):
         self.max_new_tokens = max_new_tokens
         self.max_retries = max_retries
         self.process_response = process_response
+
+        assert os.getenv("OPENROUTER_API_KEY"), "OPENROUTER_API_KEY is not set"
+        os.environ["OPENAI_API_KEY"] = os.getenv("OPENROUTER_API_KEY")
         self.client = openai.AsyncOpenAI(base_url="https://openrouter.ai/api/v1")
 
         self.or_rate_limiter = or_rate_limiter
