@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Generic, TypeVar
@@ -40,6 +41,10 @@ class OARateLimiter:
             now = time.time()
             time_passed = now - self.last_update
 
+            # Add a minimum time check to prevent excessive updates
+            if time_passed < 0.001:  # 1ms minimum
+                time_passed = 0.001
+
             # Replenish tokens based on time passed
             self.tokens = min(
                 self.tokens_per_interval,
@@ -52,23 +57,67 @@ class OARateLimiter:
                 + (time_passed * self.requests_per_interval / self.interval_seconds),
             )
 
+            # Calculate wait time if either token type is depleted
             if self.tokens < 1 or self.request_tokens < 1:
-                wait_time = max(
-                    (1 - self.tokens)
-                    * self.interval_seconds
-                    / self.tokens_per_interval,
-                    (1 - self.request_tokens)
-                    * self.interval_seconds
-                    / self.requests_per_interval,
+                tokens_wait = (
+                    0
+                    if self.tokens >= 1
+                    else (
+                        (1 - self.tokens)
+                        * self.interval_seconds
+                        / self.tokens_per_interval
+                    )
                 )
+                requests_wait = (
+                    0
+                    if self.request_tokens >= 1
+                    else (
+                        (1 - self.request_tokens)
+                        * self.interval_seconds
+                        / self.requests_per_interval
+                    )
+                )
+                wait_time = max(tokens_wait, requests_wait)
+
+                # Add a small buffer to prevent edge cases
+                wait_time *= 1.1
+
                 logging.info(f"Rate limit reached. Waiting {wait_time:.2f} seconds...")
                 await asyncio.sleep(wait_time)
-                self.tokens = max(1, self.tokens)
-                self.request_tokens = max(1, self.request_tokens)
 
-            self.tokens -= 1
-            self.request_tokens -= 1
+                # Recalculate tokens after waiting
+                now = time.time()
+                time_passed = now - self.last_update
+                self.tokens = min(
+                    self.tokens_per_interval,
+                    self.tokens
+                    + (time_passed * self.tokens_per_interval / self.interval_seconds),
+                )
+                self.request_tokens = min(
+                    self.requests_per_interval,
+                    self.request_tokens
+                    + (
+                        time_passed * self.requests_per_interval / self.interval_seconds
+                    ),
+                )
+
+            self.tokens = max(0, self.tokens - 1)
+            self.request_tokens = max(0, self.request_tokens - 1)
             self.last_update = now
+
+    async def acquire_with_backoff(self, max_retries=3):
+        for attempt in range(max_retries):
+            try:
+                await self.acquire()
+                return
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise
+                wait_time = (2**attempt) + random.uniform(0, 1)
+                logging.warning(
+                    f"Rate limit acquisition failed, retrying in {wait_time:.2f}s: {str(e)}"
+                )
+                await asyncio.sleep(wait_time)
 
 
 def parse_time_to_seconds(time_str: str) -> float:
@@ -293,7 +342,7 @@ class OABatchProcessor(Generic[OABatchItem, OABatchResult]):
         async def process_single(
             item: OABatchItem, prompt: str
         ) -> tuple[OABatchItem, OABatchResult | None]:
-            await self.oa_rate_limiter.acquire()
+            await self.oa_rate_limiter.acquire_with_backoff()
 
             result = await generate_oa_response_async(
                 prompt=prompt,
