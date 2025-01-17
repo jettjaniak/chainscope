@@ -200,7 +200,7 @@ class ORBatchProcessor(Generic[ORBatchItem, ORBatchResult]):
         async def process_single(
             item: ORBatchItem, prompt: str
         ) -> tuple[ORBatchItem, ORBatchResult | None]:
-            await self.rate_limiter.acquire()
+            await self.or_rate_limiter.acquire()
 
             result = await generate_or_response_async(
                 prompt=prompt,
