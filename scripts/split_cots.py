@@ -12,7 +12,7 @@ from chainscope.typing import *
 @click.command()
 @click.argument("responses_path", type=click.Path(exists=True))
 @click.option(
-    "--split_model_ids",
+    "--or_model_ids",
     "-s",
     type=str,
     default="anthropic/claude-3.5-haiku,openai/gpt-4o",
@@ -41,7 +41,7 @@ from chainscope.typing import *
 )
 def main(
     responses_path: str,
-    split_model_ids: str,
+    or_model_ids: str,
     max_retries: int,
     verbose: int,
     max_parallel: int | None,
@@ -55,7 +55,7 @@ def main(
     cot_responses = CotResponses.load(Path(responses_path))
     results = split_cot_responses(
         responses=cot_responses,
-        split_model_ids=split_model_ids.split(","),
+        or_model_ids=or_model_ids.split(","),
         max_retries=max_retries,
         max_parallel=max_parallel,
     )

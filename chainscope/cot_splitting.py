@@ -1,12 +1,7 @@
 import asyncio
 import logging
-import os
-import time
-from dataclasses import dataclass, field
 
-import aiohttp
-import openai
-
+from chainscope.open_router_utils import ORBatchProcessor, ORRateLimiter
 from chainscope.typing import *
 
 
@@ -44,39 +39,6 @@ def check_steps_are_valid_split(original_response: str, steps: list[str]) -> boo
         return False
 
     return True
-
-
-@dataclass
-class OpenRouterLimits:
-    credits: float
-    requests_per_interval: int
-    interval: str
-    is_free_tier: bool
-
-
-async def get_openrouter_limits() -> OpenRouterLimits:
-    """Get rate limits and credits from OpenRouter."""
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        raise ValueError("OPENROUTER_API_KEY is not set")
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(
-            "https://openrouter.ai/api/v1/auth/key",
-            headers={"Authorization": f"Bearer {api_key}"},
-        ) as response:
-            if response.status != 200:
-                raise ValueError(
-                    f"Failed to get OpenRouter limits: {await response.text()}"
-                )
-
-            data = (await response.json())["data"]
-            return OpenRouterLimits(
-                credits=float(data.get("limit", 1) or 1),  # Default to 1 if unlimited
-                requests_per_interval=data["rate_limit"]["requests"],
-                interval=data["rate_limit"]["interval"],
-                is_free_tier=data["is_free_tier"],
-            )
 
 
 def remove_all_symbols(text: str) -> str:
@@ -153,214 +115,73 @@ def parse_model_split_response(split_text: str) -> list[str]:
     return sections
 
 
-async def split_cot_response_async(
-    response: str,
-    split_model_ids: list[str],
-    client: openai.AsyncOpenAI,
-    temperature: float,
-    max_new_tokens: int,
-    max_retries: int,
-) -> list[str] | None:
-    """Async version of split_cot_response with retry logic.
-
-    Args:
-        response: The CoT response to split
-        split_model_ids: List of model IDs to use for splitting
-        client: The OpenAI client
-        temperature: Temperature parameter for generation
-        max_new_tokens: Maximum number of new tokens to generate
-        max_retries: Maximum number of retry attempts for each model
-
-    Returns:
-        List of split sections or None if splitting failed after all retries
-    """
-    if remove_all_symbols(response.lower()) in ["", "yes", "no"]:
-        # No point in wasting tokens on these
-        return None
-
-    logging.info(f"Splitting response:\n{response}")
-
-    for model_id in split_model_ids:
-        for attempt in range(max_retries):
-            try:
-                if attempt > 0:
-                    logging.info(
-                        f"Retry attempt {attempt} of {max_retries} for splitting response"
-                    )
-
-                prompt = (
-                    "Below is a chain-of-thought reasoning. Insert section markers (<section 1>, <section 2>, etc.) "
-                    "at the start of each logical step in the reasoning, but do NOT modify the original text in any way. "
-                    "Each new section should represent a distinct step in the reasoning process. "
-                    "If there is any text before the first logical step, include it as part of the first section. "
-                    "Do NOT leave any text out of the sections. "
-                    "Preserve all original formatting, including any "
-                    "bullet points, whitespace, numbers, or other list markers in the text. "
-                    "If there are numbered steps in the reasoning, treat them as different sections."
-                    "\n\n"
-                    f"`{response}`"
-                )
-
-                split_response = await client.chat.completions.create(
-                    model=model_id,
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=temperature,
-                    max_tokens=max_new_tokens,
-                )
-
-                if not split_response or not split_response.choices:
-                    continue
-
-                split_text = split_response.choices[0].message.content
-
-                logging.info(f"Model {model_id} split text:\n{split_text}")
-
-                sections = parse_model_split_response(split_text)
-                steps_str = "\n".join(sections)
-                logging.info(f"Parsed sections:\n{steps_str}")
-
-                validation_result = check_steps_are_valid_split(response, sections)
-                if validation_result:
-                    logging.info("Found valid split!")
-                    return sections
-
-                logging.info(
-                    f"Invalid split on attempt {attempt + 1} for model {model_id}, retrying..."
-                )
-                continue
-
-            except Exception as e:
-                if attempt == max_retries:
-                    logging.info(
-                        f"Failed to split CoT response after {max_retries} retries for model {model_id}: {str(e)}"
-                    )
-                    return None
-                logging.info(
-                    f"Error on attempt {attempt + 1} for model {model_id}: {str(e)}, retrying..."
-                )
-                continue
-
-    return None
-
-
-@dataclass
-class RateLimiter:
-    requests_per_interval: int
-    interval_seconds: int
-    tokens: float = field(init=False)
-    last_update: float = field(init=False)
-    _lock: asyncio.Lock = field(init=False)
-
-    def __post_init__(self):
-        self.tokens = self.requests_per_interval
-        self.last_update = time.time()
-        self._lock = asyncio.Lock()
-
-    async def acquire(self):
-        async with self._lock:
-            now = time.time()
-            time_passed = now - self.last_update
-
-            # Replenish tokens based on time passed
-            self.tokens = min(
-                self.requests_per_interval,
-                self.tokens
-                + (time_passed * self.requests_per_interval / self.interval_seconds),
-            )
-
-            if self.tokens < 1:
-                wait_time = (
-                    (1 - self.tokens)
-                    * self.interval_seconds
-                    / self.requests_per_interval
-                )
-                logging.info(f"Rate limit reached. Waiting {wait_time:.2f} seconds...")
-                await asyncio.sleep(wait_time)
-                self.tokens = 1
-
-            self.tokens -= 1
-            self.last_update = now
-
-
-async def process_batch(
-    batch: list[tuple[str, str, str]],
-    split_model_ids: list[str],
-    temperature: float,
-    max_new_tokens: int,
-    rate_limiter: RateLimiter,
-    max_retries: int,
-) -> list[tuple[str, str, list[str] | None]]:
-    """Process a batch of responses in parallel with rate limiting and retries."""
-    client = openai.AsyncOpenAI(base_url="https://openrouter.ai/api/v1")
-
-    async def process_single(
-        qid: str, uuid: str, response: str
-    ) -> tuple[str, str, list[str] | None]:
-        await rate_limiter.acquire()
-        logging.info(f"Starting request for uuid={uuid}")
-        result = await split_cot_response_async(
-            response=response,
-            split_model_ids=split_model_ids,
-            client=client,
-            temperature=temperature,
-            max_new_tokens=max_new_tokens,
-            max_retries=max_retries,
-        )
-        logging.info(f"Completed request for uuid={uuid}")
-        return (qid, uuid, result)
-
-    tasks = [process_single(*item) for item in batch]
-    return await asyncio.gather(*tasks)
-
-
 async def split_cot_responses_async(
     responses: CotResponses,
-    split_model_ids: list[str],
+    or_model_ids: list[str],
     max_retries: int,
     max_parallel: int | None,
 ) -> SplitCotResponses:
     """Async version of split_cot_responses with rate limiting and retries."""
 
-    if max_parallel is None:
-        limits = await get_openrouter_limits()
-        logging.info(f"Using OpenRouter limits: {limits}")
-
-        interval_seconds = int(limits.interval.replace("s", ""))
-        rate_limiter = RateLimiter(
-            requests_per_interval=limits.requests_per_interval,
-            interval_seconds=interval_seconds,
-        )
-    else:
-        rate_limiter = RateLimiter(
+    or_rate_limiter = None
+    if max_parallel is not None:
+        or_rate_limiter = ORRateLimiter(
             requests_per_interval=max_parallel,
             interval_seconds=1,
         )
 
-    all_requests = [
-        (qid, uuid, response)
-        for qid, response_by_uuid in responses.responses_by_qid.items()
-        for uuid, response in response_by_uuid.items()
-    ]
+    def process_response(or_response: str, item: tuple[str, str]) -> list[str] | None:
+        qid, uuid = item
+        logging.info(f"OR response:\n{or_response}")
+        sections = parse_model_split_response(or_response)
+        steps_str = "\n".join(sections)
+        logging.info(f"Parsed sections:\n{steps_str}")
+        original_response = responses.responses_by_qid[qid][uuid]
+        return (
+            sections
+            if check_steps_are_valid_split(original_response, sections)
+            else None
+        )
 
+    processor = ORBatchProcessor[tuple[str, str], list[str]](
+        or_model_ids=or_model_ids,
+        temperature=responses.sampling_params.temperature,
+        max_new_tokens=int(responses.sampling_params.max_new_tokens * 1.25),
+        or_rate_limiter=or_rate_limiter,
+        max_retries=max_retries,
+        process_response=process_response,
+    )
+
+    # Prepare batch items
+    batch_items = []
+    for qid, response_by_uuid in responses.responses_by_qid.items():
+        for uuid, response in response_by_uuid.items():
+            if remove_all_symbols(response.lower()) in ["", "yes", "no"]:
+                continue
+
+            prompt = (
+                "Below is a chain-of-thought reasoning. Insert section markers (<section 1>, <section 2>, etc.) "
+                "at the start of each logical step in the reasoning, but do NOT modify the original text in any way. "
+                "Each new section should represent a distinct step in the reasoning process. "
+                "If there is any text before the first logical step, include it as part of the first section. "
+                "Do NOT leave any text out of the sections. "
+                "Preserve all original formatting, including any "
+                "bullet points, whitespace, numbers, or other list markers in the text. "
+                "If there are numbered steps in the reasoning, treat them as different sections."
+                "\n\n"
+                f"`{response}`"
+            )
+            batch_items.append(((qid, uuid), prompt))
+
+    # Process batch
+    results = await processor.process_batch(batch_items)
+
+    # Process results
     split_responses_by_qid: dict[str, dict[str, list[str]]] = {}
     success_count = 0
     failure_count = 0
 
-    max_new_tokens = int(responses.sampling_params.max_new_tokens * 1.25)
-    temperature = responses.sampling_params.temperature
-
-    # Process all requests in a single batch with controlled concurrency
-    results = await process_batch(
-        batch=all_requests,
-        split_model_ids=split_model_ids,
-        temperature=temperature,
-        max_new_tokens=max_new_tokens,
-        rate_limiter=rate_limiter,
-        max_retries=max_retries,
-    )
-
-    # Process results
-    for qid, uuid, split_response in results:
+    for (qid, uuid), split_response in results:
         if qid not in split_responses_by_qid:
             split_responses_by_qid[qid] = {}
 
@@ -381,7 +202,7 @@ async def split_cot_responses_async(
     return SplitCotResponses(
         split_responses_by_qid=split_responses_by_qid,
         model_id=responses.model_id,
-        split_model_ids=split_model_ids,
+        or_model_ids=or_model_ids,
         successfully_split_count=success_count,
         failed_to_split_count=failure_count,
         instr_id=responses.instr_id,
@@ -392,7 +213,7 @@ async def split_cot_responses_async(
 
 def split_cot_responses(
     responses: CotResponses,
-    split_model_ids: list[str],
+    or_model_ids: list[str],
     max_retries: int,
     max_parallel: int | None,
 ) -> SplitCotResponses:
@@ -400,7 +221,7 @@ def split_cot_responses(
     return asyncio.run(
         split_cot_responses_async(
             responses=responses,
-            split_model_ids=split_model_ids,
+            or_model_ids=or_model_ids,
             max_retries=max_retries,
             max_parallel=max_parallel,
         )

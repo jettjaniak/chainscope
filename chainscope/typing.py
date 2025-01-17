@@ -224,7 +224,7 @@ class SplitCotResponses(YAMLWizard):
         str, dict[str, list[str]]
     ]  # qid -> {uuid -> [step_str]}
     model_id: str
-    split_model_ids: list[str]
+    or_model_ids: list[str]
     successfully_split_count: int
     failed_to_split_count: int
     instr_id: str
