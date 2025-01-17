@@ -30,12 +30,21 @@ MODELS_MAP = {
     "Q32": "Qwen/Qwen2.5-32B-Instruct",
     "Q72": "Qwen/Qwen2.5-72B-Instruct",
     # OpenRouter models
+    # OpenAI
     # "GPT3.5": "openai/gpt-3.5-turbo",
     "GPT4OM": "openai/gpt-4o-mini",
+    "GPT4O": "openai/gpt-4o",
+    "O1M": "openai/o1-mini",
+    "O1": "openai/o1",
+    # Gemini
     "GF1.5": "google/gemini-flash-1.5-8b",
     "GF2": "google/gemini-2.0-flash-exp:free",
+    "GF2T": "google/gemini-2.0-flash-thinking-exp:free",
+    # Anthropic
     "C3H": "anthropic/claude-3-haiku",
     "C3.5H": "anthropic/claude-3.5-haiku",
+    "C3S": "anthropic/claude-3-sonnet",
+    "C3.5S": "anthropic/claude-3.5-sonnet",
 }
 
 CLOSED_SOURCE_MODELS = [
