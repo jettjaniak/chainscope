@@ -4,7 +4,11 @@ import logging
 
 import click
 
-from chainscope.cot_generation import get_all_cot_responses, get_all_cot_responses_or
+from chainscope.cot_generation import (
+    get_all_cot_responses,
+    get_all_cot_responses_oa,
+    get_all_cot_responses_or,
+)
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP
 
@@ -23,6 +27,12 @@ from chainscope.utils import MODELS_MAP
     is_flag=True,
     help="Use OpenRouter API instead of local models",
 )
+@click.option(
+    "--open-ai",
+    "--oa",
+    is_flag=True,
+    help="Use OpenAI API instead of local models",
+)
 @click.option("-v", "--verbose", is_flag=True)
 def main(
     n_responses: int,
@@ -33,6 +43,7 @@ def main(
     top_p: float,
     max_new_tokens: int,
     open_router: bool,
+    open_ai: bool,
     verbose: bool,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -44,7 +55,13 @@ def main(
         max_new_tokens=max_new_tokens,
     )
 
-    get_responses = get_all_cot_responses_or if open_router else get_all_cot_responses
+    if open_router:
+        get_responses = get_all_cot_responses_or
+    elif open_ai:
+        get_responses = get_all_cot_responses_oa
+    else:
+        get_responses = get_all_cot_responses
+
     cot_responses = get_responses(
         model_id=model_id,
         dataset_id=dataset_id,

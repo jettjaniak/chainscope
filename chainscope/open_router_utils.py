@@ -87,7 +87,7 @@ async def generate_or_response_async(
     max_retries: int,
     get_result_from_response: Callable[[str], Any | None],
 ) -> Any | None:
-    """Async version of split_cot_response with retry logic.
+    """Generate a response from an OpenRouter model.
 
     Args:
         prompt: The prompt to run on the model

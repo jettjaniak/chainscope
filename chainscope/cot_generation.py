@@ -8,6 +8,7 @@ import torch
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
+from chainscope.open_ai_utils import OABatchProcessor, OARateLimiter
 from chainscope.open_router_utils import ORBatchProcessor, ORRateLimiter
 from chainscope.questions import QsDataset
 from chainscope.typing import *
@@ -137,41 +138,18 @@ def get_all_cot_responses(
     )
 
 
-async def get_all_cot_responses_or_async(
+async def get_all_cot_responses_in_batch(
     model_id: str,
     dataset_id: str,
     instr_id: str,
     sampling_params: SamplingParams,
     n_responses: int,
+    batch_processor: ORBatchProcessor | OABatchProcessor,
     question_type: Literal["yes-no", "open-ended"],
-    max_parallel: int | None = None,
-    max_retries: int = 1,
 ) -> CotResponses:
     """Async version of get_all_cot_responses_or that processes requests in parallel."""
     instructions = Instructions.load(instr_id)
     question_dataset = QsDataset.load(dataset_id)
-
-    # Create rate limiter if max_parallel is specified
-    or_rate_limiter = None
-    if max_parallel is not None:
-        or_rate_limiter = ORRateLimiter(
-            requests_per_interval=max_parallel,
-            interval_seconds=1,
-        )
-
-    def process_response(or_response: str, item: tuple[str, int]) -> str | None:
-        """Process a single response from the model."""
-        qid, response_idx = item
-        return or_response if or_response else None
-
-    processor = ORBatchProcessor[tuple[str, int], str](
-        or_model_ids=[model_id],  # Wrap in list for consistency with ORBatchProcessor
-        temperature=sampling_params.temperature,
-        max_new_tokens=sampling_params.max_new_tokens,
-        or_rate_limiter=or_rate_limiter,
-        max_retries=max_retries,
-        process_response=process_response,
-    )
 
     # Prepare batch items - one for each question and response combination
     batch_items = []
@@ -184,7 +162,7 @@ async def get_all_cot_responses_or_async(
             batch_items.append(((qid, i), prompt))
 
     # Process all requests in parallel
-    results = await processor.process_batch(batch_items)
+    results = await batch_processor.process_batch(batch_items)
 
     # Organize results by question ID
     responses: dict[str, dict[str, str]] = {}
@@ -211,17 +189,90 @@ def get_all_cot_responses_or(
     n_responses: int,
     question_type: Literal["yes-no", "open-ended"],
     max_parallel: int | None = None,
+    max_retries: int = 1,
 ) -> CotResponses:
-    """OpenRouter version of get_all_cot_responses that processes requests in parallel."""
+    """OpenRouter version of get_all_cot_responses that processes requests in parallel using an OpenRouter model."""
+
+    # Create rate limiter if max_parallel is specified
+    or_rate_limiter = None
+    if max_parallel is not None:
+        or_rate_limiter = ORRateLimiter(
+            requests_per_interval=max_parallel,
+            interval_seconds=1,
+        )
+
+    def process_response(or_response: str, item: tuple[str, int]) -> str | None:
+        """Process a single response from the model."""
+        return or_response if or_response else None
+
+    batch_processor = ORBatchProcessor[tuple[str, int], str](
+        or_model_ids=[model_id],  # Wrap in list for consistency with ORBatchProcessor
+        temperature=sampling_params.temperature,
+        max_new_tokens=sampling_params.max_new_tokens,
+        or_rate_limiter=or_rate_limiter,
+        max_retries=max_retries,
+        process_response=process_response,
+    )
 
     return asyncio.run(
-        get_all_cot_responses_or_async(
+        get_all_cot_responses_in_batch(
             model_id=model_id,
             dataset_id=dataset_id,
             instr_id=instr_id,
             sampling_params=sampling_params,
             n_responses=n_responses,
             question_type=question_type,
-            max_parallel=max_parallel,
+            batch_processor=batch_processor,
+        )
+    )
+
+
+def get_all_cot_responses_oa(
+    model_id: str,
+    dataset_id: str,
+    instr_id: str,
+    sampling_params: SamplingParams,
+    n_responses: int,
+    question_type: Literal["yes-no", "open-ended"],
+    max_parallel: int | None = None,
+    max_retries: int = 1,
+) -> CotResponses:
+    """OpenAI version of get_all_cot_responses that processes requests in parallel using an OpenAI model."""
+
+    # Create rate limiter if max_parallel is specified
+    oa_rate_limiter = None
+    if max_parallel is not None:
+        oa_rate_limiter = OARateLimiter(
+            requests_per_interval=max_parallel,
+            tokens_per_interval=max_parallel * sampling_params.max_new_tokens,
+            interval_seconds=1,
+        )
+
+    def process_response(or_response: str, item: tuple[str, int]) -> str | None:
+        """Process a single response from the model."""
+        return or_response if or_response else None
+
+    # Determine if the model is a Claude model (o1 or o1-mini)
+    is_claude_model = model_id in ["o1", "o1-mini"]
+    token_param = "max_completion_tokens" if is_claude_model else "max_new_tokens"
+
+    batch_processor = OABatchProcessor[tuple[str, int], str](
+        oa_model_ids=[model_id],
+        temperature=sampling_params.temperature,
+        oa_rate_limiter=oa_rate_limiter,
+        max_retries=max_retries,
+        process_response=process_response,
+        **{token_param: sampling_params.max_new_tokens},
+    )
+
+    return asyncio.run(
+        get_all_cot_responses_in_batch(
+            model_id=model_id,
+            dataset_id=dataset_id,
+            instr_id=instr_id,
+            sampling_params=sampling_params,
+            n_responses=n_responses,
+            question_type=question_type,
+            batch_processor=batch_processor,
         )
     )
