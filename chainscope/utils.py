@@ -46,6 +46,7 @@ MODELS_MAP = {
     "C3.5H": "anthropic/claude-3.5-haiku",
     "C3S": "anthropic/claude-3-sonnet",
     "C3.5S": "anthropic/claude-3.5-sonnet",
+    "C3O": "anthropic/claude-3-opus",
     # xAI
     "GK2": "x-ai/grok-2-1212",
     "GK2M": "x-ai/grok-2-mini",

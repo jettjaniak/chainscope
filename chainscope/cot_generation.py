@@ -9,6 +9,7 @@ import torch
 from tqdm import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
+from chainscope.anthropic_utils import ANBatchProcessor, ANRateLimiter
 from chainscope.open_ai_utils import OABatchProcessor, OARateLimiter
 from chainscope.open_router_utils import ORBatchProcessor, ORRateLimiter
 from chainscope.questions import QsDataset
@@ -276,6 +277,59 @@ def get_all_cot_responses_oa(
         max_retries=max_retries,
         process_response=process_response,
         **{token_param: sampling_params.max_new_tokens},
+    )
+
+    return asyncio.run(
+        get_all_cot_responses_in_batch(
+            model_id=model_id,
+            dataset_id=dataset_id,
+            instr_id=instr_id,
+            sampling_params=sampling_params,
+            n_responses=n_responses,
+            question_type=question_type,
+            batch_processor=batch_processor,
+        )
+    )
+
+
+def get_all_cot_responses_an(
+    model_id: str,
+    dataset_id: str,
+    instr_id: str,
+    sampling_params: SamplingParams,
+    n_responses: int,
+    question_type: Literal["yes-no", "open-ended"],
+    max_parallel: int | None = None,
+    max_retries: int = 1,
+) -> CotResponses:
+    """Anthropic version of get_all_cot_responses that processes requests in parallel using an Anthropic model."""
+
+    # Create rate limiter if max_parallel is specified
+    an_rate_limiter = None
+    if max_parallel is not None:
+        an_rate_limiter = ANRateLimiter(
+            requests_per_interval=max_parallel,
+            tokens_per_interval=max_parallel * sampling_params.max_new_tokens,
+            interval_seconds=1,
+        )
+
+    def process_response(aa_response: str, item: tuple[str, int]) -> str | None:
+        """Process a single response from the model."""
+        if aa_response is None or aa_response == "":
+            logging.warning(
+                f"Empty response received for model {model_id} and question {item[0]}"
+            )
+            return None
+        logging.info(f"Response received for model {model_id} and question {item[0]}")
+        return aa_response
+
+    batch_processor = ANBatchProcessor[tuple[str, int], str](
+        an_model_ids=[model_id],
+        temperature=sampling_params.temperature,
+        an_rate_limiter=an_rate_limiter,
+        max_retries=max_retries,
+        process_response=process_response,
+        max_new_tokens=sampling_params.max_new_tokens,
     )
 
     return asyncio.run(

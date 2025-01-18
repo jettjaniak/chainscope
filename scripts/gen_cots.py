@@ -6,6 +6,7 @@ import click
 
 from chainscope.cot_generation import (
     get_all_cot_responses,
+    get_all_cot_responses_an,
     get_all_cot_responses_oa,
     get_all_cot_responses_or,
 )
@@ -33,6 +34,12 @@ from chainscope.utils import MODELS_MAP
     is_flag=True,
     help="Use OpenAI API instead of local models",
 )
+@click.option(
+    "--anthropic",
+    "--an",
+    is_flag=True,
+    help="Use Anthropic API instead of local models",
+)
 @click.option("-v", "--verbose", is_flag=True)
 def main(
     n_responses: int,
@@ -44,6 +51,7 @@ def main(
     max_new_tokens: int,
     open_router: bool,
     open_ai: bool,
+    anthropic: bool,
     verbose: bool,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -59,6 +67,8 @@ def main(
         get_responses = get_all_cot_responses_or
     elif open_ai:
         get_responses = get_all_cot_responses_oa
+    elif anthropic:
+        get_responses = get_all_cot_responses_an
     else:
         get_responses = get_all_cot_responses
 
