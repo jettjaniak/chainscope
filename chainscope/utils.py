@@ -35,6 +35,7 @@ MODELS_MAP = {
     "GPT4OM": "openai/gpt-4o-mini",
     "GPT4O": "openai/gpt-4o",
     "O1M": "openai/o1-mini",
+    "O1P": "openai/o1-preview",
     "O1": "openai/o1",
     # Gemini
     "GF1.5": "google/gemini-flash-1.5-8b",
