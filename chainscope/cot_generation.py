@@ -110,6 +110,7 @@ def get_all_cot_responses(
     sampling_params: SamplingParams,
     n_responses: int,
     question_type: Literal["yes-no", "open-ended"],
+    existing_responses: CotResponses | None = None,
 ) -> CotResponses:
     model, tokenizer = load_model_and_tokenizer(model_id)
     instructions = Instructions.load(instr_id)
@@ -121,15 +122,34 @@ def get_all_cot_responses(
         question_dataset.question_by_qid.items(),
         desc="Generating CoT responses",
     ):
+        # Get existing responses for this question
+        existing_q_responses = {}
+        if (
+            existing_responses is not None
+            and qid in existing_responses.responses_by_qid
+        ):
+            existing_q_responses = existing_responses.responses_by_qid[qid]
+
+        # Calculate how many more responses we need
+        n_existing = len(existing_q_responses)
+        n_needed = max(0, n_responses - n_existing)
+
+        if n_needed == 0:
+            responses[qid] = existing_q_responses
+            continue
+
         q_str = q.q_str if question_type == "yes-no" else q.q_str_open_ended
-        responses[qid] = get_question_cot_responses(
+        new_responses = get_question_cot_responses(
             model=model,
             tokenizer=tokenizer,
             question_str=q_str,
             cot_instruction=instructions.cot,
             sampling_params=sampling_params,
-            n_responses=n_responses,
+            n_responses=n_needed,
         )
+
+        # Combine existing and new responses
+        responses[qid] = {**existing_q_responses, **new_responses}
 
     return CotResponses(
         responses_by_qid=responses,
@@ -146,28 +166,49 @@ async def get_all_cot_responses_in_batch(
     instr_id: str,
     sampling_params: SamplingParams,
     n_responses: int,
-    batch_processor: ORBatchProcessor | OABatchProcessor,
+    batch_processor: ORBatchProcessor | OABatchProcessor | ANBatchProcessor,
     question_type: Literal["yes-no", "open-ended"],
+    existing_responses: CotResponses | None = None,
 ) -> CotResponses:
-    """Async version of get_all_cot_responses_or that processes requests in parallel."""
+    """Async version of get_all_cot_responses that processes requests in parallel."""
     instructions = Instructions.load(instr_id)
     question_dataset = QsDataset.load(dataset_id)
 
     # Prepare batch items - one for each question and response combination
     batch_items = []
     for qid, q in question_dataset.question_by_qid.items():
+        # Get existing responses for this question
+        existing_q_responses = {}
+        if (
+            existing_responses is not None
+            and qid in existing_responses.responses_by_qid
+        ):
+            existing_q_responses = existing_responses.responses_by_qid[qid]
+
+        # Calculate how many more responses we need
+        n_existing = len(existing_q_responses)
+        n_needed = max(0, n_responses - n_existing)
+
+        if n_needed == 0:
+            continue
+
         q_str = q.q_str if question_type == "yes-no" else q.q_str_open_ended
         prompt = instructions.cot.format(question=q_str)
 
-        # Create n_responses items for this question
-        for i in range(n_responses):
+        # Create n_needed items for this question
+        for i in range(n_needed):
             batch_items.append(((qid, i), prompt))
 
     # Process all requests in parallel
     results = await batch_processor.process_batch(batch_items)
 
-    # Organize results by question ID
+    # Organize results by question ID, including existing responses
     responses: dict[str, dict[str, str]] = {}
+    if existing_responses is not None:
+        responses = {
+            qid: dict(resp) for qid, resp in existing_responses.responses_by_qid.items()
+        }
+
     for (qid, _), response in results:
         if response is not None:
             if qid not in responses:
@@ -192,6 +233,7 @@ def get_all_cot_responses_or(
     question_type: Literal["yes-no", "open-ended"],
     max_parallel: int | None = None,
     max_retries: int = 1,
+    existing_responses: CotResponses | None = None,
 ) -> CotResponses:
     """OpenRouter version of get_all_cot_responses that processes requests in parallel using an OpenRouter model."""
 
@@ -231,6 +273,7 @@ def get_all_cot_responses_or(
             n_responses=n_responses,
             question_type=question_type,
             batch_processor=batch_processor,
+            existing_responses=existing_responses,
         )
     )
 
@@ -244,6 +287,7 @@ def get_all_cot_responses_oa(
     question_type: Literal["yes-no", "open-ended"],
     max_parallel: int | None = None,
     max_retries: int = 1,
+    existing_responses: CotResponses | None = None,
 ) -> CotResponses:
     """OpenAI version of get_all_cot_responses that processes requests in parallel using an OpenAI model."""
 
@@ -288,6 +332,7 @@ def get_all_cot_responses_oa(
             n_responses=n_responses,
             question_type=question_type,
             batch_processor=batch_processor,
+            existing_responses=existing_responses,
         )
     )
 
@@ -301,6 +346,7 @@ def get_all_cot_responses_an(
     question_type: Literal["yes-no", "open-ended"],
     max_parallel: int | None = None,
     max_retries: int = 1,
+    existing_responses: CotResponses | None = None,
 ) -> CotResponses:
     """Anthropic version of get_all_cot_responses that processes requests in parallel using an Anthropic model."""
 
@@ -341,5 +387,6 @@ def get_all_cot_responses_an(
             n_responses=n_responses,
             question_type=question_type,
             batch_processor=batch_processor,
+            existing_responses=existing_responses,
         )
     )
