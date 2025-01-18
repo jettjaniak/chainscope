@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from typing import Any
 from uuid import uuid4
@@ -203,7 +204,13 @@ def get_all_cot_responses_or(
 
     def process_response(or_response: str, item: tuple[str, int]) -> str | None:
         """Process a single response from the model."""
-        return or_response if or_response else None
+        if or_response is None or or_response == "":
+            logging.warning(
+                f"Empty response received for model {model_id} and question {item[0]}"
+            )
+            return None
+        logging.info(f"Response received for model {model_id} and question {item[0]}")
+        return or_response
 
     batch_processor = ORBatchProcessor[tuple[str, int], str](
         or_model_ids=[model_id],  # Wrap in list for consistency with ORBatchProcessor
@@ -250,7 +257,13 @@ def get_all_cot_responses_oa(
 
     def process_response(or_response: str, item: tuple[str, int]) -> str | None:
         """Process a single response from the model."""
-        return or_response if or_response else None
+        if or_response is None or or_response == "":
+            logging.warning(
+                f"Empty response received for model {model_id} and question {item[0]}"
+            )
+            return None
+        logging.info(f"Response received for model {model_id} and question {item[0]}")
+        return or_response
 
     # Determine if the model is a Claude model (o1 or o1-mini)
     is_claude_model = model_id in ["o1", "o1-mini"]

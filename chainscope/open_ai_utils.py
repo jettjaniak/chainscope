@@ -267,11 +267,11 @@ async def generate_oa_response_async(
 
             except Exception as e:
                 if attempt == max_retries:
-                    logging.info(
+                    logging.warning(
                         f"Failed to process response after {max_retries} retries for model {oa_model_id}: {str(e)}"
                     )
                     return None
-                logging.info(
+                logging.warning(
                     f"Error on attempt {attempt + 1} for model {oa_model_id}: {str(e)}, retrying..."
                 )
                 continue

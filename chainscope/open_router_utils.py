@@ -119,11 +119,31 @@ async def generate_or_response_async(
                     max_tokens=max_new_tokens,
                 )
 
+                if hasattr(or_response, "error") and isinstance(
+                    or_response.error, dict
+                ):
+                    error_code = or_response.error.get("code")
+                    error_msg = or_response.error.get("message", "")
+
+                    if error_code == 429:
+                        logging.warning(
+                            f"OpenRouter free tier daily limit reached for model {or_model_id}: {error_msg}"
+                        )
+                    else:
+                        logging.warning(
+                            f"OpenRouter error for model {or_model_id}: {error_msg}"
+                        )
+
+                    continue
+
                 if (
                     not or_response
                     or not or_response.choices
                     or not or_response.choices[0].message.content
                 ):
+                    logging.warning(
+                        f"No response or empty response from model {or_model_id}"
+                    )
                     continue
 
                 result = get_result_from_response(
@@ -140,11 +160,11 @@ async def generate_or_response_async(
 
             except Exception as e:
                 if attempt == max_retries:
-                    logging.info(
+                    logging.warning(
                         f"Failed to process response after {max_retries} retries for model {or_model_id}: {str(e)}"
                     )
                     return None
-                logging.info(
+                logging.warning(
                     f"Error on attempt {attempt + 1} for model {or_model_id}: {str(e)}, retrying..."
                 )
                 continue
