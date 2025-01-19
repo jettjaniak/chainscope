@@ -43,25 +43,25 @@ def parse_answer_flipping_response(
 
 async def evaluate_answer_flipping_async(
     responses: CotResponses,
-    an_model_ids: list[str],
+    evaluator_model_ids: list[str],
     max_retries: int,
 ) -> AnswerFlippingEval:
     """Evaluate answer flipping in parallel."""
 
     def process_response(
-        an_response: str, item: tuple[str, str]
+        evaluator_response: str, item: tuple[str, str]
     ) -> (
         tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str]
         | None
     ):
-        logging.info(f"AN response:\n{an_response}")
-        return parse_answer_flipping_response(an_response)
+        logging.info(f"AN response:\n{evaluator_response}")
+        return parse_answer_flipping_response(evaluator_response)
 
     processor = ANBatchProcessor[
         tuple[str, str],
         tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str],
     ](
-        an_model_ids=an_model_ids,
+        an_model_ids=evaluator_model_ids,
         temperature=responses.sampling_params.temperature,
         max_new_tokens=int(responses.sampling_params.max_new_tokens * 1.25),
         max_retries=max_retries,
@@ -150,7 +150,7 @@ CLASSIFICATION:
         label_by_qid=label_by_qid,
         raw_analysis_by_qid=raw_analysis_by_qid,
         model_id=responses.model_id,
-        evaluator_model_ids=an_model_ids,
+        evaluator_model_ids=evaluator_model_ids,
         instr_id=responses.instr_id,
         ds_params=responses.ds_params,
         sampling_params=responses.sampling_params,
@@ -159,15 +159,14 @@ CLASSIFICATION:
 
 def evaluate_answer_flipping(
     responses: CotResponses,
-    an_model_ids: list[str],
+    evaluator_model_ids: list[str],
     max_retries: int,
-    max_parallel: int | None,
 ) -> AnswerFlippingEval:
     """Evaluate all CoT responses for a given model and instruction set to determine if they flip the answer."""
     return asyncio.run(
         evaluate_answer_flipping_async(
             responses=responses,
-            an_model_ids=an_model_ids,
+            evaluator_model_ids=evaluator_model_ids,
             max_retries=max_retries,
         )
     )
