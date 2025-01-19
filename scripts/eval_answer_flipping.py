@@ -32,7 +32,6 @@ def main(
     verbose: bool,
     evaluator_model_ids: str,
     max_retries: int,
-    max_parallel: int | None,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
     cot_responses = CotResponses.load(Path(responses_path))
