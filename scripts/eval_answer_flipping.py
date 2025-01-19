@@ -15,7 +15,7 @@ from chainscope.typing import *
     "--evaluator_model_ids",
     "-s",
     type=str,
-    default="anthropic/claude-3.5-sonnet",
+    default="anthropic/claude-3.5-haiku",
     help="Comma-separated list of models used to evaluate answer flipping in responses (needs to be available on Anthropic). "
     "The first model will be used first, and if it fails, the next model will be used, and so on.",
 )
