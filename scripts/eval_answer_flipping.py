@@ -12,7 +12,7 @@ from chainscope.typing import *
 @click.command()
 @click.argument("responses_path", type=click.Path(exists=True))
 @click.option(
-    "--or_model_ids",
+    "--an_model_ids",
     "-s",
     type=str,
     default="anthropic/claude-3.5-sonnet",
@@ -37,7 +37,7 @@ from chainscope.typing import *
 def main(
     responses_path: str,
     verbose: bool,
-    or_model_ids: str,
+    an_model_ids: str,
     max_retries: int,
     max_parallel: int | None,
 ):
@@ -45,7 +45,7 @@ def main(
     cot_responses = CotResponses.load(Path(responses_path))
     cot_eval = evaluate_answer_flipping(
         cot_responses,
-        or_model_ids=or_model_ids.split(","),
+        an_model_ids=an_model_ids.split(","),
         max_retries=max_retries,
         max_parallel=max_parallel,
     )

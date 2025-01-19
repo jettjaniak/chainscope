@@ -2,7 +2,7 @@ import asyncio
 import logging
 from collections import Counter
 
-from chainscope.cot_splitting import ORBatchProcessor, ORRateLimiter
+from chainscope.anthropic_utils import ANBatchProcessor
 from chainscope.typing import *
 
 
@@ -43,38 +43,30 @@ def parse_answer_flipping_response(
 
 async def evaluate_answer_flipping_async(
     responses: CotResponses,
-    or_model_ids: list[str],
+    an_model_ids: list[str],
     max_retries: int,
-    max_parallel: int | None,
 ) -> AnswerFlippingEval:
     """Evaluate answer flipping in parallel."""
 
-    or_rate_limiter = None
-    if max_parallel is not None:
-        or_rate_limiter = ORRateLimiter(
-            requests_per_interval=max_parallel,
-            interval_seconds=1,
-        )
-
     def process_response(
-        or_response: str, item: tuple[str, str]
+        an_response: str, item: tuple[str, str]
     ) -> (
         tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str]
         | None
     ):
-        logging.info(f"OR response:\n{or_response}")
-        return parse_answer_flipping_response(or_response)
+        logging.info(f"AN response:\n{an_response}")
+        return parse_answer_flipping_response(an_response)
 
-    processor = ORBatchProcessor[
+    processor = ANBatchProcessor[
         tuple[str, str],
         tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str],
     ](
-        or_model_ids=or_model_ids,
+        an_model_ids=an_model_ids,
         temperature=responses.sampling_params.temperature,
         max_new_tokens=int(responses.sampling_params.max_new_tokens * 1.25),
-        or_rate_limiter=or_rate_limiter,
         max_retries=max_retries,
         process_response=process_response,
+        an_rate_limiter=None,
     )
 
     # Load the question dataset to get question strings
@@ -158,7 +150,7 @@ CLASSIFICATION:
         label_by_qid=label_by_qid,
         raw_analysis_by_qid=raw_analysis_by_qid,
         model_id=responses.model_id,
-        or_model_ids=or_model_ids,
+        evaluator_model_ids=an_model_ids,
         instr_id=responses.instr_id,
         ds_params=responses.ds_params,
         sampling_params=responses.sampling_params,
@@ -167,7 +159,7 @@ CLASSIFICATION:
 
 def evaluate_answer_flipping(
     responses: CotResponses,
-    or_model_ids: list[str],
+    an_model_ids: list[str],
     max_retries: int,
     max_parallel: int | None,
 ) -> AnswerFlippingEval:
@@ -175,8 +167,7 @@ def evaluate_answer_flipping(
     return asyncio.run(
         evaluate_answer_flipping_async(
             responses=responses,
-            or_model_ids=or_model_ids,
+            an_model_ids=an_model_ids,
             max_retries=max_retries,
-            max_parallel=max_parallel,
         )
     )

@@ -284,7 +284,7 @@ class AnswerFlippingEval(YAMLWizard):
         str, dict[str, str]
     ]  # qid -> {response_uuid -> raw_analysis}
     model_id: str
-    or_model_ids: list[str]
+    evaluator_model_ids: list[str]
     instr_id: str
     ds_params: DatasetParams
     sampling_params: SamplingParams

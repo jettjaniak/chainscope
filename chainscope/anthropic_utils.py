@@ -182,8 +182,8 @@ async def generate_an_response_async(
             "claude-3-sonnet": "claude-3-sonnet-20240229",
             "claude-3-haiku": "claude-3-haiku-20240307",
             "claude-3-opus": "claude-3-opus-latest",
-            "claude-3-5-sonnet": "claude-3-5-sonnet-latest",
-            "claude-3-5-haiku": "claude-3-5-haiku-latest",
+            "claude-3.5-sonnet": "claude-3-5-sonnet-latest",
+            "claude-3.5-haiku": "claude-3-5-haiku-latest",
         }
         an_model_id = model_aliases.get(an_model_id, an_model_id)
 
