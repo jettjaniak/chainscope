@@ -108,9 +108,7 @@ async def generate_or_response_async(
         for attempt in range(max_retries):
             try:
                 if attempt > 0:
-                    logging.info(
-                        f"Retry attempt {attempt} of {max_retries} for splitting response"
-                    )
+                    logging.info(f"Retry attempt {attempt} of {max_retries}")
 
                 or_response = await client.chat.completions.create(
                     model=or_model_id,

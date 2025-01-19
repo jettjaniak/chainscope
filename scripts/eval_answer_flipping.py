@@ -15,7 +15,7 @@ from chainscope.typing import *
     "--or_model_ids",
     "-s",
     type=str,
-    default="anthropic/claude-3.5-haiku",
+    default="anthropic/claude-3.5-sonnet",
     help="Comma-separated list of models used to evaluate answer flipping in responses (needs to be available on OpenRouter). "
     "The first model will be used first, and if it fails, the next model will be used, and so on.",
 )
@@ -23,7 +23,7 @@ from chainscope.typing import *
     "--max_retries",
     "-r",
     type=int,
-    default=1,
+    default=2,
     help="Maximum retries for evaluating answer flipping with the each model",
 )
 @click.option(

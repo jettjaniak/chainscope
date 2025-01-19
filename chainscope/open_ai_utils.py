@@ -223,9 +223,7 @@ async def generate_oa_response_async(
         for attempt in range(max_retries):
             try:
                 if attempt > 0:
-                    logging.info(
-                        f"Retry attempt {attempt} of {max_retries} for splitting response"
-                    )
+                    logging.info(f"Retry attempt {attempt} of {max_retries}")
 
                 # Handle different parameter names for token limits based on model
                 if "o1" in oa_model_id:
