@@ -162,7 +162,9 @@ EXTRACTED_DATA:
             )
 
         gt_by_qid[qid][response_uuid] = gt_extraction_result
-        open_ended_responses_by_qid[qid][response_uuid] = response
+        open_ended_responses_by_qid[qid][response_uuid] = (
+            open_ended_responses.responses_by_qid[qid][response_uuid]
+        )
 
     return GroundTruthEvalData(
         gt_by_qid=gt_by_qid,
