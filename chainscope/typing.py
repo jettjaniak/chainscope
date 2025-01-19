@@ -273,3 +273,31 @@ class CotEval(YAMLWizard):
         path = get_path(directory, self.model_id)
         self.to_yaml_file(path)
         return path
+
+
+@dataclass
+class AnswerFlippingEval(YAMLWizard):
+    label_by_qid: dict[
+        str, dict[str, Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"]]
+    ]  # qid -> {response_uuid -> result}
+    raw_analysis_by_qid: dict[
+        str, dict[str, str]
+    ]  # qid -> {response_uuid -> raw_analysis}
+    model_id: str
+    or_model_ids: list[str]
+    instr_id: str
+    ds_params: DatasetParams
+    sampling_params: SamplingParams
+
+    def save(self) -> Path:
+        directory = (
+            DATA_DIR
+            / "answer_flipping_eval"
+            / self.instr_id
+            / self.sampling_params.id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
+        self.to_yaml_file(path)
+        return path
