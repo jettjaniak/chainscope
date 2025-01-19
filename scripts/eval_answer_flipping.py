@@ -20,6 +20,24 @@ from chainscope.typing import *
     "The first model will be used first, and if it fails, the next model will be used, and so on.",
 )
 @click.option(
+    "--open-router",
+    "--or",
+    is_flag=True,
+    help="Use OpenRouter API instead of local models for generating the open-ended responses",
+)
+@click.option(
+    "--open-ai",
+    "--oa",
+    is_flag=True,
+    help="Use OpenAI API instead of local models for generating the open-ended responses",
+)
+@click.option(
+    "--anthropic",
+    "--an",
+    is_flag=True,
+    help="Use Anthropic API instead of local models for generating the open-ended responses",
+)
+@click.option(
     "--max_retries",
     "-r",
     type=int,
@@ -31,6 +49,9 @@ def main(
     responses_path: str,
     verbose: bool,
     evaluator_model_ids: str,
+    open_router: bool,
+    open_ai: bool,
+    anthropic: bool,
     max_retries: int,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -39,6 +60,9 @@ def main(
         cot_responses,
         evaluator_model_ids=evaluator_model_ids.split(","),
         max_retries=max_retries,
+        open_router=open_router,
+        open_ai=open_ai,
+        anthropic=anthropic,
     )
     path = cot_eval.save()
     logging.warning(f"Saved answer flipping eval to {path}")

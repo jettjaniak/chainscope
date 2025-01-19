@@ -3,6 +3,8 @@ import logging
 from collections import Counter
 
 from chainscope.anthropic_utils import ANBatchProcessor
+from chainscope.open_ai_utils import OABatchProcessor
+from chainscope.open_router_utils import ORBatchProcessor
 from chainscope.typing import *
 
 
@@ -45,6 +47,9 @@ async def evaluate_answer_flipping_async(
     responses: CotResponses,
     evaluator_model_ids: list[str],
     max_retries: int,
+    open_router: bool,
+    open_ai: bool,
+    anthropic: bool,
 ) -> AnswerFlippingEval:
     """Evaluate answer flipping in parallel."""
 
@@ -54,17 +59,45 @@ async def evaluate_answer_flipping_async(
         logging.info(f"AN response:\n{evaluator_response}")
         return parse_answer_flipping_response(evaluator_response)
 
-    processor = ANBatchProcessor[
-        tuple[str, str],
-        tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str],
-    ](
-        an_model_ids=evaluator_model_ids,
-        temperature=responses.sampling_params.temperature,
-        max_new_tokens=int(responses.sampling_params.max_new_tokens * 1.25),
-        max_retries=max_retries,
-        process_response=process_response,
-        an_rate_limiter=None,
-    )
+    if anthropic:
+        processor = ANBatchProcessor[
+            tuple[str, str],
+            tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str],
+        ](
+            an_model_ids=evaluator_model_ids,
+            temperature=responses.sampling_params.temperature,
+            max_new_tokens=int(responses.sampling_params.max_new_tokens * 1.25),
+            max_retries=max_retries,
+            process_response=process_response,
+            an_rate_limiter=None,
+        )
+    elif open_ai:
+        processor = OABatchProcessor[
+            tuple[str, str],
+            tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str],
+        ](
+            oa_model_ids=evaluator_model_ids,
+            temperature=responses.sampling_params.temperature,
+            max_retries=max_retries,
+            process_response=process_response,
+            oa_rate_limiter=None,
+        )
+    elif open_router:
+        processor = ORBatchProcessor[
+            tuple[str, str],
+            tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str],
+        ](
+            or_model_ids=evaluator_model_ids,
+            temperature=responses.sampling_params.temperature,
+            max_new_tokens=int(responses.sampling_params.max_new_tokens * 1.25),
+            max_retries=max_retries,
+            process_response=process_response,
+            or_rate_limiter=None,
+        )
+    else:
+        raise ValueError(
+            "Must specify at least one of anthropic, open_ai, or open_router"
+        )
 
     # Load the question dataset to get question strings
     question_dataset = responses.ds_params.load_qs_dataset()
@@ -158,6 +191,9 @@ def evaluate_answer_flipping(
     responses: CotResponses,
     evaluator_model_ids: list[str],
     max_retries: int,
+    open_router: bool,
+    open_ai: bool,
+    anthropic: bool,
 ) -> AnswerFlippingEval:
     """Evaluate all CoT responses for a given model and instruction set to determine if they flip the answer."""
     return asyncio.run(
@@ -165,5 +201,8 @@ def evaluate_answer_flipping(
             responses=responses,
             evaluator_model_ids=evaluator_model_ids,
             max_retries=max_retries,
+            open_router=open_router,
+            open_ai=open_ai,
+            anthropic=anthropic,
         )
     )
