@@ -80,6 +80,23 @@ def main(
         top_p=top_p,
         max_new_tokens=max_new_tokens,
     )
+    dataset_params = DatasetParams.from_id(dataset_id)
+
+    # Check if output file already exists
+    output_directory = (
+        DATA_DIR
+        / "gt_eval_data"
+        / instr_id
+        / sampling_params.id
+        / dataset_params.pre_id
+        / dataset_params.id
+    )
+    output_path = output_directory / f"{model_id.replace('/', '__')}.yaml"
+    if output_path.exists():
+        logging.info(
+            f"Output file already exists at {output_path}, skipping generation"
+        )
+        return
 
     # Save OpenAI API key, because our OpenRouter code overrides it
     OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
