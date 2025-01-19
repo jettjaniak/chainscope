@@ -192,8 +192,12 @@ async def get_all_cot_responses_in_batch(
         if n_needed == 0:
             continue
 
-        q_str = q.q_str if question_type == "yes-no" else q.q_str_open_ended
-        prompt = instructions.cot.format(question=q_str)
+        if question_type == "yes-no":
+            q_str = q.q_str
+            prompt = instructions.cot.format(question=q_str)
+        else:
+            q_str = q.q_str_open_ended
+            prompt = instructions.open_ended_cot.format(question=q_str)
 
         # Create n_needed items for this question
         for i in range(n_needed):

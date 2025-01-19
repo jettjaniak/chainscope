@@ -28,6 +28,7 @@ class Properties(YAMLWizard):
 class Instructions(YAMLWizard):
     cot: str
     direct: str
+    open_ended_cot: str
 
     @classmethod
     def load(cls, instr_id: str) -> "Instructions":
@@ -293,6 +294,34 @@ class AnswerFlippingEval(YAMLWizard):
         directory = (
             DATA_DIR
             / "answer_flipping_eval"
+            / self.instr_id
+            / self.sampling_params.id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
+        self.to_yaml_file(path)
+        return path
+
+
+@dataclass
+class GroundTruthEvalData(YAMLWizard):
+    gt_by_qid: dict[
+        str, dict[str, dict[str, str]]
+    ]  # qid -> {response_uuid -> {entity -> extracted_value}}
+    open_ended_responses_by_qid: dict[
+        str, dict[str, str]
+    ]  # qid -> {response_uuid -> response_str}
+    model_id: str
+    evaluator_model_id: str
+    instr_id: str
+    ds_params: DatasetParams
+    sampling_params: SamplingParams
+
+    def save(self) -> Path:
+        directory = (
+            DATA_DIR
+            / "gt_eval_data"
             / self.instr_id
             / self.sampling_params.id
             / self.ds_params.pre_id
