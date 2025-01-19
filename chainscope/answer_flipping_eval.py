@@ -50,10 +50,7 @@ async def evaluate_answer_flipping_async(
 
     def process_response(
         evaluator_response: str, item: tuple[str, str]
-    ) -> (
-        tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str]
-        | None
-    ):
+    ) -> tuple[Literal["YES", "NO", "UNKNOWN", "NO_REASONING", "FAILED_EVAL"], str]:
         logging.info(f"AN response:\n{evaluator_response}")
         return parse_answer_flipping_response(evaluator_response)
 
