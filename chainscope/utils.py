@@ -134,3 +134,15 @@ def sort_models(model_ids: list[str]) -> list[str]:
             get_param_count(get_model_display_name(x)),
         ),
     )
+
+
+def remove_all_symbols(text: str) -> str:
+    """Remove all symbols and special characters from text, keeping only alphanumeric characters.
+
+    Args:
+        text: Input text to clean
+
+    Returns:
+        Cleaned text with only alphanumeric characters and spaces
+    """
+    return "".join(char for char in text if char.isalnum())

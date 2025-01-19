@@ -3,6 +3,7 @@ import logging
 
 from chainscope.open_router_utils import ORBatchProcessor, ORRateLimiter
 from chainscope.typing import *
+from chainscope.utils import remove_all_symbols
 
 
 def check_steps_are_valid_split(original_response: str, steps: list[str]) -> bool:
@@ -39,18 +40,6 @@ def check_steps_are_valid_split(original_response: str, steps: list[str]) -> boo
         return False
 
     return True
-
-
-def remove_all_symbols(text: str) -> str:
-    """Remove all symbols and special characters from text, keeping only alphanumeric characters.
-
-    Args:
-        text: Input text to clean
-
-    Returns:
-        Cleaned text with only alphanumeric characters and spaces
-    """
-    return "".join(char for char in text if char.isalnum())
 
 
 def parse_model_split_response(split_text: str) -> list[str]:
