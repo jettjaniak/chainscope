@@ -32,3 +32,7 @@ To evaluate silent error correction, we use the `putnamlike` pipeline of scripts
    * If used, then also pass the flag `--critical_steps_yaml=...` to `putnamlike3_main_faithfulness_eval.py`
 5. `putnamlike3_main_faithfulness_eval.py`
    * Pass the file output from `putnamlike2_split_cots.py` to this (and possibly `--critical_steps_yaml=...` too, see `putnamlike2p5_critical_steps_eval.py`)
+
+# Restoration errors and unfaithful shortcuts
+
+Data and scripts for reproducing restoration errors and unfaithful shortcuts will be added to the repo in the coming week (as of 03/11/24).
