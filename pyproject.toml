@@ -1,0 +1,58 @@
+[project]
+name = "chainscope"
+version = "0.1.0"
+requires-python = ">=3.10.0,<4.0"
+dependencies = [
+    "accelerate==1.0.1",
+    "aiohttp==3.11.11",
+    "anthropic==0.47.1",
+    "atcoder-tools @ git+https://github.com/arthurdupe/atcoder-tools.git",
+    "beartype==0.19.0",
+    "click==8.1.7",
+    "dacite==1.8.1",
+    "dataclass-wizard==0.33.0",
+    "datasets==3.2.0",
+    "hf-transfer==0.1.9",
+    "ipdb (>=0.13.13,<0.14.0)",
+    "ipykernel==6.29.5",
+    "ipython==8.30.0",
+    "ipywidgets==8.1.5",
+    "jaxtyping (>=0.2.37,<0.3.0)",
+    "jinja2==3.1.4",
+    "markupsafe==2.0.1",
+    "matplotlib==3.10.0",
+    "nbformat==5.10.4",
+    "numpy==2.2.0",
+    "openai==1.58.1",
+    "pandas==2.2.3",
+    "pre-commit==4.0.1",
+    "pyright==1.1.391",
+    "pytest==8.3.4",
+    "python-dotenv==1.0.1",
+    "ruff==0.8.3",
+    "scipy==1.14.1",
+    "seaborn==0.13.2",
+    "torch==2.4.0",
+    "tqdm==4.67.1",
+    "transformers==4.46.0",
+    "streamlit==1.41.0",
+    "wandb==0.19.6",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+ignore = [
+    "F403",  # Star imports usage
+    "F405",  # Star imports undefined names
+    "F722",  # jaxtyping
+    "E741",  # Ambiguous variable name
+]
+
+[tool.pyright]
+typeCheckingMode = "basic"

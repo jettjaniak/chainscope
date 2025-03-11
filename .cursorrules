@@ -1,0 +1,23 @@
+- tests
+  - in pytest
+  - in tests/
+- typing
+  - use type hints
+  - always import types like that: `from chainscope.typing import *`
+  - DATA_DIR (Path) is defined there too
+  - don't use List[], Dict[] etc. for typing, use list[], dict[] etc.
+  - use jaxtyping, prefer type hints like Float[torch.Tensor, " dim1 dim2"] rather than just torch.Tensor
+  - we use beartype
+    - it's turned on by default on all library files
+    - but we need to use the decorator for functions outside of the library, like scripts or tests
+- executable scripts
+  - always add shebang in (#!/usr/bin/env python3)
+  - use click for arguments
+- use operators when possible, i.e. set1 | set2 instead of set1.union(set2)
+- use "for key in dict.keys()" instead of "for key in dict"
+  - but use "for key, value in dict.items()" when it's useful
+- see how things are done in other files/scripts and follow the same conventions
+  - unless they're different than
+    - what's defined in these instructions
+    - what I say in the prompt
+
