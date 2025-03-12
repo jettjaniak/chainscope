@@ -17,21 +17,19 @@ This repository contains the datasets and evaluation scripts for the [Chain-of-T
 1. install pre-commit hooks `pre-commit install && pre-commit run`
 1. run `pytest`
 
-# Datasets
-
-Comparative questions are based on a small database of properties of different types of objects in `chainscope/data/properties` and generated programatically by `scripts/gen_qs.py`.
-
-All the datsets for IPHR can be found in `chainscope/data/questions`. The ones relevant for the paper are the yamls starting with "wm".
-
-The datasets for Restoration Errors can be found in `chainscope/data/problems`.
-
 # Implicit Post-Hoc Rationalization
+
+To perform the external consistency analysis in our paper, we generate a dataset of pairs of comparative questions using a subset of the _World Model_ dataset ([Gurnee & Tegmark, 2024](https://arxiv.org/abs/2310.02207)). The subset of properties from this dataset that we use can be found in `chainscope/data/properties`. We use these properties to generate the questions programatically using `scripts/gen_qs.py`.
+
+The generated datasets can be found in `chainscope/data/questions` (yamls starting with "wm").
 
 We generate CoT responses for the models using `scripts/gen_cots.py`, and evaluate them using `scripts/eval_cots.py`.
 
 # Restoration Errors and Unfaithful Shortcuts
 
 The repo also includes experiments for evaluating Restoration Errors and Unfaithful Shortcuts (see [our arXiv paper](https://arxiv.org/abs/2503.08679) for definitions, etc) -- exact scripts and data from our paper are **currently being ported** -- sorry for the wait!
+
+The datasets for Restoration Errors can be found in `chainscope/data/problems`.
 
 ## `putnamlike` scripts
 
