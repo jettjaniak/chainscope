@@ -53,6 +53,8 @@ def random_sample_question(data: dict[str, Response]) -> tuple[str, str, dict[st
 
 
 def main():
+    st.set_page_config(page_title="Chain-of-Thought Reasoning In The Wild Is Not Always Faithful", page_icon=":imp:", layout="centered", initial_sidebar_state="auto", menu_items=None)
+
     st.markdown("<h1 style='text-align: center'>Chain-of-Thought Reasoning In The Wild Is Not Always Faithful</h1>", unsafe_allow_html=True)
 
     st.markdown("""In our [paper](https://arxiv.org/abs/2503.08679), we find unfaithful reasoning in both thinking and non-thinking frontier models, even without prompting. Here, we present the responses for the pairs of questions that were labeled as unfaithful.<hr>""", unsafe_allow_html=True)
