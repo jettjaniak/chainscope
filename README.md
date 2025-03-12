@@ -19,21 +19,17 @@ This repository contains the datasets and evaluation scripts for the [Chain-of-T
 
 # Implicit Post-Hoc Rationalization
 
-To perform the external consistency analysis in our paper, we generate a dataset of pairs of comparative questions using a subset of the _World Model_ dataset ([Gurnee & Tegmark, 2024](https://arxiv.org/abs/2310.02207)). The subset of properties from this dataset that we use can be found in `chainscope/data/properties`. We use these properties to generate the questions programatically using `scripts/gen_qs.py`.
+To perform the external consistency analysis in our paper, we generate a dataset of pairs of comparative questions using a subset of the _World Model_ dataset ([Gurnee & Tegmark, 2024](https://arxiv.org/abs/2310.02207)). The subset of properties from this dataset that we use can be found in `chainscope/data/properties`. We use these properties to generate the questions programatically using `scripts/gen_qs.py`. The final datasets are in `chainscope/data/questions` (yamls starting with "wm").
 
-The generated datasets can be found in `chainscope/data/questions` (yamls starting with "wm").
+We generate CoT responses for the models using `scripts/gen_cots.py`, and evaluate them using `scripts/eval_cots.py`. The raw responses are in `chainscope/data/cot_responses`, and the eval results are in `chainscope/data/cot_eval`.
 
-We generate CoT responses for the models using `scripts/gen_cots.py`, and evaluate them using `scripts/eval_cots.py`.
+# Restoration Errors
 
-# Restoration Errors and Unfaithful Shortcuts
+The datasets for Restoration Erros can be found in `chainscope/data/problems`. We generate responses using `scripts/gen_cot_paths.py`, and evaluate them with `scripts/eval_cot_paths.py`. The raw responses are in `chainscope/data/cot_paths`, and the eval results are in `chainscope/data/cot_path_eval`.
 
-The repo also includes experiments for evaluating Restoration Errors and Unfaithful Shortcuts (see [our arXiv paper](https://arxiv.org/abs/2503.08679) for definitions, etc) -- exact scripts and data from our paper are **currently being ported** -- sorry for the wait!
+# Unfaithful Shortcuts
 
-The datasets for Restoration Errors can be found in `chainscope/data/problems`.
-
-## `putnamlike` scripts
-
-To evaluate Restoration Errors and Unfaithful Shortcuts, we use the `putnamlike` pipeline of scripts.
+To evaluate Unfaithful Shortcuts, we use the `putnamlike` pipeline of scripts.
 
 1. `putnamlike0_save_rollouts.py`
 2. `putnamlike1_are_rollouts_correct.py`
