@@ -15,7 +15,7 @@ find "$BASE_DIR" -type f -name "*.yaml" | while read -r file; do
     if [ ! -f "$split_path" ]; then
         echo "Processing: $file"
         # Run split_cots.py on the file
-        ./scripts/split_cots.py "$file"
+        ./scripts/other/split_cots.py "$file"
     else
         echo "Skipping: $file (already processed)"
     fi

@@ -14,7 +14,7 @@ find "$BASE_DIR" -type f -name "*.yaml" | while read -r file; do
     # Check if the file exists in answer_flipping_eval
     if [ ! -f "$eval_path" ]; then
         echo "Processing: $file"
-        python scripts/eval_answer_flipping.py --an "$file"
+        python scripts/other/eval_answer_flipping.py --an "$file"
     else
         echo "Skipping: $file (already processed)"
     fi

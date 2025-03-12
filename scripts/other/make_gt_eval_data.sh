@@ -13,6 +13,6 @@ for model_id in C3H C3S C3O C3.5H C3.5S; do
         fi
 
         echo "Processing dataset $dataset_id"
-        ./scripts/gen_gt_eval_data.py -d "$dataset_id" -m "$model_id" -n 10 --an
+        ./scripts/other/gen_gt_eval_data.py -d "$dataset_id" -m "$model_id" -n 10 --an
     done
 done
