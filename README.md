@@ -2,7 +2,7 @@
 
 This is a library for evaluating chat models (instruction tuned LLMs) on simple comparative questions, with and without chain-of-thought (CoT). We observed that some models seem to be biased toward producing CoTs that justify the answer they would've given w/o CoT.
 
-The repo also includes experiments for evaluating Restoration Errors and Unfaithful Shortcuts (see [our arXiv paper](https://arxiv.org/abs/2503.08679) for definitions, etc) -- exact scripts and data from our paper is **currently being ported** -- sorry for the wait!
+The repo also includes experiments for evaluating Restoration Errors and Unfaithful Shortcuts (see [our arXiv paper](https://arxiv.org/abs/2503.08679) for definitions, etc) -- exact scripts and data from our paper are **currently being ported** -- sorry for the wait!
 
 Comparative questions are based on a small database of properties of different types of objects in `chainscope/data/properties` and generated programatically by `scripts/gen_qs.py`.
 Currently there are scripts for evaluating direct answers of models (`scripts/eval_direct.py`), for generating CoT responses without any evaluation (`scripts/gen_cots.py`), and for extracting the answer from CoT repsonses (`scripts/eval_cots.py`).
