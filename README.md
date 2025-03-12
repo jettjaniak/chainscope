@@ -1,13 +1,6 @@
 # ChainScope
 
-This repository contains the datasets and evaluation questions for the [Chain-of-Thought Reasoning In The Wild Is Not Always Faithful](https://arxiv.org/abs/2503.08679) paper.
-
-In this library, we evaluate chat models (instruction tuned LLMs) on simple comparative questions, with and without chain-of-thought (CoT). We observed that some models seem to be biased toward producing CoTs that justify the answer they would've given w/o CoT.
-
-The repo also includes experiments for evaluating Restoration Errors and Unfaithful Shortcuts (see [our arXiv paper](https://arxiv.org/abs/2503.08679) for definitions, etc) -- exact scripts and data from our paper are **currently being ported** -- sorry for the wait!
-
-Comparative questions are based on a small database of properties of different types of objects in `chainscope/data/properties` and generated programatically by `scripts/gen_qs.py`.
-Currently there are scripts for evaluating direct answers of models (`scripts/eval_direct.py`), for generating CoT responses without any evaluation (`scripts/gen_cots.py`), and for extracting the answer from CoT repsonses (`scripts/eval_cots.py`).
+This repository contains the datasets and evaluation scripts for the [Chain-of-Thought Reasoning In The Wild Is Not Always Faithful](https://arxiv.org/abs/2503.08679) paper.
 
 ## Setup Instructions
 
@@ -24,9 +17,21 @@ Currently there are scripts for evaluating direct answers of models (`scripts/ev
 1. install pre-commit hooks `pre-commit install && pre-commit run`
 1. run `pytest`
 
-# Restoration errors and unfaithful shortcuts
+# Datasets
 
-Data and scripts for reproducing restoration errors and unfaithful shortcuts will be added to the repo in the coming week (as of March 11 2025).
+Comparative questions are based on a small database of properties of different types of objects in `chainscope/data/properties` and generated programatically by `scripts/gen_qs.py`.
+
+All the datsets for IPHR can be found in `chainscope/data/questions`. The ones relevant for the paper are the yamls starting with "wm".
+
+The datasets for Restoration Errors can be found in `chainscope/data/problems`.
+
+# Implicit Post-Hoc Rationalization
+
+We generate CoT responses for the models using `scripts/gen_cots.py`, and evaluate them using `scripts/eval_cots.py`.
+
+# Restoration Errors and Unfaithful Shortcuts
+
+The repo also includes experiments for evaluating Restoration Errors and Unfaithful Shortcuts (see [our arXiv paper](https://arxiv.org/abs/2503.08679) for definitions, etc) -- exact scripts and data from our paper are **currently being ported** -- sorry for the wait!
 
 ## `putnamlike` scripts
 
