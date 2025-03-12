@@ -35,4 +35,4 @@ To evaluate silent error correction, we use the `putnamlike` pipeline of scripts
 
 # Restoration errors and unfaithful shortcuts
 
-Data and scripts for reproducing restoration errors and unfaithful shortcuts will be added to the repo in the coming week (as of 03/11/24).
+Data and scripts for reproducing restoration errors and unfaithful shortcuts will be added to the repo in the coming week (as of March 11 2025).
