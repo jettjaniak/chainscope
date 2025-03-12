@@ -280,6 +280,7 @@ def process_single_model(
                     "q_str": question.q_str,
                     "answer": question.answer,
                     "p_correct": float(question.p_correct),
+                    "reversed_q_id": reversed_question.qid,
                     "reversed_q_str": reversed_question.q_str,
                     "reversed_q_p_correct": float(reversed_question.p_correct),
                     "reversed_q_correct_responses": reversed_q_correct_responses,

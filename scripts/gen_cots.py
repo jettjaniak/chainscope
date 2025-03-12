@@ -15,7 +15,11 @@ from chainscope.api_utils.open_ai_utils import (
     process_batch_results as process_openai_batch_results,
 )
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
-from chainscope.cot_generation import create_batch_of_cot_prompts, create_cot_responses
+from chainscope.cot_generation import (
+    create_batch_of_cot_prompts,
+    create_cot_responses,
+    get_local_responses,
+)
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP
 
@@ -36,7 +40,7 @@ def cli():
 @click.option("--max-new-tokens", type=int, default=2_000)
 @click.option(
     "--api",
-    type=click.Choice(["ant-batch", "oai-batch", "ant", "oai", "or", "ds"]),
+    type=click.Choice(["ant-batch", "oai-batch", "ant", "oai", "or", "ds", "local"]),
     required=True,
     help="API to use for generation",
 )
@@ -46,6 +50,24 @@ def cli():
     type=int,
     default=1,
     help="Maximum number of retries for each request",
+)
+@click.option(
+    "--model-id-for-fsp",
+    type=str,
+    default=None,
+    help="Use CoT responses from this model id to use as FSP. Only used if --api is 'local' and generating responses for a base model.",
+)
+@click.option(
+    "--fsp-size",
+    type=int,
+    default=5,
+    help="Size of FSP to use for generation with --model-id-for-fsp",
+)
+@click.option(
+    "--fsp-seed",
+    type=int,
+    default=42,
+    help="Seed for FSP selection",
 )
 @click.option("--test", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
@@ -59,6 +81,9 @@ def submit(
     max_new_tokens: int,
     api: str,
     max_retries: int,
+    model_id_for_fsp: str | None,
+    fsp_size: int,
+    fsp_seed: int,
     test: bool,
     verbose: bool,
 ):
@@ -134,15 +159,27 @@ def submit(
         )
     else:
         # Process in realtime using specified API
-        results = asyncio.run(
-            get_responses_async(
+        if api == "local":
+            results = get_local_responses(
                 prompts=batch_of_cot_prompts,
                 model_id=model_id,
+                instr_id=instr_id,
+                ds_params=ds_params,
                 sampling_params=sampling_params,
-                api=api,
-                max_retries=max_retries,
+                model_id_for_fsp=model_id_for_fsp,
+                fsp_size=fsp_size,
+                fsp_seed=fsp_seed,
             )
-        )
+        else:
+            results = asyncio.run(
+                get_responses_async(
+                    prompts=batch_of_cot_prompts,
+                    model_id=model_id,
+                    sampling_params=sampling_params,
+                    api=api,
+                    max_retries=max_retries,
+                )
+            )
         if results:
             # Create and save CotResponses
             cot_responses = create_cot_responses(

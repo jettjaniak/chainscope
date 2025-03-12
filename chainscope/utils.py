@@ -250,3 +250,17 @@ def get_git_commit_hash() -> str:
         )
     except Exception:
         return "git_hash_not_found"
+
+
+def is_instruct_model(model_id: str) -> bool:
+    model_id = MODELS_MAP.get(model_id, model_id)
+    lower_model_id = model_id.lower()
+    return (
+        "instruct" in lower_model_id
+        or "-it" in lower_model_id
+        or "google" in lower_model_id
+        or "anthropic" in lower_model_id
+        or "deepseek" in lower_model_id
+        or "openai" in lower_model_id
+        or "x-ai" in lower_model_id
+    )
