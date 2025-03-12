@@ -26,8 +26,17 @@ def load_yaml(file_path: Path) -> dict[str, Response]:
 def get_available_models() -> list[str]:
     """Get a list of available model directories."""
     faithfulness_dir = DATA_DIR / "faithfulness"
-    models_to_skip = ["claude-3.7-sonnet_10k", "claude-3.7-sonnet_32k", "gpt-4.5-preview", "Llama-3.1-8B-Instruct"]
-    model_dirs = [d.name for d in faithfulness_dir.iterdir() if d.is_dir() and d.name not in models_to_skip]
+    models_to_skip = [
+        "claude-3.7-sonnet_10k",
+        "claude-3.7-sonnet_32k",
+        "gpt-4.5-preview",
+        "Llama-3.1-8B-Instruct",
+    ]
+    model_dirs = [
+        d.name
+        for d in faithfulness_dir.iterdir()
+        if d.is_dir() and d.name not in models_to_skip
+    ]
     return sort_models(model_dirs)
 
 
@@ -40,24 +49,43 @@ def get_available_prop_ids(model: str) -> list[str]:
     return sorted(prop_files)
 
 
-def random_sample_question(data: dict[str, Response]) -> tuple[str, str, dict[str, Any]]:
+def random_sample_question(
+    data: dict[str, Response],
+) -> tuple[str, str, dict[str, Any]]:
     """Randomly sample a question.
     Returns: (question_str, response_id, metadata)"""
     question_hash = random.choice(list(data.keys()))
     question_data = data[question_hash]
     return (
         question_data["metadata"]["q_str"],
-        next(iter(question_data["faithful_responses"] | question_data["unfaithful_responses"])),
+        next(
+            iter(
+                question_data["faithful_responses"]
+                | question_data["unfaithful_responses"]
+            )
+        ),
         question_data["metadata"],
     )
 
 
 def main():
-    st.set_page_config(page_title="Chain-of-Thought Reasoning In The Wild Is Not Always Faithful", page_icon=":imp:", layout="centered", initial_sidebar_state="auto", menu_items=None)
+    st.set_page_config(
+        page_title="Chain-of-Thought Reasoning In The Wild Is Not Always Faithful",
+        page_icon=":imp:",
+        layout="centered",
+        initial_sidebar_state="auto",
+        menu_items=None,
+    )
 
-    st.markdown("<h1 style='text-align: center'>Chain-of-Thought Reasoning In The Wild Is Not Always Faithful</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align: center'>Chain-of-Thought Reasoning In The Wild Is Not Always Faithful</h1>",
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("""In our [paper](https://arxiv.org/abs/2503.08679), we find unfaithful reasoning in both thinking and non-thinking frontier models, even without prompting. Here, we present the responses for the pairs of questions that were labeled as unfaithful.<hr>""", unsafe_allow_html=True)
+    st.markdown(
+        """In our [paper](https://github.com/jettjaniak/chainscope/blob/main/paper.pdf), we find unfaithful reasoning in both thinking and non-thinking frontier models, even without prompting. Here, we present the responses for the pairs of questions that were labeled as unfaithful.<hr>""",
+        unsafe_allow_html=True,
+    )
 
     # Initialize session state variables
     if "current_question" not in st.session_state:
@@ -213,14 +241,19 @@ def main():
                 else metadata["y_value"]
             )
             bias_direction = "YES" if metadata["group_p_yes_mean"] > 0.5 else "NO"
-            accuracy_diff = abs(metadata['p_correct'] - metadata['reversed_q_p_correct'])
+            accuracy_diff = abs(
+                metadata["p_correct"] - metadata["reversed_q_p_correct"]
+            )
             st.markdown(
                 f"Ground truth values:</br> - {metadata['x_name']}: {x_value}</br> - {metadata['y_name']}: {y_value}</br>Group bias {metadata['group_p_yes_mean']:.2f} (towards {bias_direction})</br>Accuracy difference between Q1 and Q2: {accuracy_diff:.2f}",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             # Get all responses (both faithful and unfaithful)
-            responses = selected_data["faithful_responses"] | selected_data["unfaithful_responses"]
+            responses = (
+                selected_data["faithful_responses"]
+                | selected_data["unfaithful_responses"]
+            )
 
             # Response ID selection
             response_ids = list(responses.keys())
@@ -230,12 +263,12 @@ def main():
                 )
 
             if response_ids:
-                st.subheader(f"Q1 (answer = {metadata['answer']}, accuracy = {metadata['p_correct']:.2f})")
-                # remove everything before the first ":"
-                q_str_without_about = metadata['q_str'].split(":")[1].strip()
-                st.markdown(
-                    f"""**Question**: {q_str_without_about}"""
+                st.subheader(
+                    f"Q1 (answer = {metadata['answer']}, accuracy = {metadata['p_correct']:.2f})"
                 )
+                # remove everything before the first ":"
+                q_str_without_about = metadata["q_str"].split(":")[1].strip()
+                st.markdown(f"""**Question**: {q_str_without_about}""")
                 index = 0
 
                 if (
@@ -243,10 +276,11 @@ def main():
                     and st.session_state.current_response_id in response_ids
                 ):
                     index = response_ids.index(st.session_state.current_response_id)
-                
+
                 # Add labels to response IDs to indicate if they are faithful or unfaithful
                 labeled_response_ids = [
-                    f"{rid} (correct)" if rid in selected_data["faithful_responses"]
+                    f"{rid} (correct)"
+                    if rid in selected_data["faithful_responses"]
                     else f"{rid} (incorrect)"
                     for rid in response_ids
                 ]
@@ -256,7 +290,7 @@ def main():
                     options=labeled_response_ids,
                     index=index,
                 )
-                
+
                 # Extract the original response ID by removing the label
                 original_response_id = new_selected_response_id.split(" (")[0]
                 if original_response_id != st.session_state.current_response_id:
@@ -270,12 +304,12 @@ def main():
                 st.text(response)
 
                 reversed_q_answer = "YES" if metadata["answer"] == "NO" else "YES"
-                reversed_q_str = metadata['reversed_q_str'].split(":")[1].strip()
+                reversed_q_str = metadata["reversed_q_str"].split(":")[1].strip()
 
-                st.subheader(f"Q2 (answer = {reversed_q_answer}, accuracy = {metadata['reversed_q_p_correct']:.2f})")
-                st.markdown(
-                    f"""**Question**: {reversed_q_str}"""
+                st.subheader(
+                    f"Q2 (answer = {reversed_q_answer}, accuracy = {metadata['reversed_q_p_correct']:.2f})"
                 )
+                st.markdown(f"""**Question**: {reversed_q_str}""")
                 reversed_correct = metadata["reversed_q_correct_responses"]
                 reversed_incorrect = metadata["reversed_q_incorrect_responses"]
 
