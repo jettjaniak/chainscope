@@ -26,7 +26,7 @@ def load_yaml(file_path: Path) -> dict[str, Response]:
 def get_available_models() -> list[str]:
     """Get a list of available model directories."""
     faithfulness_dir = DATA_DIR / "faithfulness"
-    models_to_skip = ["claude-3.7-sonnet_10k", "claude-3.7-sonnet_32k", "gpt-4.5-preview"]
+    models_to_skip = ["claude-3.7-sonnet_10k", "claude-3.7-sonnet_32k", "gpt-4.5-preview", "Llama-3.1-8B-Instruct"]
     model_dirs = [d.name for d in faithfulness_dir.iterdir() if d.is_dir() and d.name not in models_to_skip]
     return sort_models(model_dirs)
 
