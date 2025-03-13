@@ -71,14 +71,18 @@ def load_eval(row) -> dict[str, CotEvalResult]:
 
 # %%
 # Process responses and count unknowns using CotEvalResult
-def count_unknowns(eval_dict: dict[str, CotEvalResult]) -> int:
+def count_answers_by_type(eval_dict: dict[str, CotEvalResult], answer_type: Literal["UNKNOWN", "REFUSED"]) -> int:
     return sum(1 for result in eval_dict.values() 
-              if result.final_answer == "UNKNOWN")
+              if result.final_answer == answer_type)
 
 unknown_1k_count = 0
 unknown_64k_count = 0
+refused_1k_count = 0
+refused_64k_count = 0
 resolved_in_64k_count = 0
 resolved_in_1k_count = 0
+refused_resolved_in_64k_count = 0
+refused_resolved_in_1k_count = 0
 
 # %%
 # Load faithfulness data for 64k
@@ -118,6 +122,8 @@ unfaithful_64k_total = len(merged_faith_data.keys())
 # Process each question pair
 unfaithful_64k_unknown_1k = 0
 unfaithful_64k_unknown_64k = 0
+unfaithful_64k_refused_1k = 0
+unfaithful_64k_refused_64k = 0
 
 # Get all unique QIDs
 sonnet_1k_qids = set(sonnet_1k["qid"])
@@ -132,33 +138,58 @@ for qid in tqdm(qids, desc="Processing questions"):
     eval_1k = load_eval(row_1k)
     eval_64k = load_eval(row_64k)
     
-    # Count unknowns in each context using CotEvalResult
-    unknowns_1k = count_unknowns(eval_1k)
-    unknowns_64k = count_unknowns(eval_64k)
+    # Count unknowns and refused in each context
+    unknowns_1k = count_answers_by_type(eval_1k, "UNKNOWN")
+    unknowns_64k = count_answers_by_type(eval_64k, "UNKNOWN")
+    refused_1k = count_answers_by_type(eval_1k, "REFUSED")
+    refused_64k = count_answers_by_type(eval_64k, "REFUSED")
     
     unknown_1k_count += unknowns_1k
     unknown_64k_count += unknowns_64k
+    refused_1k_count += refused_1k
+    refused_64k_count += refused_64k
     
-    # Count questions resolved in 64k
+    # Count questions resolved in each context
     if unknowns_1k > 0 and unknowns_64k == 0:
         resolved_in_64k_count += 1
     if unknowns_1k == 0 and unknowns_64k > 0:
         resolved_in_1k_count += 1
+        
+    # Count refused questions resolved in each context
+    if refused_1k > 0 and refused_64k == 0:
+        refused_resolved_in_64k_count += 1
+    if refused_1k == 0 and refused_64k > 0:
+        refused_resolved_in_1k_count += 1
     
-    # For unfaithful pairs in 64k, check unknown status
+    # For unfaithful pairs in 64k, check unknown and refused status
     if qid in merged_faith_data:
         unfaithful_64k_unknown_1k += unknowns_1k > 0
         unfaithful_64k_unknown_64k += unknowns_64k > 0
+        unfaithful_64k_refused_1k += refused_1k > 0
+        unfaithful_64k_refused_64k += refused_64k > 0
 
 # %%
 print(f"\n## Unknown answers statistics:")
 print(f"Sonnet 3.7 1k context: {unknown_1k_count} questions with at least one unknown answer (out of {len(sonnet_1k)} questions)")
 print(f"Sonnet 3.7 64k context: {unknown_64k_count} questions with at least one unknown answer (out of {len(sonnet_64k)} questions)")
+
+print(f"\n## Refused answers statistics:")
+print(f"Sonnet 3.7 1k context: {refused_1k_count} questions with at least one refused answer (out of {len(sonnet_1k)} questions)")
+print(f"Sonnet 3.7 64k context: {refused_64k_count} questions with at least one refused answer (out of {len(sonnet_64k)} questions)")
+
 print(f"\n## Questions resolved in one over the other:")
+print(f"Unknown answers:")
 print(f"  - {resolved_in_64k_count} questions had at least one unknown answer in 1k but not in 64k")
 print(f"  - {resolved_in_1k_count} questions had at least one unknown answer in 64k but not in 1k")
+print(f"Refused answers:")
+print(f"  - {refused_resolved_in_64k_count} questions had at least one refused answer in 1k but not in 64k")
+print(f"  - {refused_resolved_in_1k_count} questions had at least one refused answer in 64k but not in 1k")
+
 print(f"\n## Unfaithful pairs in 64k analysis:")
 print(f"Total unfaithful pairs in 64k: {unfaithful_64k_total}")
-print(f"Of these, {unfaithful_64k_unknown_1k} had at least one unknown answer in 1k context")
-print(f"And {unfaithful_64k_unknown_64k} had at least one unknown answer in 64k context") 
+print(f"Of these:")
+print(f"  - {unfaithful_64k_unknown_1k} had at least one unknown answer in 1k context")
+print(f"  - {unfaithful_64k_unknown_64k} had at least one unknown answer in 64k context")
+print(f"  - {unfaithful_64k_refused_1k} had at least one refused answer in 1k context")
+print(f"  - {unfaithful_64k_refused_64k} had at least one refused answer in 64k context")
 # %%
