@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 # %%
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import yaml
 from tqdm import tqdm
@@ -125,6 +127,10 @@ unfaithful_64k_unknown_64k = 0
 unfaithful_64k_refused_1k = 0
 unfaithful_64k_refused_64k = 0
 
+# Lists to collect differences
+unknown_diffs = []
+refused_diffs = []
+
 # Get all unique QIDs
 sonnet_1k_qids = set(sonnet_1k["qid"])
 sonnet_64k_qids = set(sonnet_64k["qid"])
@@ -143,6 +149,10 @@ for qid in tqdm(qids, desc="Processing questions"):
     unknowns_64k = count_answers_by_type(eval_64k, "UNKNOWN")
     refused_1k = count_answers_by_type(eval_1k, "REFUSED")
     refused_64k = count_answers_by_type(eval_64k, "REFUSED")
+    
+    # Calculate differences (1k - 64k)
+    unknown_diffs.append(unknowns_1k - unknowns_64k)
+    refused_diffs.append(refused_1k - refused_64k)
     
     unknown_1k_count += unknowns_1k
     unknown_64k_count += unknowns_64k
@@ -192,4 +202,55 @@ print(f"  - {unfaithful_64k_unknown_1k} had at least one unknown answer in 1k co
 print(f"  - {unfaithful_64k_unknown_64k} had at least one unknown answer in 64k context")
 print(f"  - {unfaithful_64k_refused_1k} had at least one refused answer in 1k context")
 print(f"  - {unfaithful_64k_refused_64k} had at least one refused answer in 64k context")
+
+# Print difference statistics
+print("\n## Difference statistics (1k - 64k):")
+print("\nUnknown answers:")
+print(f"  - Mean difference: {np.mean(unknown_diffs):.2f}")
+print(f"  - Median difference: {np.median(unknown_diffs):.2f}")
+print(f"  - Standard deviation: {np.std(unknown_diffs):.2f}")
+print(f"  - Range: [{min(unknown_diffs)}, {max(unknown_diffs)}]")
+
+print("\nRefused answers:")
+print(f"  - Mean difference: {np.mean(refused_diffs):.2f}")
+print(f"  - Median difference: {np.median(refused_diffs):.2f}")
+print(f"  - Standard deviation: {np.std(refused_diffs):.2f}")
+print(f"  - Range: [{min(refused_diffs)}, {max(refused_diffs)}]")
+
+# %%
+def plot_diff_histogram(diffs: list[int], title: str, filename: str):
+    fig = plt.figure(figsize=(10, 6))
+    bins = list(np.arange(-10.5, 11.5, 1))  # Creates bins from -10 to 10
+    plt.hist(diffs, bins=bins, align='mid', rwidth=0.8)
+    plt.title(title)
+    plt.xlabel("Difference (1k - 64k)")
+    plt.ylabel("Number of questions")
+    plt.grid(True, alpha=0.3)
+    
+    # Add counts as text above each bar
+    counts, edges = np.histogram(diffs, bins=bins)
+    centers = (edges[:-1] + edges[1:]) / 2
+    for count, center in zip(counts, centers):
+        if count > 0:  # Only add text for non-zero bars
+            plt.text(center, count, str(count), 
+                    horizontalalignment='center',
+                    verticalalignment='bottom')
+    
+    fig.savefig(filename)
+    plt.show()
+    plt.close()
+
+# Plot unknown differences
+plot_diff_histogram(
+    unknown_diffs,
+    "Difference in Unknown Answers per question (1k - 64k)",
+    "unknown_diffs_histogram.png"
+)
+
+# Plot refused differences
+plot_diff_histogram(
+    refused_diffs,
+    "Difference in Refused Answers per question (1k - 64k)",
+    "refused_diffs_histogram.png"
+)
 # %%
