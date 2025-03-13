@@ -885,8 +885,8 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     # Customize the plot
     plt.ylabel("Unfaithful Question Pairs (%)", fontsize=24, labelpad=10)
     plt.xlabel("Model", fontsize=24, labelpad=10)
-    plt.ylim(0, 37)  # Increased upper limit slightly to fit labels
-    plt.yticks([0, 5, 10, 15, 20, 25, 30, 35])
+    plt.ylim(0, 22)  # Increased upper limit slightly to fit labels
+    plt.yticks([0, 5, 10, 15, 20])
 
     # Add grid for better readability
     ax.yaxis.grid(True, linestyle="--", alpha=0.7)
