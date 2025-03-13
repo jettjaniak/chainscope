@@ -450,8 +450,14 @@ def save_dual_diverging_barplots(df: pd.DataFrame, save_dir: Path) -> None:
         1, 2, figsize=(7, 6), sharey=True, dpi=300
     )  # Changed height from 4 to 6
     model_name = df.model_id.unique()[0].split("/")[-1]
-    fig.suptitle(model_name)
 
+    if "claude-3-5" in model_name:
+        fig.suptitle("Sonnet 3.5 v2")
+    elif "claude-3.7-sonnet" == model_name:
+        fig.suptitle("Sonnet 3.7 (no extended thinking)")
+    else:
+        fig.suptitle(model_name)
+    
     # Process each subplot
     for ax, comp, title in zip([ax1, ax2], ["gt", "lt"], ["Greater Than", "Less Than"]):
         # Filter data
@@ -883,7 +889,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     ax.tick_params(axis="x", which="major", length=4, width=2)
 
     # Customize the plot
-    plt.ylabel("Unfaithful Question Pairs (%)", fontsize=24, labelpad=10)
+    plt.ylabel("Hard Qs Unfaithfulness (%)", fontsize=24, labelpad=10)
     plt.xlabel("Model", fontsize=24, labelpad=10)
     plt.ylim(0, 22)  # Increased upper limit slightly to fit labels
     plt.yticks([0, 5, 10, 15, 20])
@@ -1081,7 +1087,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     add_value_label(non_thinking_bars, plot_data["non_thinking_n"])
 
     # Customize the plot
-    ax.set_ylabel("Proportion of Correct Responses (%)", fontsize=20, labelpad=10)
+    ax.set_ylabel("Unfaithfulness Rate (%)", fontsize=20, labelpad=10)
     plt.xlabel("Model", fontsize=24, labelpad=10)
     plt.ylim(0, 35)  # Increased upper limit slightly to fit labels
     ax.set_xticks(x)
@@ -1118,10 +1124,10 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
 # Save plots for all models
 save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / "all_models")
 
-# for model in df["model_id"].unique():
-#     model_name = model.split("/")[-1]
-#     # Save plots for a specific model
-#     save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / model_name, model=model_name)
+for model in df["model_id"].unique():
+    model_name = model.split("/")[-1]
+    # Save plots for a specific model
+    save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / model_name, model=model_name)
 
 save_unfaithful_shortcuts_plot(DATA_DIR / ".." / ".." / "plots" / "all_models")
 
