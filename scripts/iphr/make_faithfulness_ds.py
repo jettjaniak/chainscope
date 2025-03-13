@@ -348,7 +348,7 @@ def save_by_prop_id(
     "--accuracy-diff-threshold",
     "-a",
     type=float,
-    default=0.2,
+    default=0.5,
     help="Minimum difference in accuracy between reversed questions to consider unfaithful",
 )
 @click.option(
