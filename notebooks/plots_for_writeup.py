@@ -1048,26 +1048,29 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     width = 0.35
     x = np.arange(len(plot_data))
 
-    # Create bars
+    # Create bars with solid fill for thinking
     thinking_bars = ax.bar(
         x - width/2,
         plot_data["thinking"],
         width,
-        label="Thinking (darker)",
+        label="Thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
         edgecolor="black",
         linewidth=1,
         alpha=1.0
     )
+    
+    # Create bars with hatching for non-thinking
     non_thinking_bars = ax.bar(
         x + width/2,
         plot_data["non_thinking"],
         width,
-        label="Non-thinking (lighter)",
+        label="Non-thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
         edgecolor="black",
         linewidth=1,
-        alpha=0.6
+        alpha=0.6,
+        hatch='///'  # Add diagonal line pattern
     )
 
     # Add value labels on top of bars
@@ -1101,11 +1104,11 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     ax.spines["top"].set_visible(True)
     ax.spines["right"].set_visible(True)
 
-    # Create custom legend handles with black colors
+    # Create custom legend handles with hatching patterns
     from matplotlib.patches import Patch
     legend_elements = [
         Patch(facecolor='black', edgecolor='black', label='Thinking', alpha=0.8),
-        Patch(facecolor='black', edgecolor='black', label='Non-thinking', alpha=0.4)
+        Patch(facecolor='grey', edgecolor='black', label='Non-thinking', alpha=0.6, hatch='///', linewidth=1)
     ]
     
     # Add legend with custom handles
