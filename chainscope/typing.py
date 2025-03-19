@@ -917,6 +917,45 @@ DumpMeta(key_transform="SNAKE").bind_to(AnthropicBatchInfo)
 
 
 @dataclass
+class AmbiguityEval(YAMLWizard):
+    """Results from evaluating question ambiguity."""
+
+    ambiguity_by_qid: dict[str, Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]]
+    explanation_by_qid: dict[str, str | None]
+    model_id: str
+    instr_id: str
+    ds_params: DatasetParams
+    sampling_params: SamplingParams
+
+    def save(self) -> Path:
+        """Save ambiguity evaluation to disk."""
+        directory = (
+            DATA_DIR
+            / "ambiguity_eval"
+            / self.instr_id
+            / self.sampling_params.id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, path: Path) -> "AmbiguityEval":
+        ambiguity_eval = cls.from_yaml_file(path)
+        assert isinstance(ambiguity_eval, cls)
+        return ambiguity_eval
+
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(AmbiguityEval)
+DumpMeta(key_transform="SNAKE").bind_to(AmbiguityEval)
+
+
+@dataclass
 class OpenAIBatchInfo(YAMLWizard):
     """Information about a batch submitted to OpenAI's batch API."""
 
