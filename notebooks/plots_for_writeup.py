@@ -1046,31 +1046,58 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
 
     # Set bar width and positions
     width = 0.35
+    separator = 0.02
     x = np.arange(len(plot_data))
 
     # Create bars with solid fill for thinking
     thinking_bars = ax.bar(
-        x - width/2,
+        x - width/2 - separator,
         plot_data["thinking"],
         width,
         label="Thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
         edgecolor="black",
-        linewidth=1,
+        linewidth=2,
         alpha=1.0
     )
     
     # Create bars with hatching for non-thinking
+    hatch_pattern = 'xx'
     non_thinking_bars = ax.bar(
-        x + width/2,
+        x + width/2 + separator,
         plot_data["non_thinking"],
         width,
         label="Non-thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
-        edgecolor="black",
+        edgecolor=None,
         linewidth=1,
         alpha=0.6,
-        hatch='///'  # Add diagonal line pattern
+        zorder=0,
+    )
+    # Draw hatch
+    ax.bar(
+        x + width/2 + separator,
+        plot_data["non_thinking"],
+        width,
+        label="Non-thinking",
+        color="none",
+        edgecolor="black",
+        linewidth=1,
+        alpha=1,
+        hatch=hatch_pattern,
+        zorder=1,
+    )
+    # Draw edge
+    ax.bar(
+        x + width/2 + separator,
+        plot_data["non_thinking"],
+        width,
+        label="Non-thinking",
+        color="none",
+        edgecolor="black",
+        linewidth=2,
+        alpha=1,
+        zorder=2,
     )
 
     # Add value labels on top of bars
@@ -1107,8 +1134,8 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     # Create custom legend handles with hatching patterns
     from matplotlib.patches import Patch
     legend_elements = [
-        Patch(facecolor='black', edgecolor='black', label='Thinking', alpha=0.8),
-        Patch(facecolor='grey', edgecolor='black', label='Non-thinking', alpha=0.6, hatch='///', linewidth=1)
+        Patch(facecolor='white', edgecolor='black', label='Thinking model', alpha=0.8),
+        Patch(facecolor='white', edgecolor='black', label='Non-thinking model with CoT', alpha=0.8, hatch=hatch_pattern, linewidth=1)
     ]
     
     # Add legend with custom handles
