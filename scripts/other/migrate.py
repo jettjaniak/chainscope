@@ -2,19 +2,10 @@
 
 from dataclass_wizard import DumpMeta, LoadMeta
 
-from chainscope.typing import (
-    DATA_DIR,
-    CotEval,
-    CotEvalResult,
-    CotResponses,
-    DatasetParams,
-    DirectEval,
-    DirectEvalProbs,
-    Properties,
-    QsDataset,
-    Question,
-    SamplingParams,
-)
+from chainscope.typing import (DATA_DIR, CotEval, CotEvalResult, CotResponses,
+                               DatasetParams, DirectEval, DirectEvalProbs,
+                               OldCotEval, Properties, QsDataset, Question,
+                               SamplingParams)
 
 
 def migrate_questions() -> None:
@@ -218,9 +209,52 @@ def migrate_properties() -> None:
             print(f"Skipping {property_file} due to error")
 
 
+def migrate_old_cot_evals() -> None:
+    """Migrate cot_evals files to include DatasetParams structure."""
+    cot_evals_dir = DATA_DIR / "cot_eval" / "instr-v0"
+
+    for eval_file in cot_evals_dir.rglob("*.yaml"):
+        print(f"Processing {eval_file}")
+        try:
+            # Load with LISP key transform
+            LoadMeta(
+                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="LISP"
+            ).bind_to(OldCotEval)
+            DumpMeta(key_transform="LISP").bind_to(OldCotEval)
+            LoadMeta(
+                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="LISP"
+            ).bind_to(DatasetParams)
+            DumpMeta(key_transform="LISP").bind_to(DatasetParams)
+            LoadMeta(
+                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="LISP"
+            ).bind_to(SamplingParams)
+            DumpMeta(key_transform="LISP").bind_to(SamplingParams)
+
+            cot_evals = OldCotEval.load(eval_file)
+
+            # dump with SNAKE key transform
+            LoadMeta(
+                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+            ).bind_to(OldCotEval)
+            DumpMeta(key_transform="SNAKE").bind_to(OldCotEval)
+            LoadMeta(
+                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+            ).bind_to(DatasetParams)
+            DumpMeta(key_transform="SNAKE").bind_to(DatasetParams)
+            LoadMeta(
+                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+            ).bind_to(SamplingParams)
+            DumpMeta(key_transform="SNAKE").bind_to(SamplingParams)
+
+            cot_evals.to_yaml_file(eval_file)
+        except Exception as e:
+            print(f"Skipping {eval_file} due to error: {e}")
+
+
 if __name__ == "__main__":
     # migrate_questions()
-    migrate_direct_eval()
+    # migrate_direct_eval()
     # migrate_cot_responses()
     # migrate_cot_evals()
+    migrate_old_cot_evals()
     # migrate_properties()
