@@ -240,6 +240,15 @@ class DatasetParams(YAMLWizard):
         assert isinstance(cot_eval, CotEval)
         return cot_eval
 
+    def load_old_cot_eval(
+        self, instr_id: str, model_id: str, sampling_params: SamplingParams
+    ) -> "OldCotEval":
+        cot_eval = OldCotEval.from_yaml_file(
+            self.cot_eval_path(instr_id, model_id, sampling_params)
+        )
+        assert isinstance(cot_eval, OldCotEval)
+        return cot_eval
+
 
 LoadMeta(
     v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
@@ -497,6 +506,43 @@ LoadMeta(
     v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
 ).bind_to(CotEval)
 DumpMeta(key_transform="SNAKE").bind_to(CotEval)
+
+
+@dataclass
+class OldCotEval(YAMLWizard):
+    results_by_qid: dict[
+        str, dict[str, str]
+    ]  # qid -> {response_uuid -> result}
+    model_id: str
+    instr_id: str
+    ds_params: DatasetParams
+    sampling_params: SamplingParams
+    evaluator: str = "heuristic"
+
+    def save(self) -> Path:
+        directory = (
+            DATA_DIR
+            / "cot_eval"
+            / self.instr_id
+            / self.sampling_params.id
+            / self.ds_params.pre_id
+            / self.ds_params.id
+        )
+        path = get_path(directory, self.model_id)
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, path: Path) -> "OldCotEval":
+        cot_eval = cls.from_yaml_file(path)
+        assert isinstance(cot_eval, cls)
+        return cot_eval
+
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(OldCotEval)
+DumpMeta(key_transform="SNAKE").bind_to(OldCotEval)
 
 
 @dataclass
