@@ -1,5 +1,5 @@
 #!/bin/bash
-for model_id in C3.7S_64K; do
+for model_id in C3.5H; do
     echo "Processing model $model_id"
     for file in d/questions/**/*.yaml; do
         dataset_id="${file##d/questions/*/}"

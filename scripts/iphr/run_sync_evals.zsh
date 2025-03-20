@@ -68,7 +68,7 @@ for file in chainscope/data/cot_responses/instr-wm/T0.7_P0.9_M2000/**/*.yaml; do
     fi
 
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Processing file: $file"
-    ./scripts/eval_cots.py submit --api "$api" -m anthropic/claude-3.7-sonnet "$file"
+    ./scripts/iphr/eval_cots.py submit --api "$api" -m anthropic/claude-3.5-sonnet "$file"
 done
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] All evaluation jobs have finished" 
