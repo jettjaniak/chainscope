@@ -770,11 +770,16 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         # Map model names consistently
         model_name = model_id.split("/")[-1]
         if "claude" in model_id.lower():
-            model_name = "Sonnet " + model_id.split("-")[1]
-            if "_" in model_id:
-                model_name = model_name + f" ({model_id.split('_')[1]})"
-            elif "3.5" in model_id:
-                model_name = model_name + " v2"
+            if "sonnet" in model_id.lower():
+                model_name = "Sonnet " + model_id.split("-")[1]
+                if "_" in model_id:
+                    model_name = model_name + f" ({model_id.split('_')[1]})"
+                elif "3.5" in model_id:
+                    model_name = model_name + " v2"
+            elif "haiku" in model_id.lower():
+                model_name = "Haiku " + model_id.split("-")[1]
+            else:
+                model_name = model_id
         elif "deepseek-r1" in model_id.lower():
             model_name = "DeepSeek R1"
         elif "deepseek-chat" in model_id.lower():
@@ -809,17 +814,6 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
 
     # Use white background
     plt.style.use("seaborn-v0_8-white")
-
-    # Set font sizes
-    plt.rcParams.update(
-        {
-            "font.size": 18,
-            "axes.labelsize": 18,
-            "axes.titlesize": 18,
-            "xtick.labelsize": 18,
-            "ytick.labelsize": 18,
-        }
-    )
 
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 7))
