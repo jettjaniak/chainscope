@@ -6,20 +6,17 @@ from pathlib import Path
 
 import click
 
-from chainscope.api_utils.anthropic_utils import (
-    process_batch_results as process_anthropic_batch_results,
-)
+from chainscope.api_utils.anthropic_utils import \
+    process_batch_results as process_anthropic_batch_results
 from chainscope.api_utils.anthropic_utils import submit_anthropic_batch
 from chainscope.api_utils.common import get_responses_async
-from chainscope.api_utils.open_ai_utils import (
-    process_batch_results as process_openai_batch_results,
-)
+from chainscope.api_utils.open_ai_utils import \
+    process_batch_results as process_openai_batch_results
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
-from chainscope.cot_generation import (
-    create_batch_of_cot_prompts,
-    create_cot_responses,
-    get_local_responses,
-)
+from chainscope.cot_generation import (create_batch_of_cot_prompts,
+                                       create_cot_responses,
+                                       get_local_responses_tl,
+                                       get_local_responses_vllm)
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP
 
@@ -40,7 +37,7 @@ def cli():
 @click.option("--max-new-tokens", type=int, default=2_000)
 @click.option(
     "--api",
-    type=click.Choice(["ant-batch", "oai-batch", "ant", "oai", "or", "ds", "local"]),
+    type=click.Choice(["ant-batch", "oai-batch", "ant", "oai", "or", "ds", "local-vllm", "local-tl"]),
     required=True,
     help="API to use for generation",
 )
@@ -69,6 +66,12 @@ def cli():
     default=42,
     help="Seed for FSP selection",
 )
+@click.option(
+    "--local-gen-seed",
+    type=int,
+    default=42,
+    help="Seed for local generation",
+)
 @click.option("--test", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
 def submit(
@@ -84,6 +87,7 @@ def submit(
     model_id_for_fsp: str | None,
     fsp_size: int,
     fsp_seed: int,
+    local_gen_seed: int,
     test: bool,
     verbose: bool,
 ):
@@ -159,8 +163,8 @@ def submit(
         )
     else:
         # Process in realtime using specified API
-        if api == "local":
-            results = get_local_responses(
+        if api == "local-vllm":
+            results = get_local_responses_vllm(
                 prompts=batch_of_cot_prompts,
                 model_id=model_id,
                 instr_id=instr_id,
@@ -169,6 +173,18 @@ def submit(
                 model_id_for_fsp=model_id_for_fsp,
                 fsp_size=fsp_size,
                 fsp_seed=fsp_seed,
+            )
+        elif api == "local-tl":
+            results = get_local_responses_tl(
+                prompts=batch_of_cot_prompts,
+                model_id=model_id,
+                instr_id=instr_id,
+                ds_params=ds_params,
+                sampling_params=sampling_params,
+                model_id_for_fsp=model_id_for_fsp,
+                fsp_size=fsp_size,
+                fsp_seed=fsp_seed,
+                local_gen_seed=local_gen_seed,
             )
         else:
             results = asyncio.run(

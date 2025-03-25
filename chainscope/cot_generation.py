@@ -2,6 +2,8 @@ import random
 from uuid import uuid4
 
 import torch as t
+from transformer_lens import HookedTransformer
+from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from vllm import LLM
 from vllm import SamplingParams as VLLMSamplingParams
 
@@ -48,7 +50,7 @@ def build_fsp_prompt(
     return fsp_prompt
 
 
-def get_local_responses(
+def get_local_responses_vllm(
     prompts: list[tuple[QuestionResponseId, str]],
     model_id: str,
     instr_id: str,
@@ -124,6 +126,123 @@ def get_local_responses(
 
     return responses
 
+
+def get_local_responses_tl(
+    prompts: list[tuple[QuestionResponseId, str]],
+    model_id: str,
+    instr_id: str,
+    ds_params: DatasetParams,
+    sampling_params: SamplingParams,
+    model_id_for_fsp: str | None,
+    fsp_size: int,
+    fsp_seed: int,
+    local_gen_seed: int,
+) -> list[tuple[QuestionResponseId, str]]:
+    """Generate responses using TransformerLens framework.
+    
+    Args:
+        prompts: List of (question ID, prompt text) tuples
+        model_id: Name of the model to use
+        instr_id: Instruction ID
+        ds_params: Dataset parameters
+        sampling_params: Sampling parameters
+        model_id_for_fsp: Model ID for few-shot prompting (optional)
+        fsp_size: Number of few-shot examples
+        fsp_seed: Seed for few-shot example selection
+        local_gen_seed: Seed for generation
+        
+    Returns:
+        List of (question ID, generated response) tuples
+    """
+    assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
+
+    # Set TransformerLens seed for reproducible local generation
+    HookedTransformerConfig.set_seed_everywhere(
+        None,  # type: ignore
+        local_gen_seed,
+    )
+
+    # Get few-shot prompt if needed
+    if model_id_for_fsp is not None:
+        assert not is_instruct_model(model_id), "Why?"
+        fsp_prompt = build_fsp_prompt(
+            model_id_for_fsp=model_id_for_fsp,
+            fsp_size=fsp_size,
+            instr_id=instr_id,
+            ds_params=ds_params,
+            sampling_params=sampling_params,
+            fsp_seed=fsp_seed,
+        )
+    else:
+        fsp_prompt = None
+
+    # Initialize TransformerLens model
+    model = HookedTransformer.from_pretrained(
+        model_name=model_id,
+        dtype="bfloat16",
+        device="cuda",
+    )
+
+    instr_prefix = "Here is a question with a clear YES or NO answer"
+    stop_tokens = ["**NO**", "**YES**", "\n\nNO", "\n\nYES", instr_prefix]
+
+    # Prepare prompts
+    responses: list[tuple[QuestionResponseId, str]] = []
+    for q_resp_id, prompt in prompts:
+        if is_instruct_model(model_id):
+            input_str = make_chat_prompt(
+                instruction=prompt,
+                tokenizer=model.tokenizer,
+            )
+        else:
+            if fsp_prompt is not None:
+                input_str = f"{fsp_prompt}\n\n{prompt}"
+            else:
+                input_str = prompt
+
+        # Tokenize input
+        tokens = model.to_tokens(input_str, prepend_bos=True).to(model.cfg.device)
+        generated = tokens
+        
+        # Generate tokens one at a time until we hit a stop sequence or max tokens
+        for _ in range(sampling_params.max_new_tokens):
+            # Generate next token
+            with t.inference_mode():
+                next_token = model.generate(
+                    generated,
+                    max_new_tokens=1,
+                    temperature=sampling_params.temperature,
+                    top_p=sampling_params.top_p,
+                    verbose=False,
+                )
+            
+            # Add the new token to generated sequence
+            generated = next_token
+            
+            # Check if we've hit a stop sequence
+            new_text = model.to_string(generated[len(tokens):])
+            if any(stop_seq in new_text for stop_seq in stop_tokens):
+                # Find where the stop sequence starts and truncate
+                for stop_seq in stop_tokens:
+                    if stop_seq in new_text:
+                        stop_idx = new_text.find(stop_seq)
+                        # Convert text position to token position (approximate)
+                        stop_tokens_seq = model.to_tokens(new_text[:stop_idx + len(stop_seq)], prepend_bos=False)
+                        generated = t.cat([tokens, stop_tokens_seq], dim=-1)
+                        break
+                break
+        
+        # Convert output tokens to text
+        generated_text = model.to_string(generated[len(tokens):])
+        assert isinstance(generated_text, str)
+        
+        # Clean up response
+        if instr_prefix in generated_text:
+            generated_text = generated_text.replace(instr_prefix, "")
+            
+        responses.append((q_resp_id, generated_text))
+
+    return responses
 
 def create_batch_of_cot_prompts(
     question_dataset: QsDataset,
