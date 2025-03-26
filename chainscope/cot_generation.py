@@ -2,6 +2,7 @@ import random
 from uuid import uuid4
 
 import torch as t
+from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from vllm import LLM
@@ -188,7 +189,7 @@ def get_local_responses_tl(
 
     # Prepare prompts
     responses: list[tuple[QuestionResponseId, str]] = []
-    for q_resp_id, prompt in prompts:
+    for q_resp_id, prompt in tqdm(prompts, desc="Generating responses"):
         if is_instruct_model(model_id):
             input_str = make_chat_prompt(
                 instruction=prompt,
