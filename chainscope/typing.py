@@ -935,9 +935,8 @@ class AmbiguityEval(YAMLWizard):
             / self.instr_id
             / self.sampling_params.id
             / self.ds_params.pre_id
-            / self.ds_params.id
         )
-        path = get_path(directory, self.model_id)
+        path = get_path(directory, self.ds_params.id)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.to_yaml_file(path)
         return path

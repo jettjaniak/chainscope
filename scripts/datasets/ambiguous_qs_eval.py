@@ -150,7 +150,7 @@ def submit(
     )
 
     # Find all question files
-    question_files = list(DATA_DIR.glob("questions/*/wm-*.yaml"))
+    question_files = list(DATA_DIR.glob("questions/*/*.yaml"))
     logging.info(f"Found {len(question_files)} question files")
 
     if test:
