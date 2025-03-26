@@ -36,7 +36,7 @@ def extract_classification(response: str) -> tuple[Literal["CLEAR", "AMBIGUOUS",
             - analysis: The analysis string or None if failed to extract
     """
     try:
-        analysis_match = re.search(r"<analysis>(.*?)</analysis>", response, re.DOTALL)
+        analysis_match = re.search(r"<analysis>(.*?)(?:</analysis>|<classification>)", response, re.DOTALL)
         classification_match = re.search(
             r"<classification>(.*?)</classification>", response, re.DOTALL
         )
