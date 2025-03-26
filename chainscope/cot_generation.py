@@ -139,7 +139,7 @@ def get_local_responses_tl(
     local_gen_seed: int,
 ) -> list[tuple[QuestionResponseId, str]]:
     """Generate responses using TransformerLens framework.
-    
+
     Args:
         prompts: List of (question ID, prompt text) tuples
         model_id: Name of the model to use
@@ -150,7 +150,7 @@ def get_local_responses_tl(
         fsp_size: Number of few-shot examples
         fsp_seed: Seed for few-shot example selection
         local_gen_seed: Seed for generation
-        
+
     Returns:
         List of (question ID, generated response) tuples
     """
@@ -179,9 +179,9 @@ def get_local_responses_tl(
     # Initialize TransformerLens model
     model = HookedTransformer.from_pretrained(
         model_name=model_id,
-        dtype="bfloat16",
         device="cuda",
     )
+    assert model.tokenizer is not None, "Tokenizer is not initialized"
 
     instr_prefix = "Here is a question with a clear YES or NO answer"
     stop_tokens = ["**NO**", "**YES**", "\n\nNO", "\n\nYES", instr_prefix]
@@ -202,47 +202,53 @@ def get_local_responses_tl(
 
         # Tokenize input
         tokens = model.to_tokens(input_str, prepend_bos=True).to(model.cfg.device)
-        generated = tokens
-        
-        # Generate tokens one at a time until we hit a stop sequence or max tokens
-        for _ in range(sampling_params.max_new_tokens):
-            # Generate next token
-            with t.inference_mode():
-                next_token = model.generate(
-                    generated,
-                    max_new_tokens=1,
-                    temperature=sampling_params.temperature,
-                    top_p=sampling_params.top_p,
-                    verbose=False,
-                )
-            
-            # Add the new token to generated sequence
-            generated = next_token
-            
-            # Check if we've hit a stop sequence
-            new_text = model.to_string(generated[len(tokens):])
-            if any(stop_seq in new_text for stop_seq in stop_tokens):
-                # Find where the stop sequence starts and truncate
-                for stop_seq in stop_tokens:
-                    if stop_seq in new_text:
-                        stop_idx = new_text.find(stop_seq)
-                        # Convert text position to token position (approximate)
-                        stop_tokens_seq = model.to_tokens(new_text[:stop_idx + len(stop_seq)], prepend_bos=False)
-                        generated = t.cat([tokens, stop_tokens_seq], dim=-1)
-                        break
-                break
-        
+        assert isinstance(tokens, t.Tensor)
+        assert tokens.ndim == 2
+        assert tokens.shape[0] == 1
+
+        # Generate the full sequence at once
+        with t.inference_mode():
+            generated = model.generate(
+                tokens,
+                max_new_tokens=sampling_params.max_new_tokens,
+                temperature=sampling_params.temperature,
+                top_p=sampling_params.top_p,
+                return_type="tokens",
+                verbose=False,
+            )
+            assert isinstance(
+                generated, t.Tensor
+            )  # : Int[t.Tensor, "1 pos_plus_new_tokens"]
+            assert generated.ndim == 2
+
         # Convert output tokens to text
-        generated_text = model.to_string(generated[len(tokens):])
-        assert isinstance(generated_text, str)
-        
+        generated_text = model.tokenizer.batch_decode(
+            generated[:, tokens.shape[1] :],
+            skip_special_tokens=True,
+            clean_up_tokenization_spaces=True,
+        )[0]
+        assert isinstance(
+            generated_text, str
+        ), f"Generated text is not a string: {type(generated_text)}, {generated_text}"
+
+        # Find the first occurrence of any stop sequence and truncate
+        min_stop_idx = len(generated_text)
+        for stop_seq in stop_tokens:
+            stop_idx = generated_text.find(stop_seq)
+            if stop_idx != -1 and stop_idx < min_stop_idx:
+                min_stop_idx = stop_idx + len(stop_seq)
+
+        # Truncate at the earliest stop sequence
+        generated_text = generated_text[:min_stop_idx]
+
         # Clean up response
         if instr_prefix in generated_text:
             generated_text = generated_text.replace(instr_prefix, "")
-            
+
         responses.append((q_resp_id, generated_text))
 
     return responses
+
 
 def create_batch_of_cot_prompts(
     question_dataset: QsDataset,
