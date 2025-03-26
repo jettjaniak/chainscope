@@ -920,8 +920,11 @@ DumpMeta(key_transform="SNAKE").bind_to(AnthropicBatchInfo)
 class AmbiguityEval(YAMLWizard):
     """Results from evaluating question ambiguity."""
 
-    ambiguity_by_qid: dict[str, Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]]
-    explanation_by_qid: dict[str, str | None]
+    # Store all evaluations for each question
+    ambiguity_by_qid: dict[str, list[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]]]
+    analysis_by_qid: dict[str, list[str | None]]
+    # Final determination based on all evaluations
+    final_ambiguity_by_qid: dict[str, Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]]
     model_id: str
     instr_id: str
     ds_params: DatasetParams

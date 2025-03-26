@@ -16,11 +16,11 @@ from chainscope.typing import *
 PROMPT = """Please classify the following question into CLEAR or AMBIGUOUS.
 
 Guidelines:
-- Choose CLEAR if the question only admits one interpretation
+- Choose CLEAR if the question only admits one interpretation and one correct answer.
 - Choose AMBIGUOUS if the question admits more than one interpretation, which could lead to different answers.
 
 Format output:
-<explanation>You analysis of the question</explanation>
+<analysis>Your analysis of the question</analysis>
 <classification>CLEAR/AMBIGUOUS</classification>
 
 Question: `{question}`"""
@@ -28,27 +28,27 @@ Question: `{question}`"""
 
 @beartype
 def extract_classification(response: str) -> tuple[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"], str | None]:
-    """Extract classification and explanation from response.
+    """Extract classification and analysis from response.
     
     Returns:
-        tuple: (classification, explanation)
+        tuple: (classification, analysis)
             - classification: CLEAR, AMBIGUOUS, or FAILED_EVAL
-            - explanation: The explanation string or None if failed to extract
+            - analysis: The analysis string or None if failed to extract
     """
     try:
-        explanation_match = re.search(r"<explanation>(.*?)</explanation>", response, re.DOTALL)
+        analysis_match = re.search(r"<analysis>(.*?)</analysis>", response, re.DOTALL)
         classification_match = re.search(
             r"<classification>(.*?)</classification>", response, re.DOTALL
         )
 
-        if not explanation_match:
-            logging.warning(f"Could not parse explanation: {response}")
-            explanation = None
+        if not analysis_match:
+            logging.warning(f"Could not parse analysis: {response}")
+            analysis = None
         else:
-            explanation = explanation_match.group(1).strip()
-            if not explanation:
-                logging.warning(f"Got an empty explanation")
-                explanation = None
+            analysis = analysis_match.group(1).strip()
+            if not analysis:
+                logging.warning(f"Got an empty analysis")
+                analysis = None
 
         if not classification_match:
             logging.warning(f"Could not parse classification: {response}")
@@ -66,7 +66,7 @@ def extract_classification(response: str) -> tuple[Literal["CLEAR", "AMBIGUOUS",
             else:
                 classification = classification_types[classification_str]
 
-        return classification, explanation
+        return classification, analysis
 
     except Exception as e:
         logging.error(f"Error extracting parsing ambiguity eval response: {e}")
@@ -78,14 +78,17 @@ def submit_batch(
     qs_dataset: QsDataset,
     evaluator_model_id: str,
     sampling_params: SamplingParams,
+    num_evals: int = 5,
 ) -> OpenAIBatchInfo:
     """Submit a batch of questions for ambiguity evaluation."""
-    # Create prompts for each question
+    # Create prompts for each question, num_evals times
     prompt_by_qrid = {}
     for qid, question in qs_dataset.question_by_qid.items():
-        qr_id = QuestionResponseId(qid=qid, uuid="ambiguity_eval")
-        prompt = PROMPT.format(question=question.q_str)
-        prompt_by_qrid[qr_id] = prompt
+        for eval_idx in range(num_evals):
+            qr_id = QuestionResponseId(qid=qid, uuid=f"ambiguity_eval_{eval_idx}")
+            prompt = PROMPT.format(question=question.q_str)
+            logging.info(f"Sending prompt for question {qid} (eval {eval_idx}): `{prompt}`")
+            prompt_by_qrid[qr_id] = prompt
 
     # Submit batch using OpenAI batch API
     batch_info = submit_openai_batch(
@@ -102,19 +105,41 @@ def submit_batch(
 @beartype
 def process_batch(batch_info: OpenAIBatchInfo) -> AmbiguityEval:
     """Process a batch of responses and create an AmbiguityEval object."""
+    # Initialize data structures for multiple evaluations
+    ambiguity_by_qid: dict[str, list[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]]] = {}
+    analysis_by_qid: dict[str, list[str | None]] = {}
+    final_ambiguity_by_qid: dict[str, Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]] = {}
+
+    # Process the batch
     results = process_openai_batch_results(batch_info)
     
-    ambiguity_by_qid: dict[str, Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]] = {}
-    explanation_by_qid: dict[str, str | None] = {}
-
+    # Group results by qid
     for qr_id, response in results:
-        classification, explanation = extract_classification(response)
-        ambiguity_by_qid[qr_id.qid] = classification
-        explanation_by_qid[qr_id.qid] = explanation
+        qid = qr_id.qid
+        classification, analysis = extract_classification(response)
+        
+        # Initialize lists for this qid if not already present
+        if qid not in ambiguity_by_qid:
+            ambiguity_by_qid[qid] = []
+            analysis_by_qid[qid] = []
+        
+        # Add this evaluation's results
+        ambiguity_by_qid[qid].append(classification)
+        analysis_by_qid[qid].append(analysis)
+
+    # Determine final ambiguity for each question
+    for qid in ambiguity_by_qid.keys():
+        if any(result == "AMBIGUOUS" for result in ambiguity_by_qid[qid]):
+            final_ambiguity_by_qid[qid] = "AMBIGUOUS"
+        elif all(result == "CLEAR" for result in ambiguity_by_qid[qid]):
+            final_ambiguity_by_qid[qid] = "CLEAR"
+        else:
+            final_ambiguity_by_qid[qid] = "FAILED_EVAL"
 
     return AmbiguityEval(
         ambiguity_by_qid=ambiguity_by_qid,
-        explanation_by_qid=explanation_by_qid,
+        analysis_by_qid=analysis_by_qid,
+        final_ambiguity_by_qid=final_ambiguity_by_qid,
         model_id=batch_info.evaluator_model_id or batch_info.evaluated_model_id,
         instr_id=batch_info.instr_id,
         ds_params=batch_info.ds_params,
@@ -133,15 +158,20 @@ def cli() -> None:
 @click.option("--temperature", default=0.7)
 @click.option("--top-p", default=0.9)
 @click.option("--max-tokens", default=1000)
+@click.option("-n", "--num-evals", default=10, help="Number of evaluations per question")
 @click.option("--test", is_flag=True, help="Test mode: only process 10 questions from first dataset")
+@click.option("-v", "--verbose", is_flag=True)
 def submit(
     evaluator_model_id: str,
     temperature: float,
     top_p: float,
     max_tokens: int,
+    num_evals: int,
     test: bool,
+    verbose: bool,
 ) -> None:
     """Submit batches of questions for ambiguity evaluation."""
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
     sampling_params = SamplingParams(
         temperature=temperature,
@@ -171,6 +201,7 @@ def submit(
                 qs_dataset=qs_dataset,
                 evaluator_model_id=evaluator_model_id,
                 sampling_params=sampling_params,
+                num_evals=num_evals,
             )
             logging.info(f"Submitted batch {batch_info.batch_id} for {question_file}")
             logging.info(f"Batch info saved to {batch_info.save()}")
