@@ -413,7 +413,7 @@ def submit_openai_batch(
     custom_id_map = {}
     batch_requests = []
     for q_resp_id, prompt in prompt_by_qrid.items():
-        custom_id = f"{q_resp_id.qid[:31]}__{q_resp_id.uuid[:31]}"
+        custom_id = f"{q_resp_id.qid}__{q_resp_id.uuid}"
         custom_id_map[custom_id] = q_resp_id
 
         batch_requests.append(

@@ -64,10 +64,10 @@ def submit_batch(
     """Submit a batch of properties for ambiguity evaluation."""
     # Create prompts for each property, num_evals times
     prompt_by_qrid = {}
-    for name in props.value_by_name.keys():
-        qr_id = QuestionResponseId(qid=name, uuid="prop_eval")
-        prompt = PROMPT.format(entity_type=get_entity_type(props), entity=name)
-        logging.info(f"Sending prompt for property {name}: `{prompt}`")
+    for entity_name in props.value_by_name.keys():
+        qr_id = QuestionResponseId(qid=entity_name, uuid="prop_eval")
+        prompt = PROMPT.format(entity_type=get_entity_type(props), entity=entity_name)
+        logging.info(f"Sending prompt for property {entity_name}: `{prompt}`")
         prompt_by_qrid[qr_id] = prompt
 
     # Submit batch using OpenAI batch API
