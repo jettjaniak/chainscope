@@ -2,10 +2,20 @@
 
 from dataclass_wizard import DumpMeta, LoadMeta
 
-from chainscope.typing import (DATA_DIR, CotEval, CotEvalResult, CotResponses,
-                               DatasetParams, DirectEval, DirectEvalProbs,
-                               OldCotEval, Properties, QsDataset, Question,
-                               SamplingParams)
+from chainscope.typing import (
+    DATA_DIR,
+    CotEval,
+    CotEvalResult,
+    CotResponses,
+    DatasetParams,
+    DirectEval,
+    DirectEvalProbs,
+    OldCotEval,
+    Properties,
+    QsDataset,
+    Question,
+    SamplingParams,
+)
 
 
 def migrate_questions() -> None:

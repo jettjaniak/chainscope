@@ -8,8 +8,9 @@ from typing import Literal
 import click
 from beartype import beartype
 
-from chainscope.api_utils.open_ai_utils import \
-    process_batch_results as process_openai_batch_results
+from chainscope.api_utils.open_ai_utils import (
+    process_batch_results as process_openai_batch_results,
+)
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
 from chainscope.typing import *
 
@@ -27,16 +28,20 @@ Question: `{question}`"""
 
 
 @beartype
-def extract_classification(response: str) -> tuple[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"], str | None]:
+def extract_classification(
+    response: str,
+) -> tuple[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"], str | None]:
     """Extract classification and analysis from response.
-    
+
     Returns:
         tuple: (classification, analysis)
             - classification: CLEAR, AMBIGUOUS, or FAILED_EVAL
             - analysis: The analysis string or None if failed to extract
     """
     try:
-        analysis_match = re.search(r"<analysis>(.*?)(?:</analysis>|<classification>)", response, re.DOTALL)
+        analysis_match = re.search(
+            r"<analysis>(.*?)(?:</analysis>|<classification>)", response, re.DOTALL
+        )
         classification_match = re.search(
             r"<classification>(.*?)</classification>", response, re.DOTALL
         )
@@ -47,7 +52,7 @@ def extract_classification(response: str) -> tuple[Literal["CLEAR", "AMBIGUOUS",
         else:
             analysis = analysis_match.group(1).strip()
             if not analysis:
-                logging.warning(f"Got an empty analysis")
+                logging.warning("Got an empty analysis")
                 analysis = None
 
         if not classification_match:
@@ -87,7 +92,9 @@ def submit_batch(
         for eval_idx in range(num_evals):
             qr_id = QuestionResponseId(qid=qid, uuid=f"ambiguity_eval_{eval_idx}")
             prompt = PROMPT.format(question=question.q_str)
-            logging.info(f"Sending prompt for question {qid} (eval {eval_idx}): `{prompt}`")
+            logging.info(
+                f"Sending prompt for question {qid} (eval {eval_idx}): `{prompt}`"
+            )
             prompt_by_qrid[qr_id] = prompt
 
     # Submit batch using OpenAI batch API
@@ -112,17 +119,17 @@ def process_batch(batch_info: OpenAIBatchInfo) -> AmbiguityEval:
 
     # Process the batch
     results = process_openai_batch_results(batch_info)
-    
+
     # Group results by qid
     for qr_id, response in results:
         qid = qr_id.qid
         classification, analysis = extract_classification(response)
-        
+
         # Initialize lists for this qid if not already present
         if qid not in ambiguity_by_qid:
             ambiguity_by_qid[qid] = []
             analysis_by_qid[qid] = []
-        
+
         # Add this evaluation's results
         ambiguity_by_qid[qid].append(classification)
         analysis_by_qid[qid].append(analysis)
@@ -158,8 +165,14 @@ def cli() -> None:
 @click.option("--temperature", default=0.7)
 @click.option("--top-p", default=0.9)
 @click.option("--max-tokens", default=1000)
-@click.option("-n", "--num-evals", default=10, help="Number of evaluations per question")
-@click.option("--test", is_flag=True, help="Test mode: only process 10 questions from first dataset")
+@click.option(
+    "-n", "--num-evals", default=10, help="Number of evaluations per question"
+)
+@click.option(
+    "--test",
+    is_flag=True,
+    help="Test mode: only process 10 questions from first dataset",
+)
 @click.option("-v", "--verbose", is_flag=True)
 def submit(
     evaluator_model_id: str,
@@ -190,10 +203,12 @@ def submit(
     for question_file in question_files:
         try:
             qs_dataset = QsDataset.load_from_path(question_file)
-            
+
             if test:
                 # Take only first 10 questions
-                test_questions = dict(itertools.islice(qs_dataset.question_by_qid.items(), 10))
+                test_questions = dict(
+                    itertools.islice(qs_dataset.question_by_qid.items(), 10)
+                )
                 qs_dataset.question_by_qid = test_questions
                 logging.info(f"Test mode: using {len(test_questions)} questions")
 

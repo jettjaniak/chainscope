@@ -13,8 +13,7 @@ import openai
 import requests
 from tqdm.asyncio import tqdm
 
-from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
-                                                  BatchResult)
+from chainscope.api_utils.batch_processor import BatchItem, BatchProcessor, BatchResult
 from chainscope.typing import *
 
 # Hard limit of maximum requests per minute to prevent excessive API usage

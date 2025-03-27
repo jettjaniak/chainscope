@@ -6,8 +6,10 @@ import pandas as pd
 import yaml
 
 from chainscope.typing import *
-from chainscope.utils import (MODELS_MAP, get_model_display_name,
-                              get_model_family, sort_models)
+from chainscope.utils import (
+    get_model_family,
+    sort_models,
+)
 
 # %% Load all ambiguity eval YAMLs
 yaml_pattern = "ambiguity_eval/T0.7_P0.9_M1000/*/*.yaml"
@@ -24,43 +26,49 @@ for path in yaml_paths:
     try:
         eval_data = AmbiguityEval.load(path)
         clear_questions.update(
-            qid for qid, status in eval_data.final_ambiguity_by_qid.items() 
+            qid
+            for qid, status in eval_data.final_ambiguity_by_qid.items()
             if status == "CLEAR"
         )
-        all_questions.update(
-            qid for qid in eval_data.final_ambiguity_by_qid.keys()
-        )
+        all_questions.update(qid for qid in eval_data.final_ambiguity_by_qid.keys())
         # Count CLEAR questions
         total_qs = len(eval_data.final_ambiguity_by_qid)
-        clear_qs = sum(1 for status in eval_data.final_ambiguity_by_qid.values() 
-                    if status == "CLEAR")
-        
+        clear_qs = sum(
+            1
+            for status in eval_data.final_ambiguity_by_qid.values()
+            if status == "CLEAR"
+        )
+
         # Calculate percentage
         clear_percentage = (clear_qs / total_qs) * 100 if total_qs > 0 else 0
-        
+
         # Get dataset identifier from path
         dataset_id = path.parts[-1]
-        
-        dataset_stats.append({
-            'dataset_id': dataset_id,
-            'total_questions': total_qs,
-            'clear_questions': clear_qs,
-            'clear_percentage': clear_percentage
-        })
+
+        dataset_stats.append(
+            {
+                "dataset_id": dataset_id,
+                "total_questions": total_qs,
+                "clear_questions": clear_qs,
+                "clear_percentage": clear_percentage,
+            }
+        )
     except Exception as e:
         print(f"Error processing {path}: {e}")
         break
 
-print(f"Found {len(clear_questions)} CLEAR questions out of {len(all_questions)} total questions")
+print(
+    f"Found {len(clear_questions)} CLEAR questions out of {len(all_questions)} total questions"
+)
 
 # %% Create DataFrame and sort by clear percentage
 df = pd.DataFrame(dataset_stats)
-df_sorted = df.sort_values('clear_percentage', ascending=False)
+df_sorted = df.sort_values("clear_percentage", ascending=False)
 
 # %% Display results
-pd.set_option('display.max_rows', None)
+pd.set_option("display.max_rows", None)
 print("\nDatasets sorted by percentage of CLEAR questions:")
-print(df_sorted.to_string(index=False, float_format=lambda x: '%.1f' % x))
+print(df_sorted.to_string(index=False, float_format=lambda x: "%.1f" % x))
 
 # %%
 
@@ -70,6 +78,7 @@ df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
 faithfulness_yamls_cache = {}
 
 # %%
+
 
 def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     """Save a bar plot showing the percentage of unfaithful question pairs for each model."""
@@ -140,7 +149,8 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         # After loading merged_faith_data but before counting unfaithful pairs
         # Filter out non-CLEAR questions
         merged_faith_data = {
-            qid: data for qid, data in merged_faith_data.items() 
+            qid: data
+            for qid, data in merged_faith_data.items()
             if qid in clear_questions
         }
 
@@ -289,7 +299,9 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     # Adjust layout to prevent label cutoff
     plt.tight_layout()
 
-    fig.savefig(save_dir / "iphr_unfaithfulness_clear_only.pdf", dpi=300, bbox_inches="tight")
+    fig.savefig(
+        save_dir / "iphr_unfaithfulness_clear_only.pdf", dpi=300, bbox_inches="tight"
+    )
     plt.show()
     plt.close()
 

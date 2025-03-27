@@ -8,21 +8,20 @@ python3 -m dotenv run python3 scripts/atcoder/atcoder1_are_rollouts_correct.py \
     --prefix=40
 """
 
-
 import asyncio
 import dataclasses
 import itertools
 import json
 import logging
-import random
 import os
+import random
 import re
 import shutil
 import subprocess
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional, Final
+from typing import Final, Optional
 
 import click
 import requests
@@ -31,18 +30,28 @@ import yaml
 from chainscope.typing import (
     AtCoderDatasetParams,
     AtCoderResponse,
+    AtCoderStats,
     CotResponses,
     DefaultSamplingParams,
     MathResponse,
-    AtCoderStats,
 )
-
 
 SAFE_MAX_LONG_LONG_VALUE: Final[int] = 9223372036854775807 // 1000  # / 1000 to be safe
 
-FINAL_SUBMISSION_STATUSES: Final[set[str]] = {"AC", "WA", "RE", "RTE", "TLE", "MLE", "ME", "CE"}  # , "IE", "OLE", "SE"}  # hopefully do not get anything more cursed than these lol
+FINAL_SUBMISSION_STATUSES: Final[set[str]] = {
+    "AC",
+    "WA",
+    "RE",
+    "RTE",
+    "TLE",
+    "MLE",
+    "ME",
+    "CE",
+}  # , "IE", "OLE", "SE"}  # hopefully do not get anything more cursed than these lol
 
-MAX_ACCOUNT_FINDING_ATTEMPTS: Final[int] = 40  # Maximum number of attempts to find an inactive account
+MAX_ACCOUNT_FINDING_ATTEMPTS: Final[int] = (
+    40  # Maximum number of attempts to find an inactive account
+)
 
 
 @dataclasses.dataclass
@@ -60,23 +69,35 @@ ATCODER_ACCOUNTS: list[AtCoderAccount] = []
 async def get_inactive_account_idx() -> int:
     """Get an inactive account."""
 
-    for loop_idx, account_idx in enumerate(itertools.cycle(range(len(ATCODER_ACCOUNTS)))):
+    for loop_idx, account_idx in enumerate(
+        itertools.cycle(range(len(ATCODER_ACCOUNTS)))
+    ):
         account = ATCODER_ACCOUNTS[account_idx]
 
         if account.current_submission is None:
             return account_idx
-        
+
         # Mockup f"https://atcoder.jp/contests/{account.current_submission[0]}/submissions/{account.current_submission[1]}" ish
-        elif check_submission_status(f"https://atcoder.jp/contests/{account.current_submission[0]}/submissions/{account.current_submission[1]}")[0] in FINAL_SUBMISSION_STATUSES:
+        elif (
+            check_submission_status(
+                f"https://atcoder.jp/contests/{account.current_submission[0]}/submissions/{account.current_submission[1]}"
+            )[0]
+            in FINAL_SUBMISSION_STATUSES
+        ):
             ATCODER_ACCOUNTS[account_idx].current_submission = None
             return account_idx
 
         if (account_idx + 1) == len(ATCODER_ACCOUNTS):
-            logging.info(f"Completed a full cycle of accounts, sleeping for {loop_idx + 1} seconds")
+            logging.info(
+                f"Completed a full cycle of accounts, sleeping for {loop_idx + 1} seconds"
+            )
             await asyncio.sleep(loop_idx + 1)
 
         if loop_idx > MAX_ACCOUNT_FINDING_ATTEMPTS:
-            raise ValueError(f"Too many failures ({MAX_ACCOUNT_FINDING_ATTEMPTS}) to find an inactive account, stopping.")
+            raise ValueError(
+                f"Too many failures ({MAX_ACCOUNT_FINDING_ATTEMPTS}) to find an inactive account, stopping."
+            )
+
 
 def load_atcoder_model_responses(
     yaml_path: Path, prefix: Optional[int] = None
@@ -133,10 +154,15 @@ def extract_cpp_code(response: AtCoderResponse) -> Optional[str]:
     # Look for code between ```cpp and ```
     match = re.search(r"```cpp([^`]*?)```(?!.*```cpp)", full_answer, re.DOTALL)
     if not match:
-        logging.error(f"Is this really C++ code? {str(full_answer)[:100]=}; {str(full_answer)[-100:]=}")
+        logging.error(
+            f"Is this really C++ code? {str(full_answer)[:100]=}; {str(full_answer)[-100:]=}"
+        )
         return None
 
-    return match.group(1).strip() + f"\n// This is code scraped at {int(time.time()*1_000)}ms\n"
+    return (
+        match.group(1).strip()
+        + f"\n// This is code scraped at {int(time.time()*1_000)}ms\n"
+    )
 
 
 def create_metadata_json(response: AtCoderResponse) -> dict:
@@ -223,12 +249,12 @@ async def check_submission_status_with_retries(
     initial_backoff: int = 10,
 ) -> tuple[str | None, str | None]:
     """Check submission status with retries and linear backoff.
-    
+
     Args:
         submission_output: Output from atcoder-tools submit command
         max_retries: Maximum number of retries (default: 10)
         initial_backoff: Initial backoff time in seconds (default: 10)
-        
+
     Returns:
         Tuple of (status, submission_url)
         where status is the parsed response
@@ -236,15 +262,19 @@ async def check_submission_status_with_retries(
     """
     for attempt in range(max_retries):
         status, submission_url = check_submission_status(submission_output)
-        
+
         if status in FINAL_SUBMISSION_STATUSES or status is None:
             return status, submission_url
 
         if attempt < max_retries - 1:
-            backoff = initial_backoff + (attempt * 10)  # Linear backoff: 10, 20, 30, ...
-            logging.info(f"Status not final yet ({status}), waiting {backoff} seconds before retry {attempt + 1}/{max_retries}")
+            backoff = initial_backoff + (
+                attempt * 10
+            )  # Linear backoff: 10, 20, 30, ...
+            logging.info(
+                f"Status not final yet ({status}), waiting {backoff} seconds before retry {attempt + 1}/{max_retries}"
+            )
             await asyncio.sleep(backoff)
-            
+
     return status, submission_url
 
 
@@ -294,20 +324,23 @@ async def evaluate_model_responses(
 ) -> tuple[list[tuple[AtCoderResponse, str | None]], AtCoderStats]:
     """Evaluate responses by submitting to AtCoder."""
     results: list[tuple[AtCoderResponse, bool, str | None]] = []
-    submissions: list[tuple[AtCoderResponse, str, str]] = []  # (response, stdout, stderr)
+    submissions: list[
+        tuple[AtCoderResponse, str, str]
+    ] = []  # (response, stdout, stderr)
 
     stats = AtCoderStats.zeros()
 
     try:
         # Phase 1: Submit all problems
         for response in model_responses:
-            logging.info(f"Here is the raw response: {str(response)[:100]=}; {str(response)[-100:]=}")
+            logging.info(
+                f"Here is the raw response: {str(response)[:100]=}; {str(response)[-100:]=}"
+            )
             cpp_code = extract_cpp_code(response)
 
             if cpp_code:
                 # Create temporary directory
                 with tempfile.TemporaryDirectory() as tmpdir:
-
                     # Try compiling and submitting with retries:
                     success = False
                     compiled = False
@@ -319,7 +352,9 @@ async def evaluate_model_responses(
 
                         # Save C++ code
                         with open(tmpdir_path / "main.cpp", "w") as f:
-                            f.write(f"const long long AI_SUBMISSION_INTEGER = {random.randint(0, SAFE_MAX_LONG_LONG_VALUE)};\n{cpp_code}")
+                            f.write(
+                                f"const long long AI_SUBMISSION_INTEGER = {random.randint(0, SAFE_MAX_LONG_LONG_VALUE)};\n{cpp_code}"
+                            )
 
                         # Create metadata.json
                         metadata = create_metadata_json(response)
@@ -327,7 +362,9 @@ async def evaluate_model_responses(
                             json.dump(metadata, f, indent=4)
 
                         # Sleep a bit between any submission ever
-                        logging.info(f"Sleeping for 0.5 seconds before submitting (as always done!) ...")
+                        logging.info(
+                            "Sleeping for 0.5 seconds before submitting (as always done!) ..."
+                        )
                         await asyncio.sleep(0.5)
 
                         try:
@@ -351,7 +388,12 @@ async def evaluate_model_responses(
 
                             # Submit to AtCoder
                             result = subprocess.run(
-                                ["atcoder-tools", "submit", "-u", "-f"] + (["--credential", str(account_idx+1)] if account_idx >= 1 else []),
+                                ["atcoder-tools", "submit", "-u", "-f"]
+                                + (
+                                    ["--credential", str(account_idx + 1)]
+                                    if account_idx >= 1
+                                    else []
+                                ),
                                 cwd=tmpdir,
                                 check=True,
                                 capture_output=True,
@@ -361,24 +403,39 @@ async def evaluate_model_responses(
 
                             stdout = result.stdout
                             if stdout:
-                                logging.info(f"Stdout: {str(stdout)[:400]=}; {str(stdout)[-400:]=}")
+                                logging.info(
+                                    f"Stdout: {str(stdout)[:400]=}; {str(stdout)[-400:]=}"
+                                )
 
                             stderr = result.stderr
                             if stderr:
-                                logging.info(f"Stderr: {str(stderr)[:400]=}; {str(stderr)[-400:]=}")
+                                logging.info(
+                                    f"Stderr: {str(stderr)[:400]=}; {str(stderr)[-400:]=}"
+                                )
 
-                            logging.info(f"Submitted {response.name} with account {account_idx + 1}, sleeping for 0.5 seconds before checking status")
+                            logging.info(
+                                f"Submitted {response.name} with account {account_idx + 1}, sleeping for 0.5 seconds before checking status"
+                            )
                             await asyncio.sleep(0.5)
-                            _, submission_url = check_submission_status(f"{stdout}{stderr}")
-                            
+                            _, submission_url = check_submission_status(
+                                f"{stdout}{stderr}"
+                            )
+
                             try:
                                 if "ttpc" in response.name.lower():
-                                    competition_name = "_".join(response.name.split("_")[:2])
+                                    competition_name = "_".join(
+                                        response.name.split("_")[:2]
+                                    )
                                 else:
                                     competition_name = response.name.split("_")[0]
-                                ATCODER_ACCOUNTS[account_idx].current_submission = (competition_name, int(submission_url.split("/")[-1]))
+                                ATCODER_ACCOUNTS[account_idx].current_submission = (
+                                    competition_name,
+                                    int(submission_url.split("/")[-1]),
+                                )
                             except Exception as e:
-                                logging.error(f"Error updating account {account_idx + 1} current submission: {e=}")
+                                logging.error(
+                                    f"Error updating account {account_idx + 1} current submission: {e=}"
+                                )
 
                             success = True
                             last_stdout = stdout
@@ -386,29 +443,47 @@ async def evaluate_model_responses(
                             break
 
                         except subprocess.CalledProcessError as e:
-                            logging.error(f"Error processing {response.name} (attempt {attempt + 1}/{max_retries}): {e}")
-                            logging.error(f"Command output: stdout={e.stdout}, stderr={e.stderr}")
+                            logging.error(
+                                f"Error processing {response.name} (attempt {attempt + 1}/{max_retries}): {e}"
+                            )
+                            logging.error(
+                                f"Command output: stdout={e.stdout}, stderr={e.stderr}"
+                            )
                             last_stdout = e.stdout
                             last_stderr = e.stderr
                             if attempt < max_retries - 1:
                                 sleep_amount = 4 ** (attempt + 1)
-                                logging.info(f"Waiting {sleep_amount} seconds before retrying")
-                                await asyncio.sleep(sleep_amount)  # Wait before retrying
+                                logging.info(
+                                    f"Waiting {sleep_amount} seconds before retrying"
+                                )
+                                await asyncio.sleep(
+                                    sleep_amount
+                                )  # Wait before retrying
                             continue
 
                         except Exception as e:
-                            logging.error(f"Error processing {response.name} (attempt {attempt + 1}/{max_retries}): {e}")
+                            logging.error(
+                                f"Error processing {response.name} (attempt {attempt + 1}/{max_retries}): {e}"
+                            )
                             if attempt < max_retries - 1:
                                 sleep_amount = 4 ** (attempt + 1)
-                                logging.info(f"Waiting {sleep_amount} seconds before retrying")
-                                await asyncio.sleep(sleep_amount)  # Wait before retrying
+                                logging.info(
+                                    f"Waiting {sleep_amount} seconds before retrying"
+                                )
+                                await asyncio.sleep(
+                                    sleep_amount
+                                )  # Wait before retrying
                             continue
 
                     if compiled:
                         if success:
-                            logging.info(f"Submission successful after {attempt + 1} total attempts")
+                            logging.info(
+                                f"Submission successful after {attempt + 1} total attempts"
+                            )
                         else:
-                            logging.error(f"Submission failed after {max_retries} attempts")
+                            logging.error(
+                                f"Submission failed after {max_retries} attempts"
+                            )
                             stats.atcodertools_cmd_failed += 1
                             continue
 
@@ -419,12 +494,18 @@ async def evaluate_model_responses(
                 logging.error(f"No C++ code found for {response.name}")
                 continue
 
-    except BaseException as e:  # NOTE! Also catch KeyboardInterrupt, so we can early stop.
-        logging.error(f"Error during phase 1, proceeding to phase 2 anyway. Error: {e=}")
+    except (
+        BaseException
+    ) as e:  # NOTE! Also catch KeyboardInterrupt, so we can early stop.
+        logging.error(
+            f"Error during phase 1, proceeding to phase 2 anyway. Error: {e=}"
+        )
 
     # Phase 2: Check all submissions
     for response, stdout, stderr in submissions:
-        status, submission_url = await check_submission_status_with_retries(f"{stdout}{stderr}")
+        status, submission_url = await check_submission_status_with_retries(
+            f"{stdout}{stderr}"
+        )
 
         if status == "AC":
             stats.solution_passed += 1
@@ -470,7 +551,9 @@ def main(
 
     env = os.environ.copy()
     if "ALWAYS_DELETE_ATCODER_CACHE_BEFORE_LOGIN" not in env:
-        raise ValueError("ALWAYS_DELETE_ATCODER_CACHE_BEFORE_LOGIN must be set, and 17th Feb 2025 https://github.com/arthurdupe/atcoder-tools must be used")
+        raise ValueError(
+            "ALWAYS_DELETE_ATCODER_CACHE_BEFORE_LOGIN must be set, and 17th Feb 2025 https://github.com/arthurdupe/atcoder-tools must be used"
+        )
 
     ATCODER_ACCOUNTS.append(
         AtCoderAccount(

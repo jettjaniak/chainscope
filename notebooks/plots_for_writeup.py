@@ -9,8 +9,12 @@ import seaborn as sns
 import yaml
 
 from chainscope.typing import *
-from chainscope.utils import (MODELS_MAP, get_model_display_name,
-                              get_model_family, sort_models)
+from chainscope.utils import (
+    MODELS_MAP,
+    get_model_display_name,
+    get_model_family,
+    sort_models,
+)
 
 # df = pd.read_pickle(DATA_DIR / "df.pkl")
 # filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
@@ -457,7 +461,7 @@ def save_dual_diverging_barplots(df: pd.DataFrame, save_dir: Path) -> None:
         fig.suptitle("Sonnet 3.7 (no extended thinking)")
     else:
         fig.suptitle(model_name)
-    
+
     # Process each subplot
     for ax, comp, title in zip([ax1, ax2], ["gt", "lt"], ["Greater Than", "Less Than"]):
         # Filter data
@@ -993,7 +997,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
             "non_thinking": 8.8,
             "thinking_n": "(n=10)",
             "non_thinking_n": "(n=21)",
-            "vendor": "anthropic"
+            "vendor": "anthropic",
         },
         {
             "model": "DeepSeek",
@@ -1001,7 +1005,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
             "non_thinking": 5.1,
             "thinking_n": "(n=2)",
             "non_thinking_n": "(n=4)",
-            "vendor": "deepseek"
+            "vendor": "deepseek",
         },
         {
             "model": "Qwen",
@@ -1009,8 +1013,8 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
             "non_thinking": 27.5,
             "thinking_n": "(n=1)",
             "non_thinking_n": "(n=14)",
-            "vendor": "qwen"
-        }
+            "vendor": "qwen",
+        },
     ]
 
     # Define vendor colors
@@ -1027,13 +1031,15 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     plt.style.use("seaborn-v0_8-white")
 
     # Set font sizes
-    plt.rcParams.update({
-        "font.size": 18,
-        "axes.labelsize": 18,
-        "axes.titlesize": 18,
-        "xtick.labelsize": 18,
-        "ytick.labelsize": 18,
-    })
+    plt.rcParams.update(
+        {
+            "font.size": 18,
+            "axes.labelsize": 18,
+            "axes.titlesize": 18,
+            "xtick.labelsize": 18,
+            "ytick.labelsize": 18,
+        }
+    )
 
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -1045,20 +1051,20 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
 
     # Create bars with solid fill for thinking
     thinking_bars = ax.bar(
-        x - width/2 - separator,
+        x - width / 2 - separator,
         plot_data["thinking"],
         width,
         label="Thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
         edgecolor="black",
         linewidth=2,
-        alpha=1.0
+        alpha=1.0,
     )
-    
+
     # Create bars with hatching for non-thinking
-    hatch_pattern = 'xx'
+    hatch_pattern = "xx"
     non_thinking_bars = ax.bar(
-        x + width/2 + separator,
+        x + width / 2 + separator,
         plot_data["non_thinking"],
         width,
         label="Non-thinking",
@@ -1070,7 +1076,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     )
     # Draw hatch
     ax.bar(
-        x + width/2 + separator,
+        x + width / 2 + separator,
         plot_data["non_thinking"],
         width,
         label="Non-thinking",
@@ -1083,7 +1089,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     )
     # Draw edge
     ax.bar(
-        x + width/2 + separator,
+        x + width / 2 + separator,
         plot_data["non_thinking"],
         width,
         label="Non-thinking",
@@ -1099,12 +1105,12 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
         for idx, rect in enumerate(bars):
             height = rect.get_height()
             ax.text(
-                rect.get_x() + rect.get_width()/2.,
+                rect.get_x() + rect.get_width() / 2.0,
                 height,
-                f'{height}%\n{ns[idx]}',
-                ha='center',
-                va='bottom',
-                fontsize=16
+                f"{height}%\n{ns[idx]}",
+                ha="center",
+                va="bottom",
+                fontsize=16,
             )
 
     add_value_label(thinking_bars, plot_data["thinking_n"])
@@ -1127,11 +1133,19 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
 
     # Create custom legend handles with hatching patterns
     from matplotlib.patches import Patch
+
     legend_elements = [
-        Patch(facecolor='white', edgecolor='black', label='Thinking model', alpha=0.8),
-        Patch(facecolor='white', edgecolor='black', label='Non-thinking model with CoT', alpha=0.8, hatch=hatch_pattern, linewidth=1)
+        Patch(facecolor="white", edgecolor="black", label="Thinking model", alpha=0.8),
+        Patch(
+            facecolor="white",
+            edgecolor="black",
+            label="Non-thinking model with CoT",
+            alpha=0.8,
+            hatch=hatch_pattern,
+            linewidth=1,
+        ),
     ]
-    
+
     # Add legend with custom handles
     ax.legend(handles=legend_elements, loc="upper left", frameon=True, fontsize=16)
 
@@ -1142,6 +1156,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     fig.savefig(save_dir / "unfaithful_shortcuts.pdf", dpi=300, bbox_inches="tight")
     plt.show()
     plt.close()
+
 
 # %%
 

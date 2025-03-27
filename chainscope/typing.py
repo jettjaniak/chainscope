@@ -510,9 +510,7 @@ DumpMeta(key_transform="SNAKE").bind_to(CotEval)
 
 @dataclass
 class OldCotEval(YAMLWizard):
-    results_by_qid: dict[
-        str, dict[str, str]
-    ]  # qid -> {response_uuid -> result}
+    results_by_qid: dict[str, dict[str, str]]  # qid -> {response_uuid -> result}
     model_id: str
     instr_id: str
     ds_params: DatasetParams
@@ -955,6 +953,36 @@ LoadMeta(
     v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
 ).bind_to(AmbiguityEval)
 DumpMeta(key_transform="SNAKE").bind_to(AmbiguityEval)
+
+
+@dataclass
+class PropEval(YAMLWizard):
+    """Results from evaluating properties."""
+
+    popularity_by_entity_name: dict[str, int]
+    model_id: str
+    sampling_params: SamplingParams
+    prop_id: str
+
+    def save(self) -> Path:
+        """Save property evaluation to disk."""
+        directory = DATA_DIR / "prop_eval" / self.sampling_params.id
+        path = get_path(directory, self.prop_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, path: Path) -> "PropEval":
+        prop_eval = cls.from_yaml_file(path)
+        assert isinstance(prop_eval, cls)
+        return prop_eval
+
+
+LoadMeta(
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
+).bind_to(PropEval)
+DumpMeta(key_transform="SNAKE").bind_to(PropEval)
 
 
 @dataclass

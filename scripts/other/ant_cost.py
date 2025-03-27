@@ -1,14 +1,16 @@
 import re
 
+
 def extract_costs(text):
     # Use regex to find numbers that appear just before '$'
-    pattern = r'(\d+\.\d+)\s*\$'
+    pattern = r"(\d+\.\d+)\s*\$"
     costs = re.findall(pattern, text)
-    
+
     # Convert strings to floats
     costs = [float(cost) for cost in costs]
-    
+
     return costs
+
 
 def main():
     # Your log text here as a string
@@ -499,16 +501,17 @@ $
 58.2
 tps
 Anthropic"""
-    
+
     # Extract and sum costs
     costs = extract_costs(log_text)
     total_cost = sum(costs)
-    
+
     print(f"Found {len(costs)} cost entries")
     print(f"Total cost: ${total_cost:.2f}")
     print("\nIndividual costs:")
     for cost in costs:
         print(f"${cost:.2f}")
+
 
 if __name__ == "__main__":
     main()
