@@ -952,7 +952,7 @@ class AmbiguityEval(YAMLWizard):
 
 
 LoadMeta(
-    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
 ).bind_to(AmbiguityEval)
 DumpMeta(key_transform="SNAKE").bind_to(AmbiguityEval)
 
