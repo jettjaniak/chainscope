@@ -994,6 +994,17 @@ class PropEval(YAMLWizard):
         assert isinstance(prop_eval, cls)
         return prop_eval
 
+    @classmethod
+    def load_id(cls, prop_id: str) -> "PropEval":
+        sampling_params = SamplingParams(
+            temperature=0.0,
+            top_p=0.9,
+            max_new_tokens=1,
+        )
+        directory = DATA_DIR / "prop_eval" / sampling_params.id
+        path = get_path(directory, prop_id)
+        return cls.load(path)
+
 
 LoadMeta(
     v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"

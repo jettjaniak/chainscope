@@ -6,11 +6,9 @@ from pathlib import Path
 import click
 
 from chainscope.api_utils.anthropic_utils import process_batch_results
-from chainscope.cot_eval import (
-    create_cot_eval_from_batch_results,
-    evaluate_cot_responses_realtime,
-    evaluate_cot_responses_with_batch,
-)
+from chainscope.cot_eval import (create_cot_eval_from_batch_results,
+                                 evaluate_cot_responses_realtime,
+                                 evaluate_cot_responses_with_batch)
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP
 
