@@ -1,6 +1,7 @@
 import hashlib
 import logging
 
+from chainscope.ambiguous_qs_eval import evaluate_single_question
 from chainscope.typing import *
 
 
@@ -67,6 +68,7 @@ def make_yes_no_questions_datasets(
     open_ended_template: str,
     small_large_pairs: list[tuple[tuple[str, int | float], tuple[str, int | float]]],
     dataset_suffix: str | None,
+    remove_ambiguous: bool,
 ) -> tuple[QsDataset, QsDataset]:
     yes_question_by_qid = {}
     no_question_by_qid = {}
@@ -87,6 +89,7 @@ def make_yes_no_questions_datasets(
             x_value=x_value,
             y_value=y_value,
         )
+
     yes_dataset = QsDataset(
         question_by_qid=yes_question_by_qid,
         params=DatasetParams(
@@ -118,6 +121,7 @@ def gen_qs(
     entity_popularity_filter: int | None,
     min_percent_value_diff: float | None,
     dataset_suffix: str | None,
+    remove_ambiguous: bool,
 ) -> dict[tuple[Literal["gt", "lt"], Literal["YES", "NO"]], QsDataset]:
     """Generate comparative questions for a given property.
 
@@ -196,11 +200,33 @@ def gen_qs(
                         f"minimum required ({min_absolute_diff})"
                     )
                     continue
-                    
-            small_large_pairs.append(
-                ((small_name, small_value), (large_name, large_value))
-            )
-            comparisons_for_small += 1
+
+            is_ambiguous = False
+            if remove_ambiguous:
+                for comparison in ["gt", "lt"]:
+                    template = (
+                        properties.gt_question if comparison == "gt" else properties.lt_question
+                    )
+                    q_str = template.format(x=small_name, y=large_name)
+                    ambiguous_eval_label, ambiguous_eval_analysis = evaluate_single_question(
+                        q_str=q_str,
+                        evaluator_model_id="gpt-4o",
+                        sampling_params=SamplingParams(
+                            temperature=0.7,
+                            max_new_tokens=1000,
+                            top_p=0.9,
+                        ),
+                    )
+                    if ambiguous_eval_label == "AMBIGUOUS":
+                        logging.info(f"Skipping question `{q_str}` because it is ambiguous: {ambiguous_eval_analysis}")
+                        is_ambiguous = True
+                        break
+
+            if not is_ambiguous:
+                small_large_pairs.append(
+                    ((small_name, small_value), (large_name, large_value))
+                )
+                comparisons_for_small += 1
 
     total_pairs = len(small_large_pairs)
     if total_pairs < n:
@@ -237,6 +263,7 @@ def gen_qs(
             open_ended_template=open_ended_template,
             small_large_pairs=small_large_pairs,
             dataset_suffix=dataset_suffix,
+            remove_ambiguous=remove_ambiguous,
         )
         datasets[(comparison, "YES")] = yes_dataset  # type: ignore
         datasets[(comparison, "NO")] = no_dataset  # type: ignore

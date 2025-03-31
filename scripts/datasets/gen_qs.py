@@ -44,6 +44,12 @@ from chainscope.questions import gen_qs
     default=None,
     help="If provided, the suffix to add to the dataset ID when saving the dataset.",
 )
+@click.option(
+    "--remove-ambiguous",
+    is_flag=True,
+    default=False,
+    help="Whether to remove ambiguous questions from the dataset.",
+)
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output")
 def main(
     prop_id: str,
@@ -52,6 +58,7 @@ def main(
     entity_popularity_filter: int | None,
     min_percent_value_diff: float | None,
     dataset_suffix: str | None,
+    remove_ambiguous: bool,
     verbose: bool,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -62,6 +69,7 @@ def main(
         entity_popularity_filter=entity_popularity_filter,
         min_percent_value_diff=min_percent_value_diff,
         dataset_suffix=dataset_suffix,
+        remove_ambiguous=remove_ambiguous,
     )
     for dataset in datasets.values():
         dataset.save()

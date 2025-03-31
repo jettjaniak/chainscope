@@ -13,7 +13,8 @@ import openai
 import requests
 from tqdm.asyncio import tqdm
 
-from chainscope.api_utils.batch_processor import BatchItem, BatchProcessor, BatchResult
+from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
+                                                  BatchResult)
 from chainscope.typing import *
 
 # Hard limit of maximum requests per minute to prevent excessive API usage
@@ -202,6 +203,60 @@ def get_openai_limits() -> OpenAILimits:
         ),
         tokens_reset_seconds=parse_time_to_seconds(headers["x-ratelimit-reset-tokens"]),
     )
+
+
+def generate_oa_response_sync(
+    prompt: str,
+    model_id: str,
+    temperature: float = 1.0,
+    max_new_tokens: int = 1000,
+) -> str | None:
+    """Generate a synchronous response from an OpenAI model.
+
+    Args:
+        prompt: The prompt to run on the model
+        model_id: The model ID to use
+        temperature: Temperature parameter for generation (default: 1.0)
+        max_new_tokens: Maximum number of new tokens to generate (default: 1000)
+
+    Returns:
+        The raw response content or None if the request failed
+    """
+    client = openai.OpenAI()
+    try:
+        # Handle different parameter names for token limits based on model
+        if "o1" in model_id:
+            # O1 models use max_completion_tokens instead of max_tokens
+            token_param = "max_completion_tokens"
+            # O1 only supports the default (1) value for temperature
+            completion_temp = 1
+        else:
+            token_param = "max_tokens" 
+            completion_temp = temperature
+
+        completion_params = {
+            "model": model_id,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": completion_temp,
+            token_param: max_new_tokens,
+        }
+
+        response = client.chat.completions.create(**completion_params)
+
+        if (
+            not response
+            or not response.choices
+            or not response.choices[0].message.content
+        ):
+            return None
+
+        return response.choices[0].message.content
+
+    except Exception as e:
+        logging.warning(f"Error generating response: {str(e)}")
+        return None
+    finally:
+        client.close()
 
 
 async def generate_oa_response_async(
