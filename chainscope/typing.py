@@ -158,6 +158,7 @@ class DatasetParams(YAMLWizard):
     answer: Literal["YES", "NO"]
     max_comparisons: int
     uuid: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
+    suffix: str | None = None
 
     @property
     def pre_id(self) -> str:
@@ -165,7 +166,10 @@ class DatasetParams(YAMLWizard):
 
     @property
     def id(self) -> str:
-        return f"{self.prop_id}_{self.pre_id}_{self.uuid}"
+        id = f"{self.prop_id}_{self.pre_id}_{self.uuid}"
+        if self.suffix is not None:
+            id = f"{id}_{self.suffix}"
+        return id
 
     @property
     def qs_dataset_path(self) -> Path:
@@ -209,15 +213,27 @@ class DatasetParams(YAMLWizard):
 
     @classmethod
     def from_id(cls, dataset_id: str) -> "DatasetParams":
-        assert len(dataset_id.split("_")) == 5, f"Invalid dataset_id: {dataset_id}"
-        prop_id, comparison, answer, max_comparisons, uuid = dataset_id.split("_")
-        return cls(
-            prop_id=prop_id,
-            comparison=comparison,  # type: ignore
-            answer=answer,  # type: ignore
-            max_comparisons=int(max_comparisons),
-            uuid=uuid,
-        )
+        if len(dataset_id.split("_")) == 5:
+            prop_id, comparison, answer, max_comparisons, uuid = dataset_id.split("_")
+            return cls(
+                prop_id=prop_id,
+                comparison=comparison,  # type: ignore
+                answer=answer,  # type: ignore
+                max_comparisons=int(max_comparisons),
+                uuid=uuid,
+            )
+        elif len(dataset_id.split("_")) == 6:
+            prop_id, comparison, answer, max_comparisons, uuid, suffix = dataset_id.split("_")
+            return cls(
+                prop_id=prop_id,
+                comparison=comparison,  # type: ignore
+                answer=answer,  # type: ignore
+                max_comparisons=int(max_comparisons),
+                uuid=uuid,
+                suffix=suffix,
+            )
+        else:
+            raise ValueError(f"Invalid dataset_id: {dataset_id}")
 
     def load_qs_dataset(self) -> "QsDataset":
         qsds = QsDataset.from_yaml_file(self.qs_dataset_path)
