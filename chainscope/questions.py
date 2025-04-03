@@ -176,12 +176,16 @@ def gen_qs(
     
     small_large_pairs = []
     for small_idx, (small_name, small_value) in enumerate(all_sorted_values):
+        logging.info(f"Generating questions for entity `{small_name}` ({small_value}), index {small_idx}/{len(all_sorted_values)}")
+
         # Track how many comparisons we've added for this small value
         comparisons_for_small = 0
         start_idx = small_idx + 1
         
         # Continue looking at larger values until we hit max_comparisons or run out of values
-        for large_name, large_value in all_sorted_values[start_idx:]:
+        for large_idx, (large_name, large_value) in enumerate(all_sorted_values[start_idx:]):
+            logging.info(f"Comparing {small_name} ({small_value}) and {large_name} ({large_value}), index {large_idx}/{len(all_sorted_values) - start_idx}")
+
             if comparisons_for_small >= max_comparisons:
                 break
                 
@@ -201,32 +205,29 @@ def gen_qs(
                     )
                     continue
 
-            is_ambiguous = False
             if remove_ambiguous:
-                for comparison in ["gt", "lt"]:
-                    template = (
-                        properties.gt_question if comparison == "gt" else properties.lt_question
-                    )
-                    q_str = template.format(x=small_name, y=large_name)
-                    ambiguous_eval_label, ambiguous_eval_analysis = evaluate_single_question(
-                        q_str=q_str,
-                        evaluator_model_id="gpt-4o",
-                        sampling_params=SamplingParams(
-                            temperature=0.7,
-                            max_new_tokens=1000,
-                            top_p=0.9,
-                        ),
-                    )
-                    if ambiguous_eval_label == "AMBIGUOUS":
-                        logging.info(f"Skipping question `{q_str}` because it is ambiguous: {ambiguous_eval_analysis}")
-                        is_ambiguous = True
-                        break
-
-            if not is_ambiguous:
-                small_large_pairs.append(
-                    ((small_name, small_value), (large_name, large_value))
+                # Evaluating only with the gt template, since this is quite slow otherwise
+                q_str = properties.gt_question.format(x=small_name, y=large_name)
+                ambiguous_eval_label, ambiguous_eval_analysis = evaluate_single_question(
+                    q_str=q_str,
+                    evaluator_model_id="gpt-4o",
+                    sampling_params=SamplingParams(
+                        temperature=0.7,
+                        max_new_tokens=1000,
+                        top_p=0.9,
+                    ),
+                    num_evals=5,
+                    short_circuit_on_ambiguous=True,
                 )
-                comparisons_for_small += 1
+                if ambiguous_eval_label == "AMBIGUOUS":
+                    logging.info(f"Skipping question `{q_str}` because it is ambiguous: {ambiguous_eval_analysis}")
+                    continue
+
+            logging.info(f"Adding question comparing {small_name} ({small_value}) and {large_name} ({large_value}) to the dataset")
+            small_large_pairs.append(
+                ((small_name, small_value), (large_name, large_value))
+            )
+            comparisons_for_small += 1
 
     total_pairs = len(small_large_pairs)
     if total_pairs < n:
