@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import Literal
 
 import click
+import numpy as np
 import pandas as pd
 import yaml
 from beartype import beartype
@@ -67,37 +68,55 @@ def get_cot_responses(question: pd.Series):
 
 
 @beartype
-def get_cot_eval(question: pd.Series) -> CotEval:
+def get_cot_eval(question: pd.Series, instr_id: str) -> CotEval | OldCotEval:
     cache_key = get_cache_key(question)
     dataset_params = get_dataset_params(question)
     sampling_params = get_sampling_params(question)
 
     if cache_key not in eval_cache:
-        eval_cache[cache_key] = dataset_params.load_cot_eval(
-            question.instr_id,
-            question.model_id,
-            sampling_params,
-        )
+        if instr_id == "instr-v0":
+            eval_cache[cache_key] = dataset_params.load_old_cot_eval(
+                question.instr_id,
+                question.model_id,
+                sampling_params,
+            )
+        else:
+            eval_cache[cache_key] = dataset_params.load_cot_eval(
+                question.instr_id,
+                question.model_id,
+                sampling_params,
+            )
     return eval_cache[cache_key]
 
 
 @beartype
 def create_response_dict(
-    response: str, eval_result: CotEvalResult
+    response: str, eval_result: CotEvalResult | str
 ) -> dict[str, str | None | Literal["TRUE", "FALSE", "FAILED_EVAL"]]:
-    return {
-        "response": response,
-        "result": eval_result.result,
-        "final_answer": eval_result.final_answer,
-        "equal_values": eval_result.equal_values,
-        "explanation_final_answer": eval_result.explanation_final_answer,
-        "explanation_equal_values": eval_result.explanation_equal_values,
-    }
+    if isinstance(eval_result, CotEvalResult):
+        return {
+            "response": response,
+            "result": eval_result.result,
+            "final_answer": eval_result.final_answer,
+            "equal_values": eval_result.equal_values,
+            "explanation_final_answer": eval_result.explanation_final_answer,
+            "explanation_equal_values": eval_result.explanation_equal_values,
+        }
+    else:
+        return {
+            "response": response,
+            "result": eval_result,
+            "final_answer": eval_result,
+            "equal_values": "FALSE",
+            "explanation_final_answer": None,
+            "explanation_equal_values": None,
+        }
 
 
 @beartype
 def process_single_model(
     model_group_data: pd.DataFrame,
+    instr_id: str,
     accuracy_diff_threshold: float,
     min_group_bias: float,
     include_metadata: bool,
@@ -107,8 +126,11 @@ def process_single_model(
 
     Args:
         model_group_data: DataFrame containing data for a single model
+        instr_id: Instruction ID
         accuracy_diff_threshold: Minimum accuracy difference threshold
         min_group_bias: Minimum absolute difference from 0.5 in group p_yes mean
+        include_metadata: Whether to include metadata in the output
+        verbose: Whether to print verbose output
 
     Returns:
         Dict of faithful and unfaithful responses for this model
@@ -187,9 +209,9 @@ def process_single_model(
                 continue
 
             all_cot_responses = get_cot_responses(question)
-            cot_eval = get_cot_eval(question)
+            cot_eval = get_cot_eval(question, instr_id)
             all_cot_responses_reversed = get_cot_responses(reversed_question)
-            cot_eval_reversed = get_cot_eval(reversed_question)
+            cot_eval_reversed = get_cot_eval(reversed_question, instr_id)
 
             # Get all responses for this question
             all_q_responses = all_cot_responses.responses_by_qid[question.qid]
@@ -201,29 +223,25 @@ def process_single_model(
                 question_evals = cot_eval.results_by_qid[question.qid]
                 if response_id not in question_evals:
                     continue
-                eval_result = question_evals[response_id]
-                if eval_result.result == question.answer:
+                response_eval = question_evals[response_id]
+
+                if isinstance(response_eval, CotEvalResult):
+                    response_result = response_eval.result
+                else:
+                    response_result = response_eval
+
+                if response_result == question.answer:
                     faithful_responses[response_id] = create_response_dict(
-                        response, eval_result
+                        response, response_eval
                     )
-                elif eval_result.result in ["YES", "NO"]:
+                elif response_result in ["YES", "NO"]:
                     unfaithful_responses[response_id] = create_response_dict(
-                        response, eval_result
+                        response, response_eval
                     )
                 else:
                     unknown_responses[response_id] = create_response_dict(
-                        response, eval_result
+                        response, response_eval
                     )
-
-            # if not (faithful_responses and unfaithful_responses):
-            #     if verbose:
-            #         print(
-            #             " ==> Skipping pair due to no faithful or unfaithful responses\n"
-            #             f"     Faithful: {len(faithful_responses)}\n"
-            #             f"     Unfaithful: {len(unfaithful_responses)}\n"
-            #             f"     Unknown: {len(unknown_responses)}"
-            #         )
-            #     continue
 
             # Get all responses for the reversed question
             reversed_q_correct_responses = {}
@@ -231,21 +249,27 @@ def process_single_model(
             for response_id, response in all_cot_responses_reversed.responses_by_qid[
                 reversed_question.qid
             ].items():
-                question_results = cot_eval_reversed.results_by_qid[
+                question_evals = cot_eval_reversed.results_by_qid[
                     reversed_question.qid
                 ]
-                if response_id not in question_results:
+                if response_id not in question_evals:
                     continue
-                eval_result = question_results[response_id]
-                if eval_result.result == "UNKNOWN":
+                response_eval = question_evals[response_id]
+
+                if isinstance(response_eval, CotEvalResult):
+                    response_result = response_eval.result
+                else:
+                    response_result = response_eval
+
+                if response_result == "UNKNOWN":
                     continue
-                if eval_result.result == reversed_question.answer:
+                if response_result == reversed_question.answer:
                     reversed_q_correct_responses[response_id] = create_response_dict(
-                        response, eval_result
+                        response, response_eval
                     )
                 else:
                     reversed_q_incorrect_responses[response_id] = create_response_dict(
-                        response, eval_result
+                        response, response_eval
                     )
 
             instruction = Instructions.load(question.instr_id).cot
@@ -372,6 +396,13 @@ def save_by_prop_id(
     help="Exclude metadata from the output",
 )
 @click.option(
+    "--instr-id",
+    "-i",
+    type=str,
+    default="instr-wm",
+    help="Instruction ID to process",
+)
+@click.option(
     "--verbose",
     "-v",
     is_flag=True,
@@ -382,12 +413,18 @@ def main(
     min_group_bias: float,
     model: str | None,
     exclude_metadata: bool,
+    instr_id: str,
     verbose: bool,
 ) -> None:
     """Create dataset of potentially unfaithful responses by comparing accuracies of reversed questions."""
 
     # Load data
-    df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+    if instr_id == "instr-wm":
+        df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+    elif instr_id == "instr-v0":
+        df = pd.read_pickle(DATA_DIR / "df.pkl")
+    else:
+        raise click.BadParameter(f"Invalid instruction ID: {instr_id}")
 
     if verbose:
         print(f"Loaded {len(df)} datapoints")
@@ -427,11 +464,12 @@ def main(
         else:
             print(f"### Processing {model_file_name} ###")
         responses = process_single_model(
-            model_data,
-            accuracy_diff_threshold,
-            min_group_bias,
-            not exclude_metadata,
-            verbose,
+            model_group_data=model_data,
+            instr_id=instr_id,
+            accuracy_diff_threshold=accuracy_diff_threshold,
+            min_group_bias=min_group_bias,
+            include_metadata=not exclude_metadata,
+            verbose=verbose,
         )
 
         # Save responses by prop_id to separate files
