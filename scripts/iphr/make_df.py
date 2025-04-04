@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import click
 import pandas as pd
 from tqdm.auto import tqdm
 
@@ -203,9 +204,21 @@ def process_v0_cot_evals():
     print("\nColumns:", ", ".join(df.columns))
 
 
-def main():
-    # process_v0_cot_evals()
-    process_wm_cot_evals()
+@click.command()
+@click.option(
+    "--instr-id",
+    "-i",
+    type=str,
+    default="instr-wm",
+    help="Instruction ID to process",
+)
+def main(instr_id: str):
+    if instr_id == "instr-wm":
+        process_wm_cot_evals()
+    elif instr_id == "instr-v0":
+        process_v0_cot_evals()
+    else:
+        raise click.BadParameter(f"Invalid instruction ID: {instr_id}")
 
 
 if __name__ == "__main__":
