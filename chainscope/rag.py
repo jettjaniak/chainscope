@@ -145,18 +145,18 @@ Source snippet relevant to the query: `{source.relevant_snippet}`
 Source full content: `{source.content}`"""
 
 
-def extract_value_range_from_sources(
+def extract_rag_values_from_sources(
     query: str,
     sources: list[RAGSource],
     model_id: str = "gpt-4o-2024-11-20",
     temperature: float = 0.7,
     max_tokens: int = 100,
-) -> list[str] | None:
+) -> list[RAGValue]:
     """
     Extract a range of values for a given query from a list of sources using an OpenAI model.
     Processes each source individually and returns all non-UNKNOWN values found.
     """
-    extracted_values: set[str] = set()
+    extracted_values: list[RAGValue] = []
     
     logging.info(f"### Query: `{query}`")
     
@@ -177,7 +177,7 @@ def extract_value_range_from_sources(
         logging.info("-" * 80)
         
         if response and response.strip().lower() != "unknown":
-            extracted_values.add(response.strip())
+            extracted_values.append(RAGValue(value=response.strip(), source=source))
     
-    return list(extracted_values) if extracted_values else None
+    return extracted_values
 
