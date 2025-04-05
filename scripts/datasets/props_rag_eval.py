@@ -5,6 +5,7 @@ import logging
 
 import click
 from beartype import beartype
+from tqdm import tqdm
 
 from chainscope.api_utils.open_ai_utils import \
     process_batch_results as process_openai_batch_results
@@ -147,7 +148,7 @@ def submit(
         property_files = property_files[:1]
         logging.info("Test mode: using only first dataset")
 
-    for property_file in property_files:
+    for property_file in tqdm(property_files, desc="Processing properties"):
         try:
             logging.info(f"Processing property file {property_file}")
             props = Properties.load_from_path(property_file)
@@ -193,7 +194,7 @@ def submit(
             # Get sources for each entity
             query_by_entity_name = {}
             sources_by_entity = {}
-            for entity_name in unprocessed_entities.keys():
+            for entity_name in tqdm(unprocessed_entities.keys(), desc=f"Getting RAG sources for props {prop_id}"):
                 query = build_rag_query(entity_name, props)
                 query_by_entity_name[entity_name] = query
                 sources = get_rag_sources(query)
