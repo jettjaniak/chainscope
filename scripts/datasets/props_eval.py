@@ -2,49 +2,18 @@
 
 import itertools
 import logging
-import re
 
 import click
 from beartype import beartype
 
-from chainscope.api_utils.open_ai_utils import (
-    process_batch_results as process_openai_batch_results,
-)
+from chainscope.api_utils.open_ai_utils import \
+    process_batch_results as process_openai_batch_results
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
+from chainscope.properties import get_entity_type
 from chainscope.typing import *
 
 PROMPT = """On a scale of 1 to 10, how well-known or popular is the following {entity_type}: `{entity}`?
 With 1 being a completely unknown or obscure {entity_type} and 10 being a super popular {entity_type} that people would generally know of. Return only the number."""
-
-
-def get_entity_type(props: Properties) -> str:
-    # Extract the entity type from the question using regex
-    match = re.match(r"about ([^:]+):", props.gt_question)
-    if match:
-        entity_type_map = {
-            "movies": "movie",
-            "songs": "song",
-            "books": "book",
-            "historical figures": "historical figure",
-            "NYT articles": "NYT article",
-            "places in NYC": "place in NYC",
-            "US cities": "US city",
-            "US colleges": "US college",
-            "US counties": "US county",
-            "US natural places": "US natural place",
-            "US structures": "US structure",
-            "US zip codes": "US zip code",
-            "world natural places": "world natural place",
-            "world places": "world place",
-            "world structures": "world structure",
-        }
-        entity_type = match.group(1)
-        if entity_type in entity_type_map:
-            return entity_type_map[entity_type]
-        else:
-            raise ValueError(f"Unknown entity type: {entity_type}")
-    else:
-        raise ValueError(f"Unknown entity type: {props.gt_question}")
 
 
 def extract_popularity(response: str) -> int:

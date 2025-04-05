@@ -1,12 +1,11 @@
-import logging
+
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Literal, Sequence  # noqa: F401
+from typing import Any, Literal
 
 import yaml
 from dataclass_wizard import DumpMeta, LoadMeta, YAMLWizard, fromdict
-from jaxtyping import Float, Int  # noqa: F401
 
 from chainscope import DATA_DIR
 
@@ -1025,6 +1024,7 @@ class OpenAIBatchInfo(YAMLWizard):
     evaluated_sampling_params: SamplingParams
     evaluator_model_id: str | None
     evaluator_sampling_params: SamplingParams | None
+    metadata: dict[str, Any]
 
     def save(self) -> Path:
         """Save batch info to disk."""
@@ -1300,3 +1300,55 @@ LoadMeta(
     v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
 ).bind_to(SplitCotResponses)
 DumpMeta(key_transform="SNAKE").bind_to(SplitCotResponses)
+
+
+@dataclass
+class RAGSource:
+    url: str
+    title: str
+    content: str
+    relevant_snippet: str
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(RAGSource)
+DumpMeta(key_transform="SNAKE").bind_to(RAGSource)
+
+@dataclass
+class RAGValue:
+    value: str
+    source: RAGSource
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(RAGValue)
+DumpMeta(key_transform="SNAKE").bind_to(RAGValue)
+
+
+@dataclass
+class PropRAGEval(YAMLWizard):
+    """Results from evaluating properties using RAG."""
+    values_by_entity_name: dict[str, list[RAGValue]]
+    model_id: str
+    sampling_params: SamplingParams
+    prop_id: str
+
+    def save(self) -> Path:
+        """Save property RAG evaluation to disk."""
+        directory = DATA_DIR / "prop_rag_eval" / self.sampling_params.id
+        path = get_path(directory, self.prop_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, path: Path) -> "PropRAGEval":
+        prop_rag_eval = cls.from_yaml_file(path)
+        assert isinstance(prop_rag_eval, cls)
+        return prop_rag_eval
+
+    @classmethod
+    def load_id(cls, prop_id: str, sampling_params: SamplingParams) -> "PropRAGEval":
+        directory = DATA_DIR / "prop_rag_eval" / sampling_params.id
+        path = get_path(directory, prop_id)
+        return cls.load(path)

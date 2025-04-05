@@ -520,6 +520,7 @@ def submit_openai_batch(
         evaluated_sampling_params=evaluated_sampling_params,
         evaluator_model_id=evaluator_model_id,
         evaluator_sampling_params=evaluator_sampling_params,
+        metadata={},
     )
     batch_info.save()
     return batch_info
