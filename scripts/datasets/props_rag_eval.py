@@ -112,7 +112,11 @@ def cli() -> None:
 @click.option("--temperature", default=0)
 @click.option("--top-p", default=0.9)
 @click.option("--max-tokens", default=100)
-@click.option("--entity-popularity-filter", type=float, default=None)
+@click.option("--entity-popularity-filter",
+    type=int,
+    default=None,
+    help="Perform RAG eval only for entities with popularity >= this value (1-10)",
+)
 @click.option(
     "--test",
     is_flag=True,
@@ -132,7 +136,7 @@ def submit(
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
     if entity_popularity_filter is not None:
-        assert 0 <= entity_popularity_filter <= 1, "Entity popularity filter must be between 0 and 1"
+        assert 1 <= entity_popularity_filter <= 10, "Entity popularity filter must be between 1 and 10"
 
     sampling_params = SamplingParams(
         temperature=float(temperature),
