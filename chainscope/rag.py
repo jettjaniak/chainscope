@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Any
 
+from bs4 import BeautifulSoup
 from googleapiclient.discovery import build
 from zyte_api import ZyteAPI
 
@@ -48,7 +49,7 @@ def google_search(query: str, *, num_results: int = 10) -> list[dict[str, Any]]:
         raise Exception(f"Google search failed: {str(e)}")
 
 
-def get_url_content(url: str) -> str | None:
+def get_url_content(url: str) -> tuple[str, str] | None:
     """
     Extract the main content from a URL using Zyte API.
     
@@ -56,7 +57,7 @@ def get_url_content(url: str) -> str | None:
         url: The URL to extract content from
         
     Returns:
-        The extracted article text content
+        A tuple containing the extracted article text content and the HTML content
         
     Raises:
         Exception: If there's an error downloading or parsing the article
@@ -68,6 +69,7 @@ def get_url_content(url: str) -> str | None:
         client = ZyteAPI(api_key=ZYTE_API_KEY)
         zyte_query = {
             "url": url,
+            "browserHtml": True,
             "article": True,
             "articleOptions": {"extractFrom":"browserHtml"},
         }
@@ -76,6 +78,11 @@ def get_url_content(url: str) -> str | None:
         status_code = response.get("statusCode", 0)
         if status_code != 200:
             logging.warning(f"Failed to extract content from URL {url}: {status_code}")
+            return None
+        
+        html = response.get("browserHtml", "")
+        if not html:
+            logging.warning(f"No HTML found in response for URL {url}")
             return None
         
         article = response.get("article", {})
@@ -88,10 +95,65 @@ def get_url_content(url: str) -> str | None:
             logging.warning(f"No article body found in response for URL {url}")
             return None
         
-        return article_body
+        return article_body, html
     except Exception as e:
         logging.warning(f"Failed to extract content from URL {url}: {str(e)}")
         return None
+    
+
+def extract_wikipedia_infobox_data(html_content: str) -> dict[str, dict[str, str]]:
+    """
+    Parses the first 'infobox' table and returns a dict of dicts.
+    The top-level keys are 'section headers' (like "Physical properties").
+    Each section maps to its own dict of property->value pairs.
+    Rows that do not belong to a section with a header
+    are placed into a 'Miscellaneous' or similar default group.
+    """
+    soup = BeautifulSoup(html_content, "html.parser")
+    infobox = soup.find("table", class_="infobox")
+    if not infobox:
+        return {}
+    
+    # This will map: header_text -> { property_key: property_value, ... }
+    infobox_data = {}
+    current_header = None
+    
+    # We'll iterate over every row in the infobox (allowing recursion to find <tbody> child rows).
+    for row in infobox.find_all("tr"):
+        # First see if this row is a "section header" row: <th colspan="2" class="infobox-header">Some Header</th>
+        header_cell = row.find("th", class_="infobox-header")
+        if header_cell:
+            # Grab the header text
+            current_header = header_cell.get_text(strip=True)
+            # Initialize this header in our dict if not present
+            infobox_data.setdefault(current_header, {})
+            continue
+        
+        # If no "infobox-header", check if it's a property row (1 <th> + 1 <td>)
+        prop_th = row.find("th", recursive=False)
+        prop_td = row.find("td", recursive=False)
+        
+        # If we don't see a property row, skip it
+        if not prop_th or not prop_td:
+            continue
+        
+        # If there's a nested table, skip (complex data)
+        if prop_td.find("table"):
+            continue
+        
+        # If no header has been encountered yet, put this under a default group
+        if not current_header:
+            current_header = "Miscellaneous"
+            infobox_data.setdefault(current_header, {})
+        
+        # Extract clean text for key and value
+        key = prop_th.get_text(strip=True)
+        value = prop_td.get_text(" ", strip=True)
+        
+        # Store in our dict
+        infobox_data[current_header][key] = value
+    
+    return infobox_data
 
 
 def get_rag_sources(query: str, *, num_sources: int = 10) -> list[RAGSource]:
@@ -118,9 +180,22 @@ def get_rag_sources(query: str, *, num_sources: int = 10) -> list[RAGSource]:
             # Zyte won't extract content from PDFs, so we skip them
             continue
 
-        content = get_url_content(url)
-        if content:
+        content_extraction_result = get_url_content(url)
+        if content_extraction_result:
+            content, html = content_extraction_result
             logging.info(f" -> Found source: `{url}`")
+
+            if "wikipedia.org" in url:
+                # Wikipedia pages have a lot of content in their infoboxes, which is not parsed by Zyte, so we need to extract that manually
+                infobox_data = extract_wikipedia_infobox_data(html)
+                infobox_content = ""
+                for header, properties in infobox_data.items():
+                    infobox_content += f"# {header}\n"
+                    for key, value in properties.items():
+                        infobox_content += f"- {key}: {value}\n"
+            
+                content = f"Wikipedia infobox:\n{infobox_content}\n\n{content}"
+
             sources.append(RAGSource(url=url, title=title, content=content, relevant_snippet=snippet))
         else:
             logging.info(f" -> Skipping source: `{url}`")
