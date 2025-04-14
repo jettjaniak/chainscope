@@ -134,7 +134,7 @@ def perform_rag_eval_using_google_search(
         evaluator_model_id=evaluator_model_id,
         sampling_params=sampling_params,
     )
-    logging.info(f"Submitted batch {batch_info.batch_id} for {property_file}")
+    logging.info(f"Submitted batch {batch_info.batch_id} for {prop_id}")
     logging.info(f"Batch info saved to {batch_info.save()}")
 
 @beartype
