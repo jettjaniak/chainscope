@@ -11,7 +11,7 @@ from chainscope.api_utils.open_ai_utils import \
     process_batch_results as process_openai_batch_results
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
 from chainscope.rag import (build_rag_extraction_prompt, build_rag_query,
-                            get_rag_sources)
+                            get_openai_web_search_rag_values, get_rag_sources)
 from chainscope.typing import *
 
 
@@ -106,6 +106,59 @@ def process_batch(
         sampling_params=batch_info.evaluated_sampling_params,
     )
 
+@beartype
+def perform_rag_eval_using_google_search(
+    prop_id: str,
+    props: Properties,
+    entity_names: list[str],
+    evaluator_model_id: str,
+    sampling_params: SamplingParams,
+) -> None:
+    logging.info(f"Submitting batch for {len(entity_names)} unprocessed entities")
+
+    # Get sources for each entity
+    query_by_entity_name = {}
+    sources_by_entity = {}
+    for entity_name in tqdm(entity_names, desc=f"Getting RAG sources for props {prop_id}"):
+        query = build_rag_query(entity_name, props)
+        query_by_entity_name[entity_name] = query
+        found_sources = get_rag_sources(query)
+        sources = [s for s in found_sources if s.content is not None or s.relevant_snippet is not None]
+        sources_by_entity[entity_name] = sources
+
+    batch_info = submit_batch(
+        prop_id=prop_id,
+        entity_names=list(entity_names),
+        query_by_entity_name=query_by_entity_name,
+        sources_by_entity=sources_by_entity,
+        evaluator_model_id=evaluator_model_id,
+        sampling_params=sampling_params,
+    )
+    logging.info(f"Submitted batch {batch_info.batch_id} for {property_file}")
+    logging.info(f"Batch info saved to {batch_info.save()}")
+
+@beartype
+def perform_rag_eval_using_gpt_4o_web_search(
+    prop_id: str,
+    props: Properties,
+    entity_names: list[str],
+    sampling_params: SamplingParams,
+    existing_rag_eval: PropRAGEval | None = None,
+) -> None:
+    rag_eval = existing_rag_eval or PropRAGEval(
+        values_by_entity_name={},
+        prop_id=prop_id,
+        model_id="gpt-4o-search-preview",
+        sampling_params=sampling_params,
+    )
+
+    for entity_name in tqdm(entity_names, desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
+        query = build_rag_query(entity_name, props)
+        values = get_openai_web_search_rag_values(query, model_id="gpt-4o-search-preview", search_context_size="medium")
+        rag_eval.values_by_entity_name[entity_name] = values
+    
+    logging.info(f"RAG eval for {prop_id} saved to {rag_eval.save()}")
+
 @click.group()
 def cli() -> None:
     """Evaluate properties using RAG and OpenAI's batch API."""
@@ -113,13 +166,19 @@ def cli() -> None:
 
 @cli.command()
 @click.option("--evaluator-model-id", default="gpt-4o-2024-11-20")
+@click.option("--rag-method", default="gpt-4o-web-search", type=click.Choice(["gpt-4o-web-search", "google-search-with-zyte"]))
 @click.option("--temperature", default=0)
 @click.option("--top-p", default=0.9)
-@click.option("--max-tokens", default=100)
+@click.option("--max-tokens", default=1000)
 @click.option("--entity-popularity-filter",
     type=int,
     default=None,
     help="Perform RAG eval only for entities with popularity >= this value (1-10)",
+)
+@click.option(
+    "--skip-processed-entities",
+    is_flag=True,
+    help="Skip entities that have already been processed",
 )
 @click.option(
     "--test",
@@ -129,10 +188,12 @@ def cli() -> None:
 @click.option("-v", "--verbose", is_flag=True)
 def submit(
     evaluator_model_id: str,
+    rag_method: str,
     temperature: float,
     top_p: float,
     max_tokens: int,
     entity_popularity_filter: int | None,
+    skip_processed_entities: bool,
     test: bool,
     verbose: bool,
 ) -> None:
@@ -163,11 +224,12 @@ def submit(
             prop_id = property_file.stem
 
             # Check for existing processed results
+            existing_rag_eval = None
             processed_entities = set()
             try:
-                processed_eval = PropRAGEval.load_id(prop_id, sampling_params)
-                processed_entities = set(processed_eval.values_by_entity_name.keys())
-                logging.info(f"Found {len(processed_entities)} already processed entities")
+                existing_rag_eval = PropRAGEval.load_id(prop_id, sampling_params)
+                processed_entities = set(existing_rag_eval.values_by_entity_name.keys())
+                logging.info(f"Found {len(processed_entities)} already processed entities in {existing_rag_eval.get_path()}")
             except FileNotFoundError:
                 logging.info(f"No existing results found for {prop_id}")
 
@@ -188,37 +250,38 @@ def submit(
                 logging.info(f"Test mode: using {len(test_properties)} properties")
 
             # Filter out already processed entities
-            unprocessed_entities = {
-                k: v for k, v in props.value_by_name.items() 
-                if k not in processed_entities
-            }
+            if skip_processed_entities:
+                entities_to_process = {
+                    k: v for k, v in props.value_by_name.items() 
+                    if k not in processed_entities
+                }
+            else:
+                entities_to_process = props.value_by_name
 
-            if not unprocessed_entities:
+            if not entities_to_process:
                 logging.info(f"All entities for {prop_id} have already been processed, skipping")
                 continue
 
-            logging.info(f"Submitting batch for {len(unprocessed_entities)} unprocessed entities")
+            if rag_method == "gpt-4o-web-search":
+                perform_rag_eval_using_gpt_4o_web_search(
+                    prop_id=prop_id,
+                    props=props,
+                    entity_names=list(entities_to_process.keys()),
+                    sampling_params=sampling_params,
+                    existing_rag_eval=existing_rag_eval,
+                )
+            elif rag_method == "google-search-with-zyte":
+                perform_rag_eval_using_google_search(
+                    prop_id=prop_id,
+                    props=props,
+                    entity_names=list(entities_to_process.keys()),
+                    evaluator_model_id=evaluator_model_id,
+                    sampling_params=sampling_params,
+                )
+            else:
+                raise ValueError(f"Invalid RAG method: {rag_method}")
 
-            # Get sources for each entity
-            query_by_entity_name = {}
-            sources_by_entity = {}
-            for entity_name in tqdm(unprocessed_entities.keys(), desc=f"Getting RAG sources for props {prop_id}"):
-                query = build_rag_query(entity_name, props)
-                query_by_entity_name[entity_name] = query
-                found_sources = get_rag_sources(query)
-                sources = [s for s in found_sources if s.content is not None or s.relevant_snippet is not None]
-                sources_by_entity[entity_name] = sources
-
-            batch_info = submit_batch(
-                prop_id=prop_id,
-                entity_names=list(unprocessed_entities.keys()),
-                query_by_entity_name=query_by_entity_name,
-                sources_by_entity=sources_by_entity,
-                evaluator_model_id=evaluator_model_id,
-                sampling_params=sampling_params,
-            )
-            logging.info(f"Submitted batch {batch_info.batch_id} for {property_file}")
-            logging.info(f"Batch info saved to {batch_info.save()}")
+            
         except Exception as e:
             logging.error(f"Error processing {property_file}: {e}")
 

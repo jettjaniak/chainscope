@@ -1352,3 +1352,8 @@ class PropRAGEval(YAMLWizard):
         directory = DATA_DIR / "prop_rag_eval" / sampling_params.id
         path = get_path(directory, prop_id)
         return cls.load(path)
+
+    def get_path(self) -> Path:
+        directory = DATA_DIR / "prop_rag_eval" / self.sampling_params.id
+        path = get_path(directory, self.prop_id)
+        return path

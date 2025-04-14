@@ -7,7 +7,8 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from zyte_api import ZyteAPI
 
-from chainscope.api_utils.open_ai_utils import generate_oa_response_sync
+from chainscope.api_utils.open_ai_utils import \
+    generate_oa_web_search_response_sync
 from chainscope.properties import get_value
 from chainscope.typing import *
 
@@ -237,39 +238,57 @@ Source URL: `{source.url}`"""
     return prompt
 
 
-def extract_rag_values_from_sources(
+def get_openai_web_search_rag_values(
     query: str,
-    sources: list[RAGSource],
-    model_id: str = "gpt-4o-2024-11-20",
-    temperature: float = 0.7,
-    max_tokens: int = 100,
+    model_id: Literal["gpt-4o-search-preview", "gpt-4o-mini-search-preview"],
+    max_new_tokens: int = 1000,
+    search_context_size: Literal["low", "medium", "high"] = "medium",
+    user_location_country: str | None = "US",
+    user_location_city: str | None = "San Francisco",
+    user_location_region: str | None = "California",
 ) -> list[RAGValue]:
-    """
-    Extract a range of values for a given query from a list of sources using an OpenAI model.
-    Processes each source individually and returns all non-UNKNOWN values found.
-    """
-    extracted_values: list[RAGValue] = []
-    
-    logging.info(f"### Query: `{query}`")
-    
-    for source in sources:
-        prompt = build_rag_extraction_prompt(query, source)
-        
-        logging.info(f"### Extracting value from source: `{source.url}`")
-        logging.info(f"Prompt: `{prompt}`")
+    """Get RAG values using OpenAI's web search API."""
+    prompt_template = """Given the following query, search the web and extract the value that answers the query from each source. Provide only the value found in each source with the appropriate inline citation (all in english). If a source does not have a clear value for the query, omit it from the answer. You should follow the format:
 
-        response = generate_oa_response_sync(
-            prompt=prompt,
-            model_id=model_id,
-            temperature=temperature,
-            max_new_tokens=max_tokens,
-        )
-        
-        logging.info(f" -> Extracted value: `{response}`")
-        logging.info("-" * 80)
-        
-        if response and response.strip().lower() != "unknown":
-            extracted_values.append(RAGValue(value=response.strip(), source=source))
-    
-    return extracted_values
+- **Source 1**: value 1
+- **Source 2**: value 2
+Etc.
 
+Query: `{query}`"""
+
+    prompt = prompt_template.format(query=query)
+    response, annotations = generate_oa_web_search_response_sync(
+        prompt=prompt,
+        model_id=model_id,
+        user_location_country=user_location_country,
+        user_location_city=user_location_city,
+        user_location_region=user_location_region,
+        max_new_tokens=max_new_tokens,
+        search_context_size=search_context_size,
+    )
+    
+    values = []
+    for annotation in annotations:
+        citation = annotation.url_citation
+        clean_url = citation.url.replace("?utm_source=openai", "")
+        source = RAGSource(url=clean_url, title=citation.title, content=None, relevant_snippet=None)
+        
+        # Get the value between the first colon to the right of the start of the annotation
+        # E.g., the following string: 
+        # "- **Source 1**: 28,788 ([illinois-demographics.com](https://www.illinois-demographics.com/60459-demographics?utm_source=openai))"
+        # Will have an annotation: 
+        # Annotation(type='url_citation', url_citation=AnnotationURLCitation(end_index=128, start_index=23, title='60459 Demographics | Current Illinois Census Data', url='https://www.illinois-demographics.com/60459-demographics?utm_source=openai'))
+        relevant_text = response[:citation.start_index]
+        source_end_str = "**:"
+        if source_end_str not in relevant_text:
+            continue
+        val = relevant_text.split(source_end_str)[-1].strip()
+
+        # remove any parentheses from the value
+        val = val.split("(")[0].strip()
+
+        if val == "":
+            continue
+        values.append(RAGValue(value=val, source=source))
+
+    return values

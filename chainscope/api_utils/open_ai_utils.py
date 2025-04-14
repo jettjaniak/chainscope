@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 import openai
 import requests
+from openai.types.chat.chat_completion_message import Annotation
 from tqdm.asyncio import tqdm
 
 from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
@@ -203,6 +204,63 @@ def get_openai_limits() -> OpenAILimits:
         ),
         tokens_reset_seconds=parse_time_to_seconds(headers["x-ratelimit-reset-tokens"]),
     )
+
+
+def generate_oa_web_search_response_sync(
+    prompt: str,
+    model_id: Literal["gpt-4o-search-preview", "gpt-4o-mini-search-preview"],
+    max_new_tokens: int = 1000,
+    search_context_size: Literal["low", "medium", "high"] = "high",
+    user_location_country: str | None = None,
+    user_location_city: str | None = None,
+    user_location_region: str | None = None,
+) -> tuple[str, list[Annotation]] | None:
+    web_search_models = ["gpt-4o-search-preview", "gpt-4o-mini-search-preview"]
+    assert model_id in web_search_models, f"Model {model_id} is not a web search model. Options are: {web_search_models}"
+
+    # Set web search options
+    web_search_options = {
+        "search_context_size": search_context_size,
+    }
+
+    # Set user location for web search if provided
+    user_location = None
+    if user_location_country or user_location_city or user_location_region:
+        user_location = {
+            "type": "approximate",
+            "approximate": {}
+        }
+        if user_location_country:
+            user_location["approximate"]["country"] = user_location_country
+        if user_location_city:
+            user_location["approximate"]["city"] = user_location_city
+        if user_location_region:
+            user_location["approximate"]["region"] = user_location_region
+
+        web_search_options["user_location"] = user_location
+    
+    client = openai.OpenAI()
+    try:
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_new_tokens,
+            web_search_options=web_search_options,
+        )
+
+        if (
+            not response
+            or not response.choices
+            or not response.choices[0].message.content
+        ):
+            return None
+
+        return response.choices[0].message.content, response.choices[0].message.annotations
+    except Exception as e:
+        logging.warning(f"Error generating response: {str(e)}")
+        return None
+    finally:
+        client.close()
 
 
 def generate_oa_response_sync(
