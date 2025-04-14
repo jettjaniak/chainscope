@@ -155,7 +155,12 @@ def perform_rag_eval_using_gpt_4o_web_search(
     for entity_name in tqdm(entity_names, desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
         query = build_rag_query(entity_name, props)
         values = get_openai_web_search_rag_values(query, model_id="gpt-4o-search-preview", search_context_size="medium")
-        rag_eval.values_by_entity_name[entity_name] = values
+        for value in values:
+            same_url = next((v for v in rag_eval.values_by_entity_name[entity_name] if v.source.url == value.source.url), None)
+            if same_url is None:
+                rag_eval.values_by_entity_name[entity_name].append(value)
+            else:
+                logging.info(f"NOT replacing value for {entity_name} in {same_url.source.url} from {same_url.value} to {value.value}")
     
     logging.info(f"RAG eval for {prop_id} saved to {rag_eval.save()}")
 
