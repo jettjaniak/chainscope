@@ -84,6 +84,10 @@ def process_batch(
         source_idx = int(source_idx)
         source = sources_by_entity[entity_name][source_idx]
 
+        # Remove content and relevant_snippet from source, since they take up a lot of space
+        source.content = None
+        source.relevant_snippet = None
+
         is_unknown = response and response.strip().lower() == "unknown"
         
         if not is_unknown:
@@ -201,7 +205,8 @@ def submit(
             for entity_name in tqdm(unprocessed_entities.keys(), desc=f"Getting RAG sources for props {prop_id}"):
                 query = build_rag_query(entity_name, props)
                 query_by_entity_name[entity_name] = query
-                sources = get_rag_sources(query)
+                found_sources = get_rag_sources(query)
+                sources = [s for s in found_sources if s.content is not None or s.relevant_snippet is not None]
                 sources_by_entity[entity_name] = sources
 
             batch_info = submit_batch(

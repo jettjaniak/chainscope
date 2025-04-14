@@ -1306,8 +1306,8 @@ DumpMeta(key_transform="SNAKE").bind_to(SplitCotResponses)
 class RAGSource:
     url: str
     title: str
-    content: str
-    relevant_snippet: str
+    content: str | None
+    relevant_snippet: str | None
 
 LoadMeta(
     v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"

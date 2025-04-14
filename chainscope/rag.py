@@ -3,6 +3,7 @@ import os
 from typing import Any
 
 from bs4 import BeautifulSoup
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from zyte_api import ZyteAPI
 
@@ -10,6 +11,7 @@ from chainscope.api_utils.open_ai_utils import generate_oa_response_sync
 from chainscope.properties import get_value
 from chainscope.typing import *
 
+GOOGLE_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE")
 GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY")
 GOOGLE_SEARCH_ENGINE_ID = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
 ZYTE_API_KEY = os.getenv("ZYTE_API_KEY")
@@ -17,21 +19,30 @@ ZYTE_API_KEY = os.getenv("ZYTE_API_KEY")
 
 def google_search(query: str, *, num_results: int = 10) -> list[dict[str, Any]]:
     """
-    Perform a Google search using the Custom Search JSON API.
+    Perform a Google search using the Custom Search JSON API with service account authentication.
     
     Args:
         query: The search query string
-        api_key: Google API key
-        cx: Google Custom Search Engine ID
         num_results: Number of results to return (max 10 per request)
         
     Returns:
         List of search results, where each result is a dictionary containing
         keys like 'title', 'link', 'snippet', etc.
     """
+    assert GOOGLE_SERVICE_ACCOUNT_FILE is not None or GOOGLE_SEARCH_API_KEY is not None, "GOOGLE_SERVICE_ACCOUNT_FILE or GOOGLE_SEARCH_API_KEY environment variable must be set"
     try:
-        # Build the service object
-        service = build('customsearch', 'v1', developerKey=GOOGLE_SEARCH_API_KEY)
+        if GOOGLE_SERVICE_ACCOUNT_FILE:
+            # Create credentials using service account file
+            credentials = service_account.Credentials.from_service_account_file(
+                GOOGLE_SERVICE_ACCOUNT_FILE,
+                scopes=['https://www.googleapis.com/auth/cse']
+            )
+            
+            # Build the service object with service account credentials
+            service = build('customsearch', 'v1', credentials=credentials)
+        else:
+            # Build the service object with API key
+            service = build('customsearch', 'v1', developerKey=GOOGLE_SEARCH_API_KEY)
         
         # Execute the search
         result = service.cse().list(
@@ -176,8 +187,9 @@ def get_rag_sources(query: str, *, num_sources: int = 10) -> list[RAGSource]:
         title = result.get("title", "")
         snippet = result.get("snippet", "")
 
-        if url.endswith(".pdf"):
-            # Zyte won't extract content from PDFs, so we skip them
+        skip_extensions = [".pdf", ".docx", ".doc", ".xls", ".xlsx", ".ppt", ".pptx", ".csv"]
+        if any(url.endswith(ext) for ext in skip_extensions):
+            # Zyte won't extract content from PDFs or other non-HTML content, so we skip them
             continue
 
         content_extraction_result = get_url_content(url)
@@ -210,14 +222,19 @@ def build_rag_query(entity_name: str, props: Properties) -> str:
 
 def build_rag_extraction_prompt(query: str, source: RAGSource) -> str:
     """Build a prompt for extracting values from a single source."""
-    return f"""Given the following query and source, extract the value that answers the query. If a value is found, provide only the value with no additional text or formatting. If no clear value can be found, respond with "UNKNOWN".
+    prompt = f"""Given the following query and source, extract the value that answers the query. If a value is found, provide only the value with no additional text or formatting. If no clear value can be found, respond with "UNKNOWN".
 
 Query: `{query}`
 
 Source title: `{source.title}`
-Source URL: `{source.url}`
-Source snippet relevant to the query: `{source.relevant_snippet}`
-Source full content: `{source.content}`"""
+Source URL: `{source.url}`"""
+
+    if source.relevant_snippet:
+        prompt += f"\nSource snippet relevant to the query: `{source.relevant_snippet}`"
+    if source.content:
+        prompt += f"\nSource full content: `{source.content}`"
+
+    return prompt
 
 
 def extract_rag_values_from_sources(
