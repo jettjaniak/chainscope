@@ -228,6 +228,7 @@ def submit(
             processed_entities = set()
             try:
                 existing_rag_eval = PropRAGEval.load_id(prop_id, sampling_params)
+                existing_rag_eval.sampling_params = sampling_params
                 processed_entities = set(existing_rag_eval.values_by_entity_name.keys())
                 logging.info(f"Found {len(processed_entities)} already processed entities in {existing_rag_eval.get_path()}")
             except FileNotFoundError:
