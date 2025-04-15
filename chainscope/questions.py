@@ -1,12 +1,24 @@
 import asyncio
 import hashlib
 import logging
+from dataclasses import dataclass
 
 from chainscope.ambiguous_qs_eval import (FinalAmbiguityEvalResult,
                                           evaluate_questions_in_batch)
 from chainscope.api_utils.api_selector import APIPreferences
 from chainscope.rag import RAGValue
 from chainscope.typing import *
+
+
+@dataclass
+class PotentialPairInfo:
+    qid: str
+    q_str: str
+    small_name: str
+    small_value: int | float
+    large_name: str
+    large_value: int | float
+    rag_values_for_q: dict[str, list[RAGValue]] | None
 
 
 def make_yes_no_question_pair(
@@ -107,11 +119,9 @@ def _generate_potential_pairs(
     all_sorted_values: list[tuple[str, int | float]],
     min_percent_value_diff: float | None,
     rag_values_map: dict[str, list[RAGValue]] | None,
-) -> tuple[list[tuple[tuple[str, int | float], tuple[str, int | float]]], list[tuple[str, str, str, str, dict[str, list[RAGValue]] | None]], dict[str, tuple[tuple[str, int | float], tuple[str, int | float]]]]:
-    """Generate potential pairs and prepare questions for ambiguity evaluation."""
-    potential_small_large_pairs = []
-    questions_for_ambiguity_eval = []
-    pair_info_by_qid: dict[str, tuple[tuple[str, int | float], tuple[str, int | float]]] = {}
+) -> list[PotentialPairInfo]:
+    """Generate potential pairs and all info needed for ambiguity evaluation and sampling."""
+    potential_pairs: list[PotentialPairInfo] = []
 
     # Calculate value range for percentage difference filtering
     if min_percent_value_diff is not None:
@@ -124,14 +134,11 @@ def _generate_potential_pairs(
     logging.info(f"Generating potential pairs for ambiguity evaluation...")
     for small_idx, (small_name, small_value) in enumerate(all_sorted_values):
         logging.info(f"Generating questions for entity `{small_name}` ({small_value}), index {small_idx}/{len(all_sorted_values)}")
-        
         for large_idx, (large_name, large_value) in enumerate(all_sorted_values[small_idx + 1:]):
             logging.info(f"Comparing {small_name} ({small_value}) and {large_name} ({large_value}), index {large_idx}/{len(all_sorted_values) - small_idx - 1}")
-            
             if small_value == large_value:
                 logging.info(f"Skipping {small_name} and {large_name} because values are equal ({small_value})")
                 continue
-            
             if min_percent_value_diff is not None and abs(large_value - small_value) < min_absolute_diff:
                 logging.info(
                     f"Skipping {small_name} ({small_value}) and {large_name} ({large_value}) "
@@ -139,111 +146,51 @@ def _generate_potential_pairs(
                     f"minimum required ({min_absolute_diff})"
                 )
                 continue
-
-            current_pair = ((small_name, small_value), (large_name, large_value))
-            potential_small_large_pairs.append(current_pair)
-
-            q_str_for_eval = properties.gt_question.format(x=small_name, y=large_name)
-            qid_for_eval = hashlib.sha256(q_str_for_eval.encode()).hexdigest()
-
+            q_str = properties.gt_question.format(x=small_name, y=large_name)
+            qid = hashlib.sha256(q_str.encode()).hexdigest()
             rag_values_for_q = None
             if rag_values_map:
                 rag_values_for_q = {
                     name: rag_values_map.get(name, [])
                     for name in [small_name, large_name]
                 }
-            
-            if qid_for_eval not in pair_info_by_qid:
-                questions_for_ambiguity_eval.append(
-                    (qid_for_eval, q_str_for_eval, small_name, large_name, rag_values_for_q)
-                )
-                pair_info_by_qid[qid_for_eval] = current_pair
-
-    logging.info(f"Generated {len(potential_small_large_pairs)} potential pairs before ambiguity filtering.")
-    return potential_small_large_pairs, questions_for_ambiguity_eval, pair_info_by_qid
-
-def _filter_by_ambiguity(
-    potential_small_large_pairs: list[tuple[tuple[str, int | float], tuple[str, int | float]]],
-    questions_for_ambiguity_eval: list[tuple[str, str, str, str, dict[str, list[RAGValue]] | None]],
-    pair_info_by_qid: dict[str, tuple[tuple[str, int | float], tuple[str, int | float]]],
-    remove_ambiguous: bool,
-    evaluator_model_id: str,
-    evaluator_sampling_params: SamplingParams,
-    api_preferences: APIPreferences,
-    num_ambiguity_evals: int,
-    max_ambiguity_eval_retries: int,
-) -> list[tuple[tuple[str, int | float], tuple[str, int | float]]]:
-    """Filter pairs based on ambiguity evaluation."""
-    if not remove_ambiguous or not questions_for_ambiguity_eval:
-        return potential_small_large_pairs
-
-    logging.info(f"Evaluating {len(questions_for_ambiguity_eval)} unique questions for ambiguity using {evaluator_model_id}...")
-    ambiguity_results: dict[str, FinalAmbiguityEvalResult] = asyncio.run(evaluate_questions_in_batch(
-        questions_to_evaluate=questions_for_ambiguity_eval,
-        evaluator_model_id=evaluator_model_id,
-        sampling_params=evaluator_sampling_params,
-        api_preferences=api_preferences,
-        num_evals=num_ambiguity_evals,
-        max_retries=max_ambiguity_eval_retries,
-    ))
-
-    non_ambiguous_pairs = []
-    for qid, result in ambiguity_results.items():
-        if result.final_classification == "CLEAR":
-            non_ambiguous_pairs.append(pair_info_by_qid[qid])
-        else:
-            original_q_str = next((q[1] for q in questions_for_ambiguity_eval if q[0] == qid), "UNKNOWN Q STR")
-            logging.info(f"Skipping question corresponding to qid '{qid}' (`{original_q_str}`) due to ambiguity evaluation result: {result.final_classification}")
-
-    logging.info(f"Ambiguity evaluation results: {len(non_ambiguous_pairs)} CLEAR pairs out of {len(potential_small_large_pairs)} potential pairs.")
-    return non_ambiguous_pairs
-
-def _filter_by_max_comparisons(
-    pairs: list[tuple[tuple[str, int | float], tuple[str, int | float]]],
-    max_comparisons: int,
-) -> list[tuple[tuple[str, int | float], tuple[str, int | float]]]:
-    """Filter pairs to have at most max_comparisons per small value."""
-    comparisons_per_small_value = {}
-    filtered_pairs = []
-    for pair in pairs:
-        small_name, _ = pair[0]
-        if small_name not in comparisons_per_small_value:
-            comparisons_per_small_value[small_name] = 0
-        comparisons_per_small_value[small_name] += 1
-        if comparisons_per_small_value[small_name] <= max_comparisons:
-            filtered_pairs.append(pair)
-
-    logging.info(f"After filtering by max_comparisons {max_comparisons}, {len(filtered_pairs)} pairs remain.")
-    return filtered_pairs
+            potential_pairs.append(PotentialPairInfo(
+                qid=qid,
+                q_str=q_str,
+                small_name=small_name,
+                small_value=small_value,
+                large_name=large_name,
+                large_value=large_value,
+                rag_values_for_q=rag_values_for_q,
+            ))
+    logging.info(f"Generated {len(potential_pairs)} potential pairs before ambiguity filtering.")
+    return potential_pairs
 
 def _sample_pairs(
-    pairs: list[tuple[tuple[str, int | float], tuple[str, int | float]]],
+    pairs: list[PotentialPairInfo],
     target_n: int,
-) -> list[tuple[tuple[str, int | float], tuple[str, int | float]]]:
+) -> list[PotentialPairInfo]:
     """Sample n pairs from the available pairs."""
     total_pairs = len(pairs)
     if total_pairs == 0:
         logging.warning("No pairs generated after filtering. Skipping generation.")
         return []
-
     n = min(target_n, total_pairs)
     if n == 0:
         logging.info("No pairs available to sample.")
         return []
-
     step = total_pairs / n
     indices = [int(i * step) for i in range(n)]
     unique_indices = sorted(list(set(indices)))
     if len(unique_indices) < n:
         logging.warning(f"Generated non-unique indices ({len(indices)} requested, {len(unique_indices)} unique). Using unique indices.")
         indices = unique_indices
-
     sampled_pairs = [pairs[i] for i in indices]
     logging.info(f"Sampling {len(indices)} pairs from the {total_pairs} available pairs.")
     return sampled_pairs
 
 def _generate_datasets(
-    sampled_pairs: list[tuple[tuple[str, int | float], tuple[str, int | float]]],
+    sampled_pairs: list[PotentialPairInfo],
     properties: Properties,
     prop_id: str,
     max_comparisons: int,
@@ -260,16 +207,13 @@ def _generate_datasets(
         )
         yes_question_by_qid = {}
         no_question_by_qid = {}
-        
         for pair in sampled_pairs:
-            (small_name, small_value), (large_name, large_value) = pair
             if comparison == "lt":
-                x_name, y_name = small_name, large_name
-                x_value, y_value = small_value, large_value
+                x_name, y_name = pair.small_name, pair.large_name
+                x_value, y_value = pair.small_value, pair.large_value
             else:
-                x_name, y_name = large_name, small_name
-                x_value, y_value = large_value, small_value
-                
+                x_name, y_name = pair.large_name, pair.small_name
+                x_value, y_value = pair.large_value, pair.small_value
             make_yes_no_question_pair(
                 template,
                 open_ended_template,
@@ -280,29 +224,26 @@ def _generate_datasets(
                 x_value=x_value,
                 y_value=y_value,
             )
-
         datasets[(comparison, "YES")] = QsDataset(
             question_by_qid=yes_question_by_qid,
             params=DatasetParams(
                 prop_id=prop_id,
-                comparison=comparison,
+                comparison=comparison,  # type: ignore
                 answer="YES",
                 max_comparisons=max_comparisons,
                 suffix=dataset_suffix,
             ),
         )
-
         datasets[(comparison, "NO")] = QsDataset(
             question_by_qid=no_question_by_qid,
             params=DatasetParams(
                 prop_id=prop_id,
-                comparison=comparison,
+                comparison=comparison,  # type: ignore
                 answer="NO",
                 max_comparisons=max_comparisons,
                 suffix=dataset_suffix,
             ),
         )
-
     logging.info(f"Generated {len(sampled_pairs)} YES/NO pairs for each comparison type (gt/lt).")
     return datasets
 
@@ -328,8 +269,9 @@ def gen_qs(
     1. Filtering entities by how well-known they are if entity_popularity_filter is set
     2. Sorting all values for the property
     3. Creating pairs of items where one value is greater than the other
-    4. Taking n evenly spaced pairs to ensure good coverage of the value range
-    5. For each pair, generating both YES and NO questions by swapping the order
+    4. Iteratively evaluating ambiguity in batches, only as needed, until enough non-ambiguous pairs are found for each entity
+    5. Taking n evenly spaced pairs to ensure good coverage of the value range
+    6. For each pair, generating both YES and NO questions by swapping the order
 
     Args:
         prop_id: ID of the property to generate questions for
@@ -351,13 +293,11 @@ def gen_qs(
     properties = Properties.load(prop_id)
     logging.info(f"Generating questions for {prop_id}, aiming for {n} pairs per comparison type.")
     logging.info(f"We have {len(properties.value_by_name)} entities for {prop_id}")
-
     properties = _filter_entities_by_popularity(
         properties=properties,
         prop_id=prop_id,
         entity_popularity_filter=entity_popularity_filter
     )
-
     rag_values_map = None
     if remove_ambiguous and non_overlapping_rag_values:
         rag_eval_path = DATA_DIR / "prop_rag_eval" / "T0.0_P0.9_M1000" / f"{prop_id}.yaml"
@@ -368,37 +308,56 @@ def gen_qs(
             rag_values_map=rag_values_map,
             prop_id=prop_id
         )
-
     all_sorted_values = sorted(properties.value_by_name.items(), key=lambda x: x[1])
-    
-    potential_pairs, questions_for_eval, pair_info = _generate_potential_pairs(
+    potential_pairs = _generate_potential_pairs(
         properties=properties,
         all_sorted_values=all_sorted_values,
         min_percent_value_diff=min_percent_value_diff,
         rag_values_map=rag_values_map
     )
-    
-    non_ambiguous_pairs = _filter_by_ambiguity(
-        potential_small_large_pairs=potential_pairs,
-        questions_for_ambiguity_eval=questions_for_eval,
-        pair_info_by_qid=pair_info,
-        remove_ambiguous=remove_ambiguous,
-        evaluator_model_id=evaluator_model_id,
-        evaluator_sampling_params=evaluator_sampling_params,
-        api_preferences=api_preferences,
-        num_ambiguity_evals=num_ambiguity_evals,
-        max_ambiguity_eval_retries=max_ambiguity_eval_retries
-    )
-    
-    filtered_pairs = _filter_by_max_comparisons(
-        pairs=non_ambiguous_pairs,
-        max_comparisons=max_comparisons
-    )
+    # Iterative ambiguity evaluation: only evaluate as many pairs as needed to satisfy max_comparisons for each entity
+    if remove_ambiguous:
+        qid_to_pair = {p.qid: p for p in potential_pairs}
+        unevaluated_qids = [p.qid for p in potential_pairs]
+        accepted_pairs: list[PotentialPairInfo] = []
+        comparisons_per_small_value: dict[str, int] = {}
+        batch_size = max(n, 100)  # Evaluate in batches of at least n or 100
+        while unevaluated_qids:
+            batch_qids = unevaluated_qids[:batch_size]
+            batch_questions = [
+                (qid_to_pair[qid].qid, qid_to_pair[qid].q_str, qid_to_pair[qid].small_name, qid_to_pair[qid].large_name, qid_to_pair[qid].rag_values_for_q)
+                for qid in batch_qids
+            ]
+            ambiguity_results: dict[str, FinalAmbiguityEvalResult] = asyncio.run(evaluate_questions_in_batch(
+                questions_to_evaluate=batch_questions,
+                evaluator_model_id=evaluator_model_id,
+                sampling_params=evaluator_sampling_params,
+                api_preferences=api_preferences,
+                num_evals=num_ambiguity_evals,
+                max_retries=max_ambiguity_eval_retries,
+            ))
+            for qid in batch_qids:
+                result = ambiguity_results.get(qid)
+                if result is not None and result.final_classification == "CLEAR":
+                    pair = qid_to_pair[qid]
+                    small_name = pair.small_name
+                    comparisons_per_small_value[small_name] = comparisons_per_small_value.get(small_name, 0) + 1
+                    accepted_pairs.append(pair)
+            unevaluated_qids = [qid for qid in unevaluated_qids if qid not in batch_qids]
+            if all(v >= max_comparisons for v in comparisons_per_small_value.values()) and len(accepted_pairs) >= n:
+                break
+            else:
+                num_entities = len(properties.value_by_name)
+                num_with_enough = sum(v >= max_comparisons for v in comparisons_per_small_value.values())
+                num_missing = num_entities - num_with_enough
+                logging.info(f"{num_missing} entities are still missing max_comparisons after this batch.")
+        non_ambiguous_pairs = accepted_pairs
+    else:
+        non_ambiguous_pairs = potential_pairs
     sampled_pairs = _sample_pairs(
-        pairs=filtered_pairs,
+        pairs=non_ambiguous_pairs,
         target_n=n
     )
-    
     return _generate_datasets(
         sampled_pairs=sampled_pairs,
         properties=properties,
