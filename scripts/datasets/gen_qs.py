@@ -3,7 +3,9 @@ import logging
 
 import click
 
+from chainscope.api_utils.api_selector import APIPreferences
 from chainscope.questions import gen_qs
+from chainscope.typing import *
 
 
 @click.command()
@@ -78,6 +80,18 @@ def main(
         dataset_suffix=dataset_suffix,
         remove_ambiguous=remove_ambiguous,
         non_overlapping_rag_values=non_overlapping_rag_values,
+        evaluator_model_id="gpt-4o",
+        evaluator_sampling_params=SamplingParams(
+            temperature=0.7,
+            max_new_tokens=1500,
+            top_p=0.9,
+        ),
+        api_preferences=APIPreferences(
+            open_router=False,
+            open_ai=True,
+            anthropic=False,
+            deepseek=False,
+        ),
     )
     for dataset in datasets.values():
         dataset.save()

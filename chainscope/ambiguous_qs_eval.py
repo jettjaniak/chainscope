@@ -1,15 +1,34 @@
+import asyncio
 import logging
 import re
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from beartype import beartype
 
+from chainscope.api_utils.api_selector import APIPreferences, APISelector
 from chainscope.api_utils.open_ai_utils import generate_oa_response_sync
 from chainscope.api_utils.open_ai_utils import \
     process_batch_results as process_openai_batch_results
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
 from chainscope.rag import RAGValue
 from chainscope.typing import *
+
+
+# Define Input/Output types for batch processing
+class AmbiguityEvalBatchProcessorInput(NamedTuple):
+    """Input data for a single ambiguity evaluation request within a batch."""
+    qid: str
+    eval_idx: int # To differentiate multiple evaluations for the same question
+
+class AmbiguityEvalResult(NamedTuple):
+    """Result of a single ambiguity evaluation."""
+    classification: Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]
+    analysis: str | None
+
+class FinalAmbiguityEvalResult(NamedTuple):
+    """Aggregated result after multiple evaluations for a single question."""
+    final_classification: Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]
+    analyses: list[str | None] # Keep all analyses for potential inspection
 
 
 @beartype
@@ -157,6 +176,116 @@ def evaluate_single_question(
     final_analysis = next(item[0] for item in zip(analyses, classifications) if item[1] == final_classification)
     
     return final_classification, final_analysis
+
+
+@beartype
+async def evaluate_questions_in_batch(
+    questions_to_evaluate: list[tuple[str, str, str, str, dict[str, list[RAGValue]] | None]],
+    evaluator_model_id: str,
+    sampling_params: SamplingParams,
+    api_preferences: APIPreferences,
+    num_evals: int = 3,
+    max_retries: int = 3,
+) -> dict[str, FinalAmbiguityEvalResult]:
+    """Evaluate a list of questions for ambiguity using batch processing."""
+    logging.info(f"Starting batch ambiguity evaluation for {len(questions_to_evaluate)} unique questions.")
+
+    assert api_preferences.selects_at_least_one_api(), "Must specify at least one API"
+    processor = APISelector[AmbiguityEvalBatchProcessorInput, AmbiguityEvalResult](
+        api_preferences
+    ).get_batch_processor(
+        model_id=evaluator_model_id,
+        temperature=sampling_params.temperature,
+        max_new_tokens=sampling_params.max_new_tokens,
+        max_retries=max_retries,
+        process_response=process_ambiguity_eval_response,
+    )
+
+    batch_items_map: dict[str, list[tuple[AmbiguityEvalBatchProcessorInput, str]]] = {}
+    all_batch_items: list[tuple[AmbiguityEvalBatchProcessorInput, str]] = []
+
+    for qid, q_str, x_name, y_name, rag_values in questions_to_evaluate:
+        if qid not in batch_items_map:
+            batch_items_map[qid] = []
+        prompt = build_prompt_for_ambiguous_eval(q_str, x_name, y_name, rag_values)
+        for eval_idx in range(num_evals):
+            input_obj = AmbiguityEvalBatchProcessorInput(qid=qid, eval_idx=eval_idx)
+            item = (input_obj, prompt)
+            batch_items_map[qid].append(item)
+            all_batch_items.append(item)
+            logging.debug(f"Prepared item for qid={qid}, eval_idx={eval_idx}")
+
+    results = []
+    if len(all_batch_items) > 0:
+        logging.info(f"Submitting {len(all_batch_items)} total evaluations to the batch processor.")
+        results = await processor.process_batch(all_batch_items)
+        logging.info(f"Received {len(results)} results from batch processor.")
+    else:
+        logging.info("No questions to evaluate in batch.")
+
+    results_by_qid: dict[str, list[AmbiguityEvalResult]] = {qid: [] for qid, _, _, _, _ in questions_to_evaluate}
+    for processor_input, result in results:
+        qid = processor_input.qid
+        if qid not in results_by_qid:
+            logging.error(f"Received result for unexpected qid={qid}. Input was: {processor_input}")
+            continue
+        if result is None:
+            logging.warning(f"Received None result for qid={qid}, eval_idx={processor_input.eval_idx}")
+            results_by_qid[qid].append(AmbiguityEvalResult(classification="FAILED_EVAL", analysis="Batch processor returned None"))
+        else:
+            results_by_qid[qid].append(result)
+
+    final_results: dict[str, FinalAmbiguityEvalResult] = {}
+    for qid, individual_results in results_by_qid.items():
+        if not individual_results and qid in batch_items_map:
+             logging.warning(f"Expected {num_evals} evaluations for qid={qid}, but received none. Marking as FAILED_EVAL.")
+             final_classification = "FAILED_EVAL"
+             analyses = [None] * num_evals
+        elif len(individual_results) != num_evals and qid in batch_items_map:
+             logging.warning(f"Expected {num_evals} evaluations for qid={qid}, but received {len(individual_results)}. Some requests might have failed.")
+             missing_count = num_evals - len(individual_results)
+             individual_results.extend([AmbiguityEvalResult(classification="FAILED_EVAL", analysis=None)] * missing_count)
+
+        classifications = [res.classification for res in individual_results]
+        analyses = [res.analysis for res in individual_results]
+
+        if any(c == "AMBIGUOUS" for c in classifications):
+            final_classification = "AMBIGUOUS"
+        elif all(c == "CLEAR" for c in classifications):
+            final_classification = "CLEAR"
+        else:
+            final_classification = "FAILED_EVAL"
+            failed_indices = [i for i, c in enumerate(classifications) if c == "FAILED_EVAL"]
+            if failed_indices:
+                 logging.warning(f"QID {qid} has FAILED_EVAL status due to failures/missing results in evaluations at indices: {failed_indices}")
+            elif not all(c == "CLEAR" for c in classifications):
+                 logging.warning(f"QID {qid} has FAILED_EVAL status due to unexpected mixed non-ambiguous results: {classifications}")
+
+        final_results[qid] = FinalAmbiguityEvalResult(
+            final_classification=final_classification,
+            analyses=analyses,
+        )
+        logging.debug(f"Final aggregated result for qid={qid}: {final_classification}")
+
+    logging.info(f"Finished batch ambiguity evaluation. Final results obtained for {len(final_results)} unique questions initially submitted.")
+    return final_results
+
+
+@beartype
+def process_ambiguity_eval_response(
+    response: str | tuple[str | None, str | None],
+    processor_input: AmbiguityEvalBatchProcessorInput,
+) -> AmbiguityEvalResult:
+    """Process model response into ambiguity evaluation result."""
+    logging.debug(f"Processing response for {processor_input.qid} eval {processor_input.eval_idx}")
+    if isinstance(response, tuple):
+        response = response[1] or response[0] or "" 
+    elif response is None:
+        response = ""
+
+    classification, analysis = extract_classification(response)
+    logging.debug(f"Extracted classification={classification} for {processor_input.qid} eval {processor_input.eval_idx}")
+    return AmbiguityEvalResult(classification=classification, analysis=analysis)
 
 
 @beartype
