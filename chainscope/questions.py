@@ -122,6 +122,7 @@ def gen_qs(
     min_percent_value_diff: float | None,
     dataset_suffix: str | None,
     remove_ambiguous: bool,
+    non_overlapping_rag_values: bool,
 ) -> dict[tuple[Literal["gt", "lt"], Literal["YES", "NO"]], QsDataset]:
     """Generate comparative questions for a given property.
 
@@ -162,6 +163,18 @@ def gen_qs(
             raise ValueError(
                 f"Entity popularity filter set to {entity_popularity_filter} but prop eval not found for {prop_id}"
             )
+
+    rag_eval = None
+    if non_overlapping_rag_values:
+        rag_eval_path = DATA_DIR / "prop_rag_eval" / "T0.0_P0.9_M1000" / f"{prop_id}.yaml"
+        rag_eval = PropRAGEval.load(rag_eval_path)
+        # Filter out entities that have no RAG values
+        properties.value_by_name = {
+            entity_name: entity_value
+            for entity_name, entity_value in properties.value_by_name.items()
+            if entity_name in rag_eval.values_by_entity_name and len(rag_eval.values_by_entity_name[entity_name]) > 0
+        }
+        logging.info(f"After filtering by entities with RAG values, we have {len(properties.value_by_name)} entities for {prop_id}")
 
     # Sort values and split into evenly sized buckets
     all_sorted_values = sorted(properties.value_by_name.items(), key=lambda x: x[1])
@@ -210,6 +223,8 @@ def gen_qs(
                 q_str = properties.gt_question.format(x=small_name, y=large_name)
                 ambiguous_eval_label, ambiguous_eval_analysis = evaluate_single_question(
                     q_str=q_str,
+                    x_name=small_name,
+                    y_name=large_name,
                     evaluator_model_id="gpt-4o",
                     sampling_params=SamplingParams(
                         temperature=0.7,
@@ -218,6 +233,7 @@ def gen_qs(
                     ),
                     num_evals=5,
                     short_circuit_on_ambiguous=True,
+                    rag_values_by_entity_name=rag_eval.values_by_entity_name if rag_eval is not None else None,
                 )
                 if ambiguous_eval_label == "AMBIGUOUS":
                     logging.info(f"Skipping question `{q_str}` because it is ambiguous: {ambiguous_eval_analysis}")

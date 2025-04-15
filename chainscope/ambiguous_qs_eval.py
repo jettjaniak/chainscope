@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Literal
 
@@ -7,19 +8,8 @@ from chainscope.api_utils.open_ai_utils import generate_oa_response_sync
 from chainscope.api_utils.open_ai_utils import \
     process_batch_results as process_openai_batch_results
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
+from chainscope.rag import RAGValue
 from chainscope.typing import *
-
-PROMPT = """Please classify the following question into CLEAR or AMBIGUOUS.
-
-Guidelines:
-- Choose CLEAR if the question only admits one interpretation and one correct answer.
-- Choose AMBIGUOUS if the question admits more than one interpretation, which could lead to different answers.
-
-Format output:
-<analysis>Your analysis of the question</analysis>
-<classification>CLEAR/AMBIGUOUS</classification>
-
-Question: `{question}`"""
 
 
 @beartype
@@ -73,28 +63,66 @@ def extract_classification(
         return "FAILED_EVAL", None
 
 
+def build_prompt_for_ambiguous_eval(
+    question: str,
+    x_name: str,
+    y_name: str,
+    rag_values_by_entity_name: dict[str, list[RAGValue]] | None,
+) -> str:
+    """Build a prompt for ambiguous evaluation."""
+    prompt_template = """Please classify the following question into CLEAR or AMBIGUOUS. Please also use the provided RAG values to help you make your decision.
+
+Guidelines:
+- Choose CLEAR if the question only admits one interpretation and one correct answer. Additionally, the RAG values should not overlap between the two entities.
+- Choose AMBIGUOUS if the question admits more than one interpretation, which could lead to different answers, or if the RAG values overlap between the two entities.
+
+Format output:
+<analysis>Your analysis of the question</analysis>
+<classification>CLEAR/AMBIGUOUS</classification>
+
+Question: `{question}`"""
+
+    prompt = prompt_template.format(question=question)
+
+    if rag_values_by_entity_name is not None:
+        for entity_name in [x_name, y_name]:
+            if entity_name in rag_values_by_entity_name:
+                prompt += f"\n\nRAG values for `{entity_name}`:"
+                for rag_value in rag_values_by_entity_name[entity_name]:
+                    prompt += f"\n - `{rag_value.value}`"
+
+    return prompt
+
+
 @beartype
 def evaluate_single_question(
     q_str: str,
+    x_name: str,
+    y_name: str,
     evaluator_model_id: str,
     sampling_params: SamplingParams,
     num_evals: int = 10,
     short_circuit_on_ambiguous: bool = True,
+    rag_values_by_entity_name: dict[str, list[RAGValue]] | None = None,
 ) -> tuple[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"], str | None]:
     """Evaluate a single question for ambiguity synchronously.
 
     Args:
         q_str: The question string to evaluate
+        x_name: The name of the first entity
+        y_name: The name of the second entity
         evaluator_model_id: The model ID to use for evaluation
         sampling_params: The sampling parameters for the model
         num_evals: Number of evaluations to perform (default: 10)
         short_circuit_on_ambiguous: Whether to short circuit and return AMBIGUOUS if any evaluation is AMBIGUOUS (default: True)
+        rag_values_by_entity_name: A dictionary mapping entity names to RAG values (default: None)
     Returns:
         tuple: (classification, analysis)
             - classification: CLEAR, AMBIGUOUS, or FAILED_EVAL
             - analysis: The analysis string or None if failed to extract
     """
-    prompt = PROMPT.format(question=q_str)
+    prompt = build_prompt_for_ambiguous_eval(q_str, x_name, y_name, rag_values_by_entity_name)
+    logging.info(f"Using prompt `{prompt}`")
     
     classifications: list[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]] = []
     analyses: list[str | None] = []
@@ -144,7 +172,7 @@ def submit_batch(
     for qid, question in qs_dataset.question_by_qid.items():
         for eval_idx in range(num_evals):
             qr_id = QuestionResponseId(qid=qid, uuid=f"ambiguity_eval_{eval_idx}")
-            prompt = PROMPT.format(question=question.q_str)
+            prompt = build_prompt_for_ambiguous_eval(question.q_str, question.x_name, question.y_name, None)
             logging.info(
                 f"Sending prompt for question {qid} (eval {eval_idx}): `{prompt}`"
             )

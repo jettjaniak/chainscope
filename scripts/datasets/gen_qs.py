@@ -45,6 +45,12 @@ from chainscope.questions import gen_qs
     help="If provided, the suffix to add to the dataset ID when saving the dataset.",
 )
 @click.option(
+    "--non-overlapping-rag-values",
+    is_flag=True,
+    default=False,
+    help="Whether to ensure that the RAG values for each entity are non-overlapping.",
+)
+@click.option(
     "--remove-ambiguous",
     is_flag=True,
     default=False,
@@ -58,6 +64,7 @@ def main(
     entity_popularity_filter: int | None,
     min_percent_value_diff: float | None,
     dataset_suffix: str | None,
+    non_overlapping_rag_values: bool,
     remove_ambiguous: bool,
     verbose: bool,
 ):
@@ -70,6 +77,7 @@ def main(
         min_percent_value_diff=min_percent_value_diff,
         dataset_suffix=dataset_suffix,
         remove_ambiguous=remove_ambiguous,
+        non_overlapping_rag_values=non_overlapping_rag_values,
     )
     for dataset in datasets.values():
         dataset.save()
