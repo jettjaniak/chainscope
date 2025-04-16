@@ -92,7 +92,7 @@ def build_prompt_for_ambiguous_eval(
     prompt_template = """Please classify the following question into CLEAR or AMBIGUOUS. Please also use the provided RAG values to help you make your decision.
 
 Guidelines:
-- Choose CLEAR if the question only admits one interpretation and one correct answer. Additionally, the RAG values should not overlap between the two entities.
+- Choose CLEAR if the question only admits one interpretation and one correct answer. Additionally, the RAG values should not overlap between the two entities. If the RAG values use different units, convert them to a unified unit before doing the comparison.
 - Choose AMBIGUOUS if the question admits more than one interpretation, which could lead to different answers, or if the RAG values overlap between the two entities.
 
 Format output:
