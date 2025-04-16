@@ -318,12 +318,44 @@ def gen_qs(
     # Iterative ambiguity evaluation: only evaluate as many pairs as needed to satisfy max_comparisons for each entity
     if remove_ambiguous:
         qid_to_pair = {p.qid: p for p in potential_pairs}
-        unevaluated_qids = [p.qid for p in potential_pairs]
+        unevaluated_qids = set(p.qid for p in potential_pairs)
         accepted_pairs: list[PotentialPairInfo] = []
-        comparisons_per_small_value: dict[str, int] = {}
+        # Initialize comparison counts for all entities to 0
+        comparisons_per_entity = {entity_name: 0 for entity_name in properties.value_by_name.keys()}
         batch_size = max(n, 100)  # Evaluate in batches of at least n or 100
+
+        def get_entity_priority_score(qid: str) -> int:
+            """Calculate priority score for a pair based on its entities' comparison counts.
+            Lower score = higher priority (entities need more comparisons)"""
+            pair = qid_to_pair[qid]
+            small_comparisons = comparisons_per_entity[pair.small_name]
+            large_comparisons = comparisons_per_entity[pair.large_name]
+            # Prioritize pairs where both entities need more comparisons
+            return min(small_comparisons, large_comparisons)
+
+        def can_add_pair(pair: PotentialPairInfo) -> bool:
+            """Check if adding this pair would exceed max_comparisons for either entity"""
+            small_comparisons = comparisons_per_entity[pair.small_name]
+            large_comparisons = comparisons_per_entity[pair.large_name]
+            return small_comparisons < max_comparisons and large_comparisons < max_comparisons
+
         while unevaluated_qids:
-            batch_qids = unevaluated_qids[:batch_size]
+            # Sort unevaluated pairs by priority and take the top batch_size
+            sorted_qids = sorted(unevaluated_qids, key=get_entity_priority_score)
+            batch_qids = sorted_qids[:batch_size]
+
+            # Check if any of the pairs in the batch contain entities that still need comparisons
+            any_useful_pairs = False
+            for qid in batch_qids:
+                pair = qid_to_pair[qid]
+                if can_add_pair(pair):
+                    any_useful_pairs = True
+                    break
+            
+            if not any_useful_pairs:
+                logging.info("No pairs in batch contain entities needing more comparisons. Breaking loop.")
+                break
+
             batch_questions = [
                 (qid_to_pair[qid].qid, qid_to_pair[qid].q_str, qid_to_pair[qid].small_name, qid_to_pair[qid].large_name, qid_to_pair[qid].rag_values_for_q)
                 for qid in batch_qids
@@ -340,17 +372,26 @@ def gen_qs(
                 result = ambiguity_results.get(qid)
                 if result is not None and result.final_classification == "CLEAR":
                     pair = qid_to_pair[qid]
-                    small_name = pair.small_name
-                    comparisons_per_small_value[small_name] = comparisons_per_small_value.get(small_name, 0) + 1
-                    accepted_pairs.append(pair)
-            unevaluated_qids = [qid for qid in unevaluated_qids if qid not in batch_qids]
-            if all(v >= max_comparisons for v in comparisons_per_small_value.values()) and len(accepted_pairs) >= n:
+                    if can_add_pair(pair):
+                        # Update comparison counts for both entities
+                        comparisons_per_entity[pair.small_name] += 1
+                        comparisons_per_entity[pair.large_name] += 1
+                        accepted_pairs.append(pair)
+                unevaluated_qids.remove(qid)
+
+            if all(v >= max_comparisons for v in comparisons_per_entity.values()) and len(accepted_pairs) >= n:
                 break
             else:
                 num_entities = len(properties.value_by_name)
-                num_with_enough = sum(v >= max_comparisons for v in comparisons_per_small_value.values())
+                num_with_enough = sum(v >= max_comparisons for v in comparisons_per_entity.values())
                 num_missing = num_entities - num_with_enough
                 logging.info(f"{num_missing} entities are still missing max_comparisons after this batch.")
+                logging.info(f"We have {len(accepted_pairs)} accepted pairs so far.")
+                # Print all entities that need more comparisons
+                logging.info("Entities needing more comparisons:")
+                for entity, count in comparisons_per_entity.items():
+                    if count < max_comparisons:
+                        logging.info(f"- `{entity}` needs {max_comparisons - count} more comparisons")
         non_ambiguous_pairs = accepted_pairs
     else:
         non_ambiguous_pairs = potential_pairs
