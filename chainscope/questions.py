@@ -114,7 +114,45 @@ def _filter_entities_by_rag_values(
     logging.info(f"After filtering by entities with RAG values, we have {len(properties.value_by_name)} entities for {prop_id}")
     return properties
 
+def _are_valid_values_for_property(
+    small_value: int | float,
+    large_value: int | float,
+    prop_id: str,
+) -> bool:
+    """Check if the values are valid for the property."""
+    # We set specific minimums when comparing locations, depending on their size.
+    location_comparison_limits = {
+        "zip": 1,
+        "college": 1,
+        "structure": 1,
+        "city": 1,
+        "populated": 10, # Populated area
+        "natural": 10, # Natural area
+        "county": 10,
+    }
+    if "-long" in prop_id: # checks for longitude comparisons
+        # the values should not be too far apart (more than 120 degrees)
+        valid = abs(small_value - large_value) <= 120
+        # the values should not be close to the limit of -180 or 180, where it gets fuzzy what's west or east of what.
+        valid = valid and abs(small_value) < 150 and abs(large_value) < 150
+        # check that the values have the minimum required difference
+        required_diff = next((limit for location_type, limit in location_comparison_limits.items() if location_type in prop_id), None)
+        assert required_diff is not None, f"No minimum required difference set for location comparison {prop_id}"
+        valid = valid and abs(small_value - large_value) >= required_diff
+        return valid
+    elif "-lat" in prop_id: # checks for latitude comparisons
+        # check that the values have the minimum required difference
+        required_diff = next((limit for location_type, limit in location_comparison_limits.items() if location_type in prop_id), None)
+        assert required_diff is not None, f"No minimum required difference set for location comparison {prop_id}"
+        return abs(small_value - large_value) >= required_diff
+    elif "age" in prop_id:
+        # check that the values have at least 5 years between them
+        return abs(small_value - large_value) >= 5
+    
+    return True
+
 def _generate_potential_pairs(
+    prop_id: str,
     properties: Properties,
     all_sorted_values: list[tuple[str, int | float]],
     min_percent_value_diff: float | None,
@@ -146,6 +184,15 @@ def _generate_potential_pairs(
                     f"minimum required ({min_absolute_diff})"
                 )
                 continue
+
+            if not _are_valid_values_for_property(
+                small_value=small_value,
+                large_value=large_value,
+                prop_id=prop_id,
+            ):
+                logging.info(f"Skipping {small_name} ({small_value}) and {large_name} ({large_value}) because values are not valid for {prop_id}")
+                continue
+
             q_str = properties.gt_question.format(x=small_name, y=large_name)
             qid = hashlib.sha256(q_str.encode()).hexdigest()
             rag_values_for_q = None
@@ -311,6 +358,7 @@ def gen_qs(
     all_sorted_values = sorted(properties.value_by_name.items(), key=lambda x: x[1])
     potential_pairs = _generate_potential_pairs(
         properties=properties,
+        prop_id=prop_id,
         all_sorted_values=all_sorted_values,
         min_percent_value_diff=min_percent_value_diff,
         rag_values_map=rag_values_map
