@@ -199,7 +199,7 @@ class HookedTransformerWithGenerator:
             # that changes in the future.
             self.eval()
             sampled_tokens_list = []
-            for index in tqdm.tqdm(range(max_new_tokens), disable=not verbose):
+            for index in tqdm(range(max_new_tokens), disable=not verbose):
                 pos_offset = self.get_pos_offset(past_kv_cache, batch_size)
 
                 tokens = torch.zeros((embeds.size(0), embeds.size(1))).to(torch.int)
@@ -279,6 +279,7 @@ class HookedTransformerWithGenerator:
                         devices.get_device_for_block_index(0, self.cfg)
                     )
                 yield sampled_tokens.unsqueeze(1)
+                sampled_tokens_list.append(sampled_tokens.unsqueeze(1))
                 if stop_at_eos:
                     # For all unfinished sequences, add on the next token. If a sequence was
                     # finished, throw away the generated token and add eos_token_for_padding

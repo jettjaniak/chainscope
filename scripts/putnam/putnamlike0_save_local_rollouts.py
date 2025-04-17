@@ -96,7 +96,7 @@ def generate_local_rollouts(
     prefix: Optional[int] = None,
     preamble: str = "",
     local_gen_seed: int = 42,
-    max_new_tokens: int = 1024,
+    max_new_tokens: int = 10_024,
     temperature: float = 0.0,
     top_p: float = 1.0,
 ) -> CotResponses:
@@ -130,6 +130,7 @@ def generate_local_rollouts(
     questions = dataset.questions[:prefix] if prefix else dataset.questions
     responses_by_qid = {}
     model = HookedTransformerWithGenerator(model)
+    model.hooked_transformer.to(model.cfg.device)
 
     # Process each question
     for q in questions:
@@ -137,7 +138,7 @@ def generate_local_rollouts(
 
         # Prepare input
         input_str = f"{preamble}{q.problem}"
-        tokens = model.to_tokens(input_str, prepend_bos=True).to(model.cfg.device)
+        tokens = model.to_tokens(input_str, prepend_bos=True).to("cuda:2") # model.cfg.device)
         assert isinstance(tokens, torch.Tensor)
         assert tokens.ndim == 2
         assert tokens.shape[0] == 1
@@ -191,6 +192,9 @@ def generate_local_rollouts(
 
             except Exception as e:
                 logging.error(f"Failed to generate for {q.name}: {e}")
+                import traceback
+                print(traceback.format_exc())
+                import pdb; pdb.set_trace()
                 continue
 
     return CotResponses(
