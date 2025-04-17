@@ -7,6 +7,16 @@ from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from transformer_lens import utils
+from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
+from transformer_lens.utilities import devices
+from transformer_lens.utils import (
+    USE_DEFAULT_VALUE,
+    init_kaiming_normal_,
+    init_kaiming_uniform_,
+    init_xavier_normal_,
+    init_xavier_uniform_,
+)
+
 from vllm import LLM
 from vllm import SamplingParams as VLLMSamplingParams
 

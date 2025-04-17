@@ -25,7 +25,7 @@ from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from chainscope.cot_generation import HookedTransformerWithGenerator
 from chainscope.typing import (
     CotResponses,
-    DefaultSamplingParams,
+    SamplingParams,
     MathDatasetParams,
     MathQsDataset,
     MathQuestion,
@@ -121,14 +121,15 @@ def generate_local_rollouts(
     # Initialize model
     model = HookedTransformer.from_pretrained(
         model_name=model_id,
-        device="cuda" if torch.cuda.is_available() else "cpu",
+        device="cuda:2", #"cuda" if torch.cuda.is_available() else "cpu",
     )
     assert model.tokenizer is not None, "Tokenizer not initialized"
-    model = HookedTransformerWithGenerator(model)
+    #model = HookedTransformerWithGenerator(model)
 
     # Prepare questions
     questions = dataset.questions[:prefix] if prefix else dataset.questions
     responses_by_qid = {}
+    model = HookedTransformerWithGenerator(model)
 
     # Process each question
     for q in questions:
@@ -197,7 +198,7 @@ def generate_local_rollouts(
         model_id=model_id,
         instr_id="instr-v0",
         ds_params=dataset.params,
-        sampling_params=DefaultSamplingParams(
+        sampling_params=SamplingParams(
             temperature=temperature,
             top_p=top_p,
             max_new_tokens=max_new_tokens,
