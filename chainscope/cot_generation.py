@@ -1,26 +1,18 @@
 import random
 from uuid import uuid4
 
-<<<<<<< Updated upstream
-=======
 import torch
->>>>>>> Stashed changes
 import torch as t
 from tqdm import tqdm
 from transformer_lens import HookedTransformer
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
-<<<<<<< Updated upstream
-=======
 from transformer_lens import utils
->>>>>>> Stashed changes
 from vllm import LLM
 from vllm import SamplingParams as VLLMSamplingParams
 
 from chainscope.questions import QsDataset
 from chainscope.typing import *
 from chainscope.utils import is_instruct_model, make_chat_prompt
-<<<<<<< Updated upstream
-=======
 
 from typing import Optional, Union, List, Literal, Sequence, Tuple, Dict, Any, Callable, Generator
 from jaxtyping import Float, Int
@@ -293,7 +285,6 @@ class HookedTransformerWithGenerator:
 
                 if stop_at_eos and finished_sequences.all():
                     break
->>>>>>> Stashed changes
 
 
 def build_fsp_prompt(
@@ -472,10 +463,7 @@ def get_local_responses_tl(
 
     # Prepare prompts
     responses: list[tuple[QuestionResponseId, str]] = []
-<<<<<<< Updated upstream
-=======
     model = HookedTransformerWithGenerator(model)
->>>>>>> Stashed changes
     for q_resp_id, prompt in tqdm(prompts, desc="Generating responses"):
         if is_instruct_model(model_id):
             input_str = make_chat_prompt(
@@ -496,16 +484,6 @@ def get_local_responses_tl(
 
         # Generate the full sequence at once
         with t.inference_mode():
-<<<<<<< Updated upstream
-            generated = model.generate(
-                tokens,
-                max_new_tokens=sampling_params.max_new_tokens,
-                temperature=sampling_params.temperature,
-                top_p=sampling_params.top_p,
-                return_type="tokens",
-                verbose=False,
-            )
-=======
             generated = []
             try:
                 for token in model.generate(
@@ -524,7 +502,6 @@ def get_local_responses_tl(
             import pdb; pdb.set_trace()
             generated = torch.cat(generated, dim=1)
             generated = torch.cat((tokens, generated), dim=1)
->>>>>>> Stashed changes
             assert isinstance(
                 generated, t.Tensor
             )  # : Int[t.Tensor, "1 pos_plus_new_tokens"]

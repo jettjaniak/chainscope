@@ -6,6 +6,7 @@ for model_id in C3.5H; do
         dataset_id="${dataset_id%.yaml}"
         if [[ $dataset_id = wm* ]]; then
             echo "Processing wm dataset $dataset_id"
+            exit
             ./scripts/iphr/gen_cots.py submit -d "$dataset_id" -m "$model_id" -n 10 -i instr-wm --api ant-batch
         fi
     done
