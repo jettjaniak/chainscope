@@ -60,7 +60,6 @@ LoadMeta(
 ).bind_to(Instructions)
 DumpMeta(key_transform="SNAKE").bind_to(Instructions)
 
-
 @dataclass
 class Question(YAMLWizard):
     q_str: str
