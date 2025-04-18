@@ -113,10 +113,27 @@ def _filter_entities_by_name(
     # If we have two entities with the same prefix up to a opening parenthesis, remove both
     # This is to avoid cases like "Lake Victoria" and "Lake Victoria (Victoria)"
     # Also, they are probably ambiguous or the same entity
+    # Make a copy of the original entities
+    
+    # Process entities in a loop to find ones to remove
+    to_remove = set()
+    entity_names = list(properties.value_by_name.keys())
+    for entity_name in entity_names:
+        for other_entity_name in entity_names:
+            if entity_name == other_entity_name:
+                continue
+            if "(" in other_entity_name:
+                prefix = other_entity_name[:other_entity_name.find("(")]
+                if entity_name.startswith(prefix):
+                    logging.info(f"Removing {entity_name} and {other_entity_name} because they have the same prefix up to a opening parenthesis")
+                    to_remove.add(entity_name)
+                    to_remove.add(other_entity_name)
+
+    # Filter out the entities that need to be removed
     properties.value_by_name = {
-        entity_name: entity_value
-        for entity_name, entity_value in properties.value_by_name.items()
-        if not any(entity_name.startswith(name[:name.find("(")]) for name in properties.value_by_name.keys())
+        name: value 
+        for name, value in properties.value_by_name.items()
+        if name not in to_remove
     }
     
     logging.info(f"After filtering by name, we have {len(properties.value_by_name)} entities for {prop_id}")
@@ -395,15 +412,24 @@ def gen_qs(
     properties = Properties.load(prop_id)
     logging.info(f"Generating questions for {prop_id}, aiming for {n} pairs per comparison type.")
     logging.info(f"We have {len(properties.value_by_name)} entities for {prop_id}")
+
     properties = _filter_entities_by_popularity(
         properties=properties,
         prop_id=prop_id,
         entity_popularity_filter=entity_popularity_filter
     )
+    if len(properties.value_by_name) == 0:
+        logging.warning(f"No entities left after filtering by popularity. Skipping generation.")
+        return {}
+
     properties = _filter_entities_by_name(
         properties=properties,
         prop_id=prop_id
     )
+    if len(properties.value_by_name) == 0:
+        logging.warning(f"No entities left after filtering by popularity and name. Skipping generation.")
+        return {}
+
     rag_values_map = None
     if remove_ambiguous and non_overlapping_rag_values:
         rag_eval_path = DATA_DIR / "prop_rag_eval" / "T0.0_P0.9_M1000" / f"{prop_id}.yaml"
