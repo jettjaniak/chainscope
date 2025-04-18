@@ -74,7 +74,6 @@ def make_yes_no_question_pair(
         y_value=x_value,
     )
 
-
 def _filter_entities_by_popularity(
     properties: Properties,
     prop_id: str,
@@ -97,6 +96,32 @@ def _filter_entities_by_popularity(
     except FileNotFoundError:
         raise ValueError(f"Entity popularity filter set to {entity_popularity_filter} but prop eval not found for {prop_id}")
 
+def _filter_entities_by_name(
+    properties: Properties,
+    prop_id: str,
+) -> Properties:
+    """Filter entities that don't have a name-surname pair."""
+    if "person" in prop_id:
+        # Check that we have at least name-surname for each entity, to avoid ambiguous entities like just "Albert" or "Adolf"
+        # We'll miss some cases like "Charlemagne", "Napoleon", "Plato", "Aristotle", etc., but it's better than generating bad questions
+        properties.value_by_name = {
+            entity_name: entity_value
+            for entity_name, entity_value in properties.value_by_name.items()
+            if " " in entity_name
+        }
+    
+    # If we have two entities with the same prefix up to a opening parenthesis, remove both
+    # This is to avoid cases like "Lake Victoria" and "Lake Victoria (Victoria)"
+    # Also, they are probably ambiguous or the same entity
+    properties.value_by_name = {
+        entity_name: entity_value
+        for entity_name, entity_value in properties.value_by_name.items()
+        if not any(entity_name.startswith(name[:name.find("(")]) for name in properties.value_by_name.keys())
+    }
+    
+    logging.info(f"After filtering by name, we have {len(properties.value_by_name)} entities for {prop_id}")
+    return properties
+
 def _filter_entities_by_rag_values(
     properties: Properties,
     rag_values_map: dict[str, list[RAGValue]] | None,
@@ -115,11 +140,34 @@ def _filter_entities_by_rag_values(
     return properties
 
 def _are_valid_values_for_property(
+    small_name: str,
     small_value: int | float,
+    large_name: str,
     large_value: int | float,
     prop_id: str,
 ) -> bool:
     """Check if the values are valid for the property."""
+    places = ["city", "county", "college", "natural", "structure", "zip"]
+    if any(place in prop_id for place in places):
+        # if there is a comma in any of the names, that's probably the state (if it's two letters)
+        # make sure that they are different
+        small_state = None
+        large_state = None
+        if "," in small_name:
+            small_state = small_name.split(",")[1].strip()
+            if len(small_state) == 2:
+                small_state = small_state.upper()
+            else:
+                small_state = None
+        if "," in large_name:
+            large_state = large_name.split(",")[1].strip()
+            if len(large_state) == 2:
+                large_state = large_state.upper()
+            else:
+                large_state = None
+        if small_state == large_state:
+            return False
+
     # We set specific minimums when comparing locations, depending on their size.
     location_comparison_limits = {
         "zip": 1,
@@ -148,6 +196,12 @@ def _are_valid_values_for_property(
     elif "age" in prop_id:
         # check that the values have at least 5 years between them
         return abs(small_value - large_value) >= 5
+    elif "release" in prop_id:
+        # check that the values have at least 2 years between them
+        # the year is the first 4 digits of the value
+        small_year = int(str(small_value)[:4])
+        large_year = int(str(large_value)[:4])
+        return abs(small_year - large_year) >= 2
     
     return True
 
@@ -186,7 +240,9 @@ def _generate_potential_pairs(
                 continue
 
             if not _are_valid_values_for_property(
+                small_name=small_name,
                 small_value=small_value,
+                large_name=large_name,
                 large_value=large_value,
                 prop_id=prop_id,
             ):
@@ -219,9 +275,8 @@ def _sample_pairs(
 ) -> list[PotentialPairInfo]:
     """Sample n pairs from the available pairs."""
     total_pairs = len(pairs)
-    if total_pairs == 0:
-        logging.warning("No pairs generated after filtering. Skipping generation.")
-        return []
+    assert total_pairs > 0, "No pairs available to sample."
+
     n = min(target_n, total_pairs)
     if n == 0:
         logging.info("No pairs available to sample.")
@@ -345,6 +400,10 @@ def gen_qs(
         prop_id=prop_id,
         entity_popularity_filter=entity_popularity_filter
     )
+    properties = _filter_entities_by_name(
+        properties=properties,
+        prop_id=prop_id
+    )
     rag_values_map = None
     if remove_ambiguous and non_overlapping_rag_values:
         rag_eval_path = DATA_DIR / "prop_rag_eval" / "T0.0_P0.9_M1000" / f"{prop_id}.yaml"
@@ -443,6 +502,11 @@ def gen_qs(
         non_ambiguous_pairs = accepted_pairs
     else:
         non_ambiguous_pairs = potential_pairs
+    
+    if len(non_ambiguous_pairs) == 0:
+        logging.warning(f"No pairs generated after filtering. Skipping sampling.")
+        return {}
+
     sampled_pairs = _sample_pairs(
         pairs=non_ambiguous_pairs,
         target_n=n

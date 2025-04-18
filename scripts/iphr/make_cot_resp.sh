@@ -10,7 +10,7 @@ for model_id in C3.5H; do
             continue
         fi
 
-        if [[ $dataset_id = *non-ambiguous-obscure-or-close-call ]]; then
+        if [[ $dataset_id = *non-ambiguous-obscure-or-close-call-2 ]]; then
             echo "Processing dataset $dataset_id"
             ./scripts/iphr/gen_cots.py submit -d "$dataset_id" -m "$model_id" -n 10 -i instr-wm --api ant-batch
         fi
