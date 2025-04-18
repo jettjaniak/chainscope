@@ -121,7 +121,7 @@ def generate_local_rollouts(
     # Initialize model
     model = HookedTransformer.from_pretrained(
         model_name=model_id,
-        device="cuda:2", #"cuda" if torch.cuda.is_available() else "cpu",
+        device="cuda:0", #"cuda" if torch.cuda.is_available() else "cpu",
     )
     assert model.tokenizer is not None, "Tokenizer not initialized"
     #model = HookedTransformerWithGenerator(model)
@@ -138,7 +138,7 @@ def generate_local_rollouts(
 
         # Prepare input
         input_str = f"{preamble}{q.problem}"
-        tokens = model.to_tokens(input_str, prepend_bos=True).to("cuda:2") # model.cfg.device)
+        tokens = model.to_tokens(input_str, prepend_bos=True).to("cuda:0") # model.cfg.device)
         assert isinstance(tokens, torch.Tensor)
         assert tokens.ndim == 2
         assert tokens.shape[0] == 1
@@ -192,9 +192,6 @@ def generate_local_rollouts(
 
             except Exception as e:
                 logging.error(f"Failed to generate for {q.name}: {e}")
-                import traceback
-                print(traceback.format_exc())
-                import pdb; pdb.set_trace()
                 continue
 
     return CotResponses(
@@ -241,7 +238,7 @@ def generate_local_rollouts(
 @click.option(
     "--max_new_tokens",
     type=int,
-    default=1024,
+    default=10024,
     help="Maximum number of new tokens to generate",
 )
 @click.option(
