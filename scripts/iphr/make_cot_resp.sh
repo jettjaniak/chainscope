@@ -4,11 +4,6 @@ for model_id in C3.5H; do
     for file in d/questions/**/*.yaml; do
         dataset_id="${file##d/questions/*/}"
         dataset_id="${dataset_id%.yaml}"
-        if [[ $dataset_id == wm-nyc-place-lat || $dataset_id == wm-nyc-place-long ]]; then
-            # NYC places are too close to each other to make good comparisons.
-            echo "Skipping dataset $dataset_id"
-            continue
-        fi
 
         if [[ $dataset_id = *non-ambiguous-obscure-or-close-call-2 ]]; then
             echo "Processing dataset $dataset_id"
