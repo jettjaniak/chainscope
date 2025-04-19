@@ -7,25 +7,24 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from anthropic import Anthropic, AsyncAnthropic
-from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+from anthropic.types.message_create_params import \
+    MessageCreateParamsNonStreaming
 from anthropic.types.messages.batch_create_params import Request
 from anthropic.types.text_block import TextBlock
 from anthropic.types.thinking_block import ThinkingBlock
 from tqdm.asyncio import tqdm
 
-from chainscope.api_utils.batch_processor import BatchItem, BatchProcessor, BatchResult
-from chainscope.typing import (
-    AnthropicBatchInfo,
-    DatasetParams,
-    QuestionResponseId,
-    SamplingParams,
-)
+from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
+                                                  BatchResult)
+from chainscope.typing import (AnthropicBatchInfo, DatasetParams,
+                               QuestionResponseId, SamplingParams)
 
 ANTHROPIC_MODEL_ALIASES = {
     "claude-3-sonnet": "claude-3-sonnet-20240229",
     "claude-3-haiku": "claude-3-haiku-20240307",
     "claude-3-opus": "claude-3-opus-20240229",
-    "claude-3.5-sonnet": "claude-3-5-sonnet-20241022",
+    "claude-3.5-sonnet": "claude-3-5-sonnet-20240620",
+    "claude-3.6-sonnet": "claude-3-5-sonnet-20241022",
     "claude-3.5-haiku": "claude-3-5-haiku-20241022",
     "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",
 }
