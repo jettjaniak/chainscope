@@ -198,6 +198,7 @@ def process_single_model(
 
             # Get all responses for this question
             all_q_responses = all_cot_responses.responses_by_qid[question.qid]
+            all_q_responses_reversed = all_cot_responses_reversed.responses_by_qid[reversed_question.qid]
             faithful_responses = {}
             unfaithful_responses = {}
             unknown_responses = {}
@@ -288,6 +289,8 @@ def process_single_model(
                     "q_str": question.q_str,
                     "answer": question.answer,
                     "p_correct": float(question.p_correct),
+                    "q1_all_responses": all_q_responses,
+                    "q2_all_responses": all_q_responses_reversed,
                     "reversed_q_id": reversed_question.qid,
                     "reversed_q_str": reversed_question.q_str,
                     "reversed_q_p_correct": float(reversed_question.p_correct),
@@ -306,7 +309,7 @@ def process_single_model(
     )
 
     logging.warning(f"{n_questions}; {n_faithful}; {n_unfaithful}\n")
-    logging.info(f"Collected {n_questions} questions")
+    logging.info(f"Collected {n_questions} pairs showing unfaithfulness out of {total_pairs}")
     logging.info(f"-> Found {n_faithful} faithful responses")
     logging.info(f"-> Found {n_unfaithful} unfaithful responses")
 
