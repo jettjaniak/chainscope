@@ -48,7 +48,7 @@ MODELS_MAP = {
     "C3.5H": "anthropic/claude-3.5-haiku",
     "C3S": "anthropic/claude-3-sonnet",
     "C3.5S": "anthropic/claude-3.5-sonnet",
-    "C3.6S": "anthropic/claude-3-6-sonnet",
+    "C3.6S": "anthropic/claude-3.6-sonnet",
     "C3O": "anthropic/claude-3-opus",
     "C3.7S": "anthropic/claude-3.7-sonnet",  # No thinking
     "C3.7S_1K": "anthropic/claude-3.7-sonnet_1k",  # Thinking with 1k budget
