@@ -2,18 +2,23 @@
 
 # Parse arguments
 if [[ $# -lt 3 ]]; then
-    echo "Usage: $0 <dataset_prefixes> <model> <api>"
-    echo "Example: $0 'wm-person-age wm-book !wm-song' 'openai__gpt-4o' 'openai'"
+    echo "Usage: $0 <dataset_patterns> <model> <api>"
+    echo "Example: $0 'wm-* *-age !*-song exact-match' 'openai__gpt-4o' 'openai'"
+    echo "Pattern format:"
+    echo "  - prefix*    : matches at start (e.g., 'wm-*')"
+    echo "  - *suffix    : matches at end (e.g., '*-age')"
+    echo "  - exact     : exact match (no *)"
+    echo "  - !pattern   : negation (works with any pattern type)"
     exit 1
 fi
 
 # Split the first argument on spaces
-dataset_prefixes=(${(s: :)1})  # Explicitly split on spaces
+dataset_patterns=(${(s: :)1})  # Explicitly split on spaces
 model=$2
 api=$3
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting synchronous evaluations"
-echo "Dataset prefixes: ${dataset_prefixes[@]}"
+echo "Dataset patterns: ${dataset_patterns[@]}"
 echo "Model: $model"
 echo "API: $api"
 
@@ -24,24 +29,34 @@ for file in chainscope/data/cot_responses/instr-wm/T0.7_P0.9_M2000/**/*.yaml; do
     if [[ $f_model != $model ]]; then
         continue
     fi
-
-    # echo "Checking file: $file"
     
     # :h gets parent directory, :t gets its name
     f_dataset=${file:h:t}
-    # echo "  Dataset: $f_dataset"
-    # echo "  Model: $f_model"
 
     # Check exclusion patterns first
     skip=0
-    for prefix in ${dataset_prefixes[@]}; do
-        # echo "  Checking prefix: $prefix"
-        if [[ $prefix == !* ]]; then  # If it starts with !
-            prefix=${prefix#!}  # Remove the ! character
-            if [[ $f_dataset == $prefix* ]]; then
-                # echo "  Skipping: matches exclusion pattern $prefix"
-                skip=1
-                break
+    for pattern in ${dataset_patterns[@]}; do
+        if [[ $pattern == !* ]]; then  # If it starts with !
+            pattern=${pattern#!}  # Remove the ! character
+            
+            # Handle different pattern types
+            if [[ $pattern == *\** ]]; then  # Contains *
+                if [[ $pattern == \** ]]; then  # Suffix match
+                    if [[ $f_dataset == *${pattern#\*} ]]; then
+                        skip=1
+                        break
+                    fi
+                elif [[ $pattern == *\* ]]; then  # Prefix match
+                    if [[ $f_dataset == ${pattern%\*}* ]]; then
+                        skip=1
+                        break
+                    fi
+                fi
+            else  # Exact match
+                if [[ $f_dataset == $pattern ]]; then
+                    skip=1
+                    break
+                fi
             fi
         fi
     done
@@ -53,17 +68,32 @@ for file in chainscope/data/cot_responses/instr-wm/T0.7_P0.9_M2000/**/*.yaml; do
 
     # Check if matches any of the inclusion patterns
     matches=0
-    for prefix in ${dataset_prefixes[@]}; do
-        if [[ $prefix != !* ]] && [[ $f_dataset == $prefix* ]]; then
-            # echo "  Matches inclusion pattern $prefix"
-            matches=1
-            break
+    for pattern in ${dataset_patterns[@]}; do
+        if [[ $pattern != !* ]]; then  # Not an exclusion pattern
+            # Handle different pattern types
+            if [[ $pattern == *\** ]]; then  # Contains *
+                if [[ $pattern == \** ]]; then  # Suffix match
+                    if [[ $f_dataset == *${pattern#\*} ]]; then
+                        matches=1
+                        break
+                    fi
+                elif [[ $pattern == *\* ]]; then  # Prefix match
+                    if [[ $f_dataset == ${pattern%\*}* ]]; then
+                        matches=1
+                        break
+                    fi
+                fi
+            else  # Exact match
+                if [[ $f_dataset == $pattern ]]; then
+                    matches=1
+                    break
+                fi
+            fi
         fi
     done
 
     # Skip if doesn't match any inclusion pattern
     if [[ $matches == 0 ]]; then
-        # echo "  Skipping: doesn't match any inclusion pattern"
         continue
     fi
 
