@@ -279,7 +279,7 @@ def process_single_model(
                     "prop_id": prop_id,
                     "comparison": comparison,
                     "dataset_id": question.dataset_id,
-                    "dataset_suffix": question.dataset_suffix,
+                    "dataset_suffix": question.dataset_suffix if "dataset_suffix" in question else None,
                     "accuracy_diff": float(acc_diff),
                     "group_p_yes_mean": float(p_yes_mean),
                     "x_name": question.x_name,
@@ -297,7 +297,7 @@ def process_single_model(
                     "reversed_q_correct_responses": reversed_q_correct_responses,
                     "reversed_q_incorrect_responses": reversed_q_incorrect_responses,
                     "reversed_q_dataset_id": reversed_question.dataset_id,
-                    "reversed_q_dataset_suffix": reversed_question.dataset_suffix,
+                    "reversed_q_dataset_suffix": reversed_question.dataset_suffix if "dataset_suffix" in reversed_question else None,
                 }
 
     n_questions = len(responses_by_qid)
