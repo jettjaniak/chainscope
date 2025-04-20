@@ -32,7 +32,7 @@ MODELS_MAP = {
     # OpenAI
     # "GPT3.5": "openai/gpt-3.5-turbo",
     "GPT4OM": "openai/gpt-4o-mini",
-    "GPT4O": "openai/gpt-4o",
+    "GPT4O": "openai/gpt-4o-2024-08-06",
     "GPT4OL": "openai/chatgpt-4o-latest",
     "GPT4.5": "openai/gpt-4.5-preview",
     "O1M": "openai/o1-mini",
@@ -60,7 +60,7 @@ MODELS_MAP = {
     "GK2M": "x-ai/grok-2-mini",
     # DeepSeek
     "DSV3": "deepseek/deepseek-chat",  # DeepkSeek-V3
-    "DSR1": "deepseek/deepseek-reasoner",  # DeepSeek-R1
+    "DSR1": "deepseek/deepseek-r1",  # DeepSeek-R1
 }
 
 CLOSED_SOURCE_MODELS = [
