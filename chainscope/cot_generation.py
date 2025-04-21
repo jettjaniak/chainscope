@@ -507,10 +507,7 @@ def get_local_responses_tl(
                 ):
                     generated.append(token)
             except Exception as e:
-                print(e)
-                import pdb; pdb.set_trace()
                 pass
-            import pdb; pdb.set_trace()
             generated = torch.cat(generated, dim=1)
             generated = torch.cat((tokens, generated), dim=1)
             assert isinstance(
