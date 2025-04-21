@@ -25,11 +25,11 @@ from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
 from chainscope.cot_generation import HookedTransformerWithGenerator
 from chainscope.typing import (
     CotResponses,
-    SamplingParams,
     MathDatasetParams,
     MathQsDataset,
     MathQuestion,
     MathResponse,
+    SamplingParams,
 )
 
 
@@ -121,10 +121,10 @@ def generate_local_rollouts(
     # Initialize model
     model = HookedTransformer.from_pretrained(
         model_name=model_id,
-        device="cuda:0", #"cuda" if torch.cuda.is_available() else "cpu",
+        device="cuda:0",  # "cuda" if torch.cuda.is_available() else "cpu",
     )
     assert model.tokenizer is not None, "Tokenizer not initialized"
-    #model = HookedTransformerWithGenerator(model)
+    # model = HookedTransformerWithGenerator(model)
 
     # Prepare questions
     questions = dataset.questions[:prefix] if prefix else dataset.questions
@@ -138,7 +138,9 @@ def generate_local_rollouts(
 
         # Prepare input
         input_str = f"{preamble}{q.problem}"
-        tokens = model.to_tokens(input_str, prepend_bos=True).to("cuda:0") # model.cfg.device)
+        tokens = model.to_tokens(input_str, prepend_bos=True).to(
+            "cuda:0"
+        )  # model.cfg.device)
         assert isinstance(tokens, torch.Tensor)
         assert tokens.ndim == 2
         assert tokens.shape[0] == 1
@@ -147,15 +149,20 @@ def generate_local_rollouts(
         with torch.inference_mode():
             generated = []
             try:
-                for token in model.generate(
-                    tokens,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    return_type="tokens",
-                    verbose=True,
-                ):
-                    generated.append(token)
+                try:
+                    for token in model.generate(
+                        tokens,
+                        max_new_tokens=max_new_tokens,
+                        temperature=temperature,
+                        top_p=top_p,
+                        return_type="tokens",
+                        verbose=True,
+                    ):
+                        generated.append(token)
+                except Exception:
+                    # QwQ seems to have a generation bug around the 1950th token related
+                    # to rotary positional embeddings. Construct whatever resposne we have so far.
+                    pass
 
                 generated = torch.cat(generated, dim=1)
                 generated = torch.cat((tokens, generated), dim=1)
@@ -168,6 +175,7 @@ def generate_local_rollouts(
                     skip_special_tokens=True,
                     clean_up_tokenization_spaces=True,
                 )[0]
+
                 assert isinstance(generated_text, str)
 
                 # Split into thinking and answer if possible
@@ -299,4 +307,3 @@ def main(
 
 if __name__ == "__main__":
     main()
-
