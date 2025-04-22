@@ -7,7 +7,7 @@ for model_id in QwQ; do
         if [[ $dataset_id = wm* ]]; then
             echo "Processing wm dataset $dataset_id"
 	    if [[ $dataset_id != "wm-book-length_gt_NO_1_6fda02e3" ]]; then
-		   poetry run ./scripts/iphr/gen_cots.py submit -d "$dataset_id" -m "$model_id" -n 1 -i instr-wm --api local-ts
+		   poetry run ./scripts/iphr/gen_cots.py submit -d "$dataset_id" -m "$model_id" -n 1 -i instr-wm --api local-tl
 	    fi
         fi
     done
