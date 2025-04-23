@@ -465,9 +465,6 @@ def main(
     # Process each model separately
     model_ids = sort_models(df["model_id"].unique().tolist())
     for model_id in model_ids:
-        # TODO: REMOVE THIS
-        if model_id.endswith("64k"):
-            continue
         model_data = df[df["model_id"] == model_id]
         model_file_name = model_id.split("/")[-1]
         
