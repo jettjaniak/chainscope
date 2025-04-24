@@ -1,7 +1,7 @@
 #!/bin/bash
 for model_id in QwQ; do
     echo "Processing model $model_id"
-    for file in d/questions/**/*.yaml; do
+    for file in $(ls -r d/questions/**/*.yaml); do
         dataset_id="${file##d/questions/*/}"
         dataset_id="${dataset_id%.yaml}"
         if [[ $dataset_id = wm* ]]; then
