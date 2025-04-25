@@ -148,10 +148,11 @@ def perform_rag_eval_using_gpt_4o_web_search(
     existing_rag_eval: PropRAGEval | None = None,
     save_every: int = 50,
 ) -> None:
+    openai_web_search_model_id = "gpt-4o-mini-search-preview"
     rag_eval = existing_rag_eval or PropRAGEval(
         values_by_entity_name={},
         prop_id=prop_id,
-        model_id="gpt-4o-search-preview",
+        model_id=openai_web_search_model_id,
         sampling_params=sampling_params,
     )
 
@@ -160,7 +161,7 @@ def perform_rag_eval_using_gpt_4o_web_search(
             rag_eval.values_by_entity_name[entity_name] = []
 
         query = build_rag_query(entity_name, props)
-        values = get_openai_web_search_rag_values(query, model_id="gpt-4o-search-preview", search_context_size="medium")
+        values = get_openai_web_search_rag_values(query, model_id=openai_web_search_model_id, search_context_size="medium")
 
         for value in values:
             same_url = next((v for v in rag_eval.values_by_entity_name[entity_name] if v.source.url == value.source.url), None)
@@ -209,6 +210,12 @@ def cli() -> None:
     help="Sample this percentage of entities to evaluate (0-1)",
 )
 @click.option(
+    "--max-sample-size",
+    type=int,
+    default=None,
+    help="Maximum number of entities to sample (overrides eval-sample-pct if it would sample more)",
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     help="Show what would be processed without actually running the RAG evaluation",
@@ -234,6 +241,7 @@ def submit(
     max_popularity: int | None,
     skip_processed_entities: bool,
     eval_sample_pct: float | None,
+    max_sample_size: int | None,
     dry_run: bool,
     test: bool,
     verbose: bool,
@@ -248,6 +256,8 @@ def submit(
         assert 1 <= max_popularity <= 10, "Max popularity must be between 1 and 10"
     if eval_sample_pct is not None:
         assert 0 < eval_sample_pct <= 1, "Sample percentage must be between 0 and 1"
+    if max_sample_size is not None:
+        assert max_sample_size > 0, "Max sample size must be positive"
 
     sampling_params = SamplingParams(
         temperature=float(temperature),
@@ -317,16 +327,19 @@ def submit(
             # Sample entities if requested
             if eval_sample_pct is not None:
                 random.seed(42)  # For reproducibility
+                sample_size = int(len(entities_to_process) * eval_sample_pct)
+                if max_sample_size is not None:
+                    sample_size = min(sample_size, max_sample_size)
                 sampled_entities = dict(random.sample(
                     list(entities_to_process.items()),
-                    k=int(len(entities_to_process) * eval_sample_pct)
+                    k=sample_size
                 ))
-                logging.info(f"Sampled {len(sampled_entities)} entities out of {len(entities_to_process)} ({eval_sample_pct*100:.1f}%)")
+                logging.info(f"Sampled {len(sampled_entities)} entities out of {len(entities_to_process)} ({eval_sample_pct*100:.1f}%, max {max_sample_size if max_sample_size else 'unlimited'})")
                 entities_to_process = sampled_entities
 
             if dry_run:
-                logging.info(f"DRY RUN: Would process {len(entities_to_process)} entities for {prop_id}")
-                logging.info(f"DRY RUN: First 5 entities: {list(entities_to_process.keys())[:5]}")
+                logging.warning(f"DRY RUN: Would process {len(entities_to_process)} entities for {prop_id}")
+                logging.warning(f"DRY RUN: First 5 entities: {list(entities_to_process.keys())[:5]}")
                 continue
 
             if rag_method == "gpt-4o-web-search":
