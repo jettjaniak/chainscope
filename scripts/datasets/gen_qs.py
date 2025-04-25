@@ -80,7 +80,7 @@ def main(
         dataset_suffix=dataset_suffix,
         remove_ambiguous=remove_ambiguous,
         non_overlapping_rag_values=non_overlapping_rag_values,
-        evaluator_model_id="gpt-4o",
+        evaluator_model_id="gpt-4o-latest",
         evaluator_sampling_params=SamplingParams(
             temperature=0.7,
             max_new_tokens=1500,
