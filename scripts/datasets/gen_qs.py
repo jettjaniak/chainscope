@@ -47,6 +47,12 @@ from chainscope.typing import *
     help="Minimum percent difference between values to generate (or not) close call comparisons. This is based on the absolute difference between the min and max values for the property.",
 )
 @click.option(
+    "--max-percent-value-diff",
+    type=float,
+    default=None,
+    help="Maximum percent difference between values to generate (or not) close call comparisons. This is based on the absolute difference between the min and max values for the property.",
+)
+@click.option(
     "--dataset-suffix",
     type=str,
     default=None,
@@ -72,6 +78,7 @@ def main(
     min_popularity: int | None,
     max_popularity: int | None,
     min_percent_value_diff: float | None,
+    max_percent_value_diff: float | None,
     dataset_suffix: str | None,
     non_overlapping_rag_values: bool,
     remove_ambiguous: bool,
@@ -85,6 +92,7 @@ def main(
         min_popularity=min_popularity,
         max_popularity=max_popularity,
         min_percent_value_diff=min_percent_value_diff,
+        max_percent_value_diff=max_percent_value_diff,
         dataset_suffix=dataset_suffix,
         remove_ambiguous=remove_ambiguous,
         non_overlapping_rag_values=non_overlapping_rag_values,

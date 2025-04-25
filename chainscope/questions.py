@@ -236,32 +236,48 @@ def _generate_potential_pairs(
     properties: Properties,
     all_sorted_values: list[tuple[str, int | float]],
     min_percent_value_diff: float | None,
+    max_percent_value_diff: float | None,
     rag_values_map: dict[str, list[RAGValue]] | None,
 ) -> list[PotentialPairInfo]:
     """Generate potential pairs and all info needed for ambiguity evaluation and sampling."""
     potential_pairs: list[PotentialPairInfo] = []
 
     # Calculate value range for percentage difference filtering
+    min_val = all_sorted_values[0][1]
+    max_val = all_sorted_values[-1][1]
+    value_range = max_val - min_val
+    min_absolute_diff = None
+    max_absolute_diff = None
     if min_percent_value_diff is not None:
-        min_val = all_sorted_values[0][1]
-        max_val = all_sorted_values[-1][1]
-        value_range = max_val - min_val
         min_absolute_diff = value_range * (min_percent_value_diff / 100)
         logging.info(f"Value range: {value_range}, minimum required difference: {min_absolute_diff}")
+    if max_percent_value_diff is not None:
+        max_absolute_diff = value_range * (max_percent_value_diff / 100)
+        logging.info(f"Value range: {value_range}, maximum allowed difference: {max_absolute_diff}")
 
     logging.info(f"Generating potential pairs for ambiguity evaluation...")
     for small_idx, (small_name, small_value) in enumerate(all_sorted_values):
         logging.info(f"Generating questions for entity `{small_name}` ({small_value}), index {small_idx}/{len(all_sorted_values)}")
         for large_idx, (large_name, large_value) in enumerate(all_sorted_values[small_idx + 1:]):
             logging.info(f"Comparing {small_name} ({small_value}) and {large_name} ({large_value}), index {large_idx}/{len(all_sorted_values) - small_idx - 1}")
-            if small_value == large_value:
+            value_diff = abs(large_value - small_value)
+            if value_diff == 0:
                 logging.info(f"Skipping {small_name} and {large_name} because values are equal ({small_value})")
                 continue
-            if min_percent_value_diff is not None and abs(large_value - small_value) < min_absolute_diff:
+
+            if min_absolute_diff is not None and value_diff < min_absolute_diff:
                 logging.info(
                     f"Skipping {small_name} ({small_value}) and {large_name} ({large_value}) "
-                    f"because difference ({abs(large_value - small_value)}) is less than "
+                    f"because difference ({value_diff}) is less than "
                     f"minimum required ({min_absolute_diff})"
+                )
+                continue
+
+            if max_absolute_diff is not None and value_diff > max_absolute_diff:
+                logging.info(
+                    f"Skipping {small_name} ({small_value}) and {large_name} ({large_value}) "
+                    f"because difference ({value_diff}) is greater than "
+                    f"maximum allowed ({max_absolute_diff})"
                 )
                 continue
 
@@ -382,6 +398,7 @@ def gen_qs(
     min_popularity: int | None,
     max_popularity: int | None,
     min_percent_value_diff: float | None,
+    max_percent_value_diff: float | None,
     dataset_suffix: str | None,
     remove_ambiguous: bool,
     non_overlapping_rag_values: bool,
@@ -409,6 +426,7 @@ def gen_qs(
         min_popularity: Minimum popularity rank for entities
         max_popularity: Maximum popularity rank for entities
         min_percent_value_diff: Minimum required percentage difference between values
+        max_percent_value_diff: Maximum required percentage difference between values
         dataset_suffix: Optional suffix for dataset parameters
         remove_ambiguous: Whether to filter out questions deemed ambiguous by an LLM evaluator
         non_overlapping_rag_values: Whether to use RAG values in ambiguity check prompt
@@ -458,6 +476,7 @@ def gen_qs(
         prop_id=prop_id,
         all_sorted_values=all_sorted_values,
         min_percent_value_diff=min_percent_value_diff,
+        max_percent_value_diff=max_percent_value_diff,
         rag_values_map=rag_values_map
     )
     # Iterative ambiguity evaluation: only evaluate as many pairs as needed to satisfy max_comparisons for each entity
