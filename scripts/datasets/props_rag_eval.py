@@ -145,6 +145,7 @@ def perform_rag_eval_using_gpt_4o_web_search(
     entity_names: list[str],
     sampling_params: SamplingParams,
     existing_rag_eval: PropRAGEval | None = None,
+    save_every: int = 50,
 ) -> None:
     rag_eval = existing_rag_eval or PropRAGEval(
         values_by_entity_name={},
@@ -153,7 +154,7 @@ def perform_rag_eval_using_gpt_4o_web_search(
         sampling_params=sampling_params,
     )
 
-    for entity_name in tqdm(entity_names, desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
+    for i, entity_name in tqdm(enumerate(entity_names), desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
         if entity_name not in rag_eval.values_by_entity_name:
             rag_eval.values_by_entity_name[entity_name] = []
 
@@ -166,6 +167,11 @@ def perform_rag_eval_using_gpt_4o_web_search(
                 rag_eval.values_by_entity_name[entity_name].append(value)
             else:
                 logging.info(f"NOT replacing value for {entity_name} in {same_url.source.url} from {same_url.value} to {value.value}")
+        
+        # Save periodically
+        if (i + 1) % save_every == 0:
+            logging.info(f"Saving intermediate results after processing {i + 1} entities")
+            rag_eval.save()
     
     logging.info(f"RAG eval for {prop_id} saved to {rag_eval.save()}")
 
@@ -200,6 +206,11 @@ def cli() -> None:
     is_flag=True,
     help="Test mode: only process 10 properties from first dataset",
 )
+@click.option(
+    "--save-every",
+    default=50,
+    help="Save RAG eval results every N entities (only for gpt-4o-web-search)",
+)
 @click.option("-v", "--verbose", is_flag=True)
 def submit(
     evaluator_model_id: str,
@@ -212,6 +223,7 @@ def submit(
     skip_processed_entities: bool,
     test: bool,
     verbose: bool,
+    save_every: int,
 ) -> None:
     """Submit batches of properties for RAG evaluation."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -293,6 +305,7 @@ def submit(
                     entity_names=list(entities_to_process.keys()),
                     sampling_params=sampling_params,
                     existing_rag_eval=existing_rag_eval,
+                    save_every=save_every,
                 )
             elif rag_method == "google-search-with-zyte":
                 perform_rag_eval_using_google_search(
