@@ -156,7 +156,7 @@ def perform_rag_eval_using_gpt_4o_web_search(
         sampling_params=sampling_params,
     )
 
-    for i, entity_name in tqdm(enumerate(entity_names_to_process), desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
+    for i, entity_name in enumerate(tqdm(entity_names_to_process, desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}")):
         if entity_name not in rag_eval.values_by_entity_name:
             rag_eval.values_by_entity_name[entity_name] = []
 
