@@ -10,5 +10,8 @@ for file in d/properties/*.yaml; do
     fi
 
     echo "Generating questions for $prop_id"
-    ./scripts/datasets/gen_qs.py -v -p "$prop_id" -n 100  --entity-popularity-filter 8 --min-percent-value-diff 0.25 --remove-ambiguous --non-overlapping-rag-values --dataset-suffix "non-ambiguous-obscure-or-close-call-2"
+    # ./scripts/datasets/gen_qs.py -v -p "$prop_id" -n 100  --min-popularity 8 --min-percent-value-diff 0.25 --remove-ambiguous --non-overlapping-rag-values --dataset-suffix "non-ambiguous-obscure-or-close-call-2"
+
+    ./scripts/datasets/gen_qs.py -v -p "$prop_id" -n 100  --max-popularity 5 --max-percent-value-diff 0.25 --remove-ambiguous --non-overlapping-rag-values --dataset-suffix "non-ambiguous-hard"
+    break
 done
