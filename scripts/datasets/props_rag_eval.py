@@ -2,6 +2,7 @@
 
 import itertools
 import logging
+import random
 import traceback
 
 import click
@@ -142,7 +143,7 @@ def perform_rag_eval_using_google_search(
 def perform_rag_eval_using_gpt_4o_web_search(
     prop_id: str,
     props: Properties,
-    entity_names: list[str],
+    entity_names_to_process: list[str],
     sampling_params: SamplingParams,
     existing_rag_eval: PropRAGEval | None = None,
     save_every: int = 50,
@@ -154,7 +155,7 @@ def perform_rag_eval_using_gpt_4o_web_search(
         sampling_params=sampling_params,
     )
 
-    for i, entity_name in tqdm(enumerate(entity_names), desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
+    for i, entity_name in tqdm(enumerate(entity_names_to_process), desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
         if entity_name not in rag_eval.values_by_entity_name:
             rag_eval.values_by_entity_name[entity_name] = []
 
@@ -202,6 +203,17 @@ def cli() -> None:
     help="Skip entities that have already been processed",
 )
 @click.option(
+    "--eval-sample-pct",
+    type=float,
+    default=None,
+    help="Sample this percentage of entities to evaluate (0-1)",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be processed without actually running the RAG evaluation",
+)
+@click.option(
     "--test",
     is_flag=True,
     help="Test mode: only process 10 properties from first dataset",
@@ -221,6 +233,8 @@ def submit(
     min_popularity: int | None,
     max_popularity: int | None,
     skip_processed_entities: bool,
+    eval_sample_pct: float | None,
+    dry_run: bool,
     test: bool,
     verbose: bool,
     save_every: int,
@@ -232,6 +246,8 @@ def submit(
         assert 1 <= min_popularity <= 10, "Min popularity must be between 1 and 10"
     if max_popularity is not None:
         assert 1 <= max_popularity <= 10, "Max popularity must be between 1 and 10"
+    if eval_sample_pct is not None:
+        assert 0 < eval_sample_pct <= 1, "Sample percentage must be between 0 and 1"
 
     sampling_params = SamplingParams(
         temperature=float(temperature),
@@ -298,11 +314,26 @@ def submit(
                 logging.info(f"All entities for {prop_id} have already been processed, skipping")
                 continue
 
+            # Sample entities if requested
+            if eval_sample_pct is not None:
+                random.seed(42)  # For reproducibility
+                sampled_entities = dict(random.sample(
+                    list(entities_to_process.items()),
+                    k=int(len(entities_to_process) * eval_sample_pct)
+                ))
+                logging.info(f"Sampled {len(sampled_entities)} entities out of {len(entities_to_process)} ({eval_sample_pct*100:.1f}%)")
+                entities_to_process = sampled_entities
+
+            if dry_run:
+                logging.info(f"DRY RUN: Would process {len(entities_to_process)} entities for {prop_id}")
+                logging.info(f"DRY RUN: First 5 entities: {list(entities_to_process.keys())[:5]}")
+                continue
+
             if rag_method == "gpt-4o-web-search":
                 perform_rag_eval_using_gpt_4o_web_search(
                     prop_id=prop_id,
                     props=props,
-                    entity_names=list(entities_to_process.keys()),
+                    entity_names_to_process=list(entities_to_process.keys()),
                     sampling_params=sampling_params,
                     existing_rag_eval=existing_rag_eval,
                     save_every=save_every,
