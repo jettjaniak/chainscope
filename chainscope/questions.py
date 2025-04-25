@@ -126,9 +126,14 @@ def _filter_entities_by_name(
     
     # Process entities in a loop to find ones to remove
     to_remove = set()
-    entity_names = list(properties.value_by_name.keys())
+    entity_names = set(properties.value_by_name.keys())
     for entity_name in entity_names:
-        for other_entity_name in entity_names:
+        if entity_name.startswith("("):
+            logging.info(f"Removing {entity_name} because it starts with a parenthesis")
+            to_remove.add(entity_name)
+            continue
+
+        for other_entity_name in entity_names - to_remove:
             if entity_name == other_entity_name:
                 continue
             if "(" in other_entity_name:
