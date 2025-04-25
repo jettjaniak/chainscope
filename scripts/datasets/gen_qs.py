@@ -59,6 +59,12 @@ from chainscope.typing import *
     help="If provided, the suffix to add to the dataset ID when saving the dataset.",
 )
 @click.option(
+    "--min-rag-values-count",
+    type=int,
+    default=2,
+    help="Minimum number of RAG values (inclusive) that each entity should have.",
+)
+@click.option(
     "--non-overlapping-rag-values",
     is_flag=True,
     default=False,
@@ -80,6 +86,7 @@ def main(
     min_percent_value_diff: float | None,
     max_percent_value_diff: float | None,
     dataset_suffix: str | None,
+    min_rag_values_count: int | None,
     non_overlapping_rag_values: bool,
     remove_ambiguous: bool,
     verbose: bool,
@@ -96,6 +103,7 @@ def main(
         dataset_suffix=dataset_suffix,
         remove_ambiguous=remove_ambiguous,
         non_overlapping_rag_values=non_overlapping_rag_values,
+        min_rag_values_count=min_rag_values_count,
         evaluator_model_id="gpt-4o-latest",
         evaluator_sampling_params=SamplingParams(
             temperature=0.7,

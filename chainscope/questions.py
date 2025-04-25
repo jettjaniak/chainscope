@@ -157,15 +157,16 @@ def _filter_entities_by_rag_values(
     properties: Properties,
     rag_values_map: dict[str, list[RAGValue]] | None,
     prop_id: str,
+    min_rag_values_count: int | None,
 ) -> Properties:
     """Filter entities that have RAG values."""
-    if rag_values_map is None:
+    if rag_values_map is None or min_rag_values_count is None:
         return properties
 
     properties.value_by_name = {
         entity_name: entity_value
         for entity_name, entity_value in properties.value_by_name.items()
-        if entity_name in rag_values_map and len(rag_values_map[entity_name]) > 0
+        if entity_name in rag_values_map and len(rag_values_map[entity_name]) >= min_rag_values_count
     }
     logging.info(f"After filtering by entities with RAG values, we have {len(properties.value_by_name)} entities for {prop_id}")
     return properties
@@ -407,6 +408,7 @@ def gen_qs(
     dataset_suffix: str | None,
     remove_ambiguous: bool,
     non_overlapping_rag_values: bool,
+    min_rag_values_count: int | None,
     api_preferences: APIPreferences,
     evaluator_model_id: str,
     evaluator_sampling_params: SamplingParams,
@@ -432,6 +434,7 @@ def gen_qs(
         max_popularity: Maximum popularity rank for entities
         min_percent_value_diff: Minimum required percentage difference between values
         max_percent_value_diff: Maximum required percentage difference between values
+        min_rag_values_count: Minimum number of RAG values that each entity should have
         dataset_suffix: Optional suffix for dataset parameters
         remove_ambiguous: Whether to filter out questions deemed ambiguous by an LLM evaluator
         non_overlapping_rag_values: Whether to use RAG values in ambiguity check prompt
@@ -473,7 +476,8 @@ def gen_qs(
         properties = _filter_entities_by_rag_values(
             properties=properties,
             rag_values_map=rag_values_map,
-            prop_id=prop_id
+            prop_id=prop_id,
+            min_rag_values_count=min_rag_values_count,
         )
     all_sorted_values = sorted(properties.value_by_name.items(), key=lambda x: x[1])
     potential_pairs = _generate_potential_pairs(
