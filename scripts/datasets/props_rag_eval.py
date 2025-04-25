@@ -2,6 +2,7 @@
 
 import itertools
 import logging
+import traceback
 
 import click
 from beartype import beartype
@@ -179,10 +180,15 @@ def cli() -> None:
 @click.option("--temperature", default=0)
 @click.option("--top-p", default=0.9)
 @click.option("--max-tokens", default=1000)
-@click.option("--entity-popularity-filter",
+@click.option("--min-popularity",
     type=int,
     default=None,
     help="Perform RAG eval only for entities with popularity >= this value (1-10)",
+)
+@click.option("--max-popularity",
+    type=int,
+    default=None,
+    help="Perform RAG eval only for entities with popularity <= this value (1-10)",
 )
 @click.option(
     "--skip-processed-entities",
@@ -201,7 +207,8 @@ def submit(
     temperature: float,
     top_p: float,
     max_tokens: int,
-    entity_popularity_filter: int | None,
+    min_popularity: int | None,
+    max_popularity: int | None,
     skip_processed_entities: bool,
     test: bool,
     verbose: bool,
@@ -209,8 +216,10 @@ def submit(
     """Submit batches of properties for RAG evaluation."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
-    if entity_popularity_filter is not None:
-        assert 1 <= entity_popularity_filter <= 10, "Entity popularity filter must be between 1 and 10"
+    if min_popularity is not None:
+        assert 1 <= min_popularity <= 10, "Min popularity must be between 1 and 10"
+    if max_popularity is not None:
+        assert 1 <= max_popularity <= 10, "Max popularity must be between 1 and 10"
 
     sampling_params = SamplingParams(
         temperature=float(temperature),
@@ -244,13 +253,18 @@ def submit(
                 logging.info(f"No existing results found for {prop_id}")
 
             # Filter entities by popularity if needed
-            if entity_popularity_filter is not None:
+            if min_popularity is not None or max_popularity is not None:
                 prop_eval = PropEval.load_id(prop_id)
-                filtered_entities = [
-                    entity for entity, pop in prop_eval.popularity_by_entity_name.items()
-                    if pop >= entity_popularity_filter
-                ]
-                props.value_by_name = {k: props.value_by_name[k] for k in filtered_entities}
+                filtered_entities = [(entity, pop) for entity, pop in prop_eval.popularity_by_entity_name.items()]
+                if min_popularity is not None:
+                    filtered_entities = [
+                        (entity, pop) for entity, pop in filtered_entities if pop >= min_popularity
+                    ]
+                if max_popularity is not None:
+                    filtered_entities = [
+                        (entity, pop) for entity, pop in filtered_entities if pop <= max_popularity
+                    ]
+                props.value_by_name = {k: pop for k, pop in filtered_entities}
 
             if test:
                 test_properties = dict(
@@ -293,6 +307,8 @@ def submit(
 
         except Exception as e:
             logging.error(f"Error processing {property_file}: {e}")
+            # print stack trace
+            traceback.print_exc()
 
 @cli.command()
 @click.option("-v", "--verbose", is_flag=True)

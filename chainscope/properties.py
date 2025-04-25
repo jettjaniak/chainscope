@@ -45,6 +45,7 @@ def get_value(props: Properties) -> str:
         "densely populated": "Population density",
         "populous": "Population",
         "area": "Area",
+        "longer total runtime": "Total runtime",
     }
     for key, value in value_map.items():
         if key in props.gt_open_ended_question:
