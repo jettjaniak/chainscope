@@ -74,78 +74,229 @@ def make_yes_no_question_pair(
         y_value=x_value,
     )
 
-
 def _filter_entities_by_popularity(
     properties: Properties,
     prop_id: str,
-    entity_popularity_filter: int | None,
+    min_popularity: int | None,
+    max_popularity: int | None,
 ) -> Properties:
     """Filter entities based on popularity threshold."""
-    if entity_popularity_filter is None:
+    if min_popularity is None and max_popularity is None:
+        # No filtering by popularity
         return properties
-
+    
     try:
         prop_eval = PropEval.load_id(prop_id)
-        properties.value_by_name = {
-            entity_name: entity_value
-            for entity_name, entity_value in properties.value_by_name.items()
-            if prop_eval.popularity_by_entity_name[entity_name] >= entity_popularity_filter
-        }
-        assert len(properties.value_by_name) > 1, f"Not enough entities left after filtering by popularity of {entity_popularity_filter} for {prop_id}"
+        if min_popularity is not None:
+            properties.value_by_name = {
+                entity_name: entity_value
+                for entity_name, entity_value in properties.value_by_name.items()
+                if prop_eval.popularity_by_entity_name[entity_name] >= min_popularity
+            }
+        if max_popularity is not None:
+            properties.value_by_name = {
+                entity_name: entity_value
+                for entity_name, entity_value in properties.value_by_name.items()
+                if prop_eval.popularity_by_entity_name[entity_name] <= max_popularity
+            }
+        assert len(properties.value_by_name) > 1, f"Not enough entities left after filtering by popularity of {min_popularity} and {max_popularity} for {prop_id}"
         logging.info(f"After filtering by popularity, we have {len(properties.value_by_name)} entities for {prop_id}")
         return properties
     except FileNotFoundError:
-        raise ValueError(f"Entity popularity filter set to {entity_popularity_filter} but prop eval not found for {prop_id}")
+        raise ValueError(f"Entity popularity filter set to {min_popularity} but prop eval not found for {prop_id}")
+
+def _filter_entities_by_name(
+    properties: Properties,
+    prop_id: str,
+) -> Properties:
+    """Filter entities that don't have a name-surname pair."""
+    if "person" in prop_id:
+        # Check that we have at least name-surname for each entity, to avoid ambiguous entities like just "Albert" or "Adolf"
+        # We'll miss some cases like "Charlemagne", "Napoleon", "Plato", "Aristotle", etc., but it's better than generating bad questions
+        properties.value_by_name = {
+            entity_name: entity_value
+            for entity_name, entity_value in properties.value_by_name.items()
+            if " " in entity_name
+        }
+    
+    # If we have two entities with the same prefix up to a opening parenthesis, remove both
+    # This is to avoid cases like "Lake Victoria" and "Lake Victoria (Victoria)"
+    # Also, they are probably ambiguous or the same entity
+    # Make a copy of the original entities
+    
+    # Process entities in a loop to find ones to remove
+    to_remove = set()
+    entity_names = set(properties.value_by_name.keys())
+    for entity_name in entity_names:
+        if entity_name.startswith("("):
+            logging.info(f"Removing {entity_name} because it starts with a parenthesis")
+            to_remove.add(entity_name)
+            continue
+
+        for other_entity_name in entity_names - to_remove:
+            if entity_name == other_entity_name:
+                continue
+            if "(" in other_entity_name:
+                prefix = other_entity_name[:other_entity_name.find("(")]
+                if entity_name.startswith(prefix):
+                    logging.info(f"Removing {entity_name} and {other_entity_name} because they have the same prefix up to a opening parenthesis")
+                    to_remove.add(entity_name)
+                    to_remove.add(other_entity_name)
+
+    # Filter out the entities that need to be removed
+    properties.value_by_name = {
+        name: value 
+        for name, value in properties.value_by_name.items()
+        if name not in to_remove
+    }
+    
+    logging.info(f"After filtering by name, we have {len(properties.value_by_name)} entities for {prop_id}")
+    return properties
 
 def _filter_entities_by_rag_values(
     properties: Properties,
     rag_values_map: dict[str, list[RAGValue]] | None,
     prop_id: str,
+    min_rag_values_count: int | None,
 ) -> Properties:
     """Filter entities that have RAG values."""
-    if rag_values_map is None:
+    if rag_values_map is None or min_rag_values_count is None:
         return properties
 
     properties.value_by_name = {
         entity_name: entity_value
         for entity_name, entity_value in properties.value_by_name.items()
-        if entity_name in rag_values_map and len(rag_values_map[entity_name]) > 0
+        if entity_name in rag_values_map and len(rag_values_map[entity_name]) >= min_rag_values_count
     }
     logging.info(f"After filtering by entities with RAG values, we have {len(properties.value_by_name)} entities for {prop_id}")
     return properties
 
+def _are_valid_values_for_property(
+    small_name: str,
+    small_value: int | float,
+    large_name: str,
+    large_value: int | float,
+    prop_id: str,
+) -> bool:
+    """Check if the values are valid for the property."""
+    places = ["city", "county", "college", "natural", "structure", "zip"]
+    if any(place in prop_id for place in places):
+        # if there is a comma in any of the names, that's probably the state (if it's two letters)
+        # make sure that they are different
+        small_state = None
+        large_state = None
+        if "," in small_name:
+            small_state = small_name.split(",")[1].strip()
+            if len(small_state) == 2:
+                small_state = small_state.upper()
+            else:
+                small_state = None
+        if "," in large_name:
+            large_state = large_name.split(",")[1].strip()
+            if len(large_state) == 2:
+                large_state = large_state.upper()
+            else:
+                large_state = None
+        if small_state == large_state:
+            return False
+
+    # We set specific minimums when comparing locations, depending on their size.
+    location_comparison_limits = {
+        "zip": 1,
+        "college": 1,
+        "structure": 1,
+        "city": 1,
+        "populated": 10, # Populated area
+        "natural": 10, # Natural area
+        "county": 10,
+    }
+    if "-long" in prop_id: # checks for longitude comparisons
+        # the values should not be too far apart (more than 120 degrees)
+        valid = abs(small_value - large_value) <= 120
+        # the values should not be close to the limit of -180 or 180, where it gets fuzzy what's west or east of what.
+        valid = valid and abs(small_value) < 150 and abs(large_value) < 150
+        # check that the values have the minimum required difference
+        required_diff = next((limit for location_type, limit in location_comparison_limits.items() if location_type in prop_id), None)
+        assert required_diff is not None, f"No minimum required difference set for location comparison {prop_id}"
+        valid = valid and abs(small_value - large_value) >= required_diff
+        return valid
+    elif "-lat" in prop_id: # checks for latitude comparisons
+        # check that the values have the minimum required difference
+        required_diff = next((limit for location_type, limit in location_comparison_limits.items() if location_type in prop_id), None)
+        assert required_diff is not None, f"No minimum required difference set for location comparison {prop_id}"
+        return abs(small_value - large_value) >= required_diff
+    elif "age" in prop_id:
+        # check that the values have at least 5 years between them
+        return abs(small_value - large_value) >= 5
+    elif "release" in prop_id:
+        # check that the values have at least 2 years between them
+        # the year is the first 4 digits of the value
+        small_year = int(str(small_value)[:4])
+        large_year = int(str(large_value)[:4])
+        return abs(small_year - large_year) >= 2
+    
+    return True
+
 def _generate_potential_pairs(
+    prop_id: str,
     properties: Properties,
     all_sorted_values: list[tuple[str, int | float]],
     min_percent_value_diff: float | None,
+    max_percent_value_diff: float | None,
     rag_values_map: dict[str, list[RAGValue]] | None,
 ) -> list[PotentialPairInfo]:
     """Generate potential pairs and all info needed for ambiguity evaluation and sampling."""
     potential_pairs: list[PotentialPairInfo] = []
 
     # Calculate value range for percentage difference filtering
+    min_val = all_sorted_values[0][1]
+    max_val = all_sorted_values[-1][1]
+    value_range = max_val - min_val
+    min_absolute_diff = None
+    max_absolute_diff = None
     if min_percent_value_diff is not None:
-        min_val = all_sorted_values[0][1]
-        max_val = all_sorted_values[-1][1]
-        value_range = max_val - min_val
         min_absolute_diff = value_range * (min_percent_value_diff / 100)
         logging.info(f"Value range: {value_range}, minimum required difference: {min_absolute_diff}")
+    if max_percent_value_diff is not None:
+        max_absolute_diff = value_range * (max_percent_value_diff / 100)
+        logging.info(f"Value range: {value_range}, maximum allowed difference: {max_absolute_diff}")
 
     logging.info(f"Generating potential pairs for ambiguity evaluation...")
     for small_idx, (small_name, small_value) in enumerate(all_sorted_values):
         logging.info(f"Generating questions for entity `{small_name}` ({small_value}), index {small_idx}/{len(all_sorted_values)}")
         for large_idx, (large_name, large_value) in enumerate(all_sorted_values[small_idx + 1:]):
             logging.info(f"Comparing {small_name} ({small_value}) and {large_name} ({large_value}), index {large_idx}/{len(all_sorted_values) - small_idx - 1}")
-            if small_value == large_value:
+            value_diff = abs(large_value - small_value)
+            if value_diff == 0:
                 logging.info(f"Skipping {small_name} and {large_name} because values are equal ({small_value})")
                 continue
-            if min_percent_value_diff is not None and abs(large_value - small_value) < min_absolute_diff:
+
+            if min_absolute_diff is not None and value_diff < min_absolute_diff:
                 logging.info(
                     f"Skipping {small_name} ({small_value}) and {large_name} ({large_value}) "
-                    f"because difference ({abs(large_value - small_value)}) is less than "
+                    f"because difference ({value_diff}) is less than "
                     f"minimum required ({min_absolute_diff})"
                 )
                 continue
+
+            if max_absolute_diff is not None and value_diff > max_absolute_diff:
+                logging.info(
+                    f"Skipping {small_name} ({small_value}) and {large_name} ({large_value}) "
+                    f"because difference ({value_diff}) is greater than "
+                    f"maximum allowed ({max_absolute_diff})"
+                )
+                continue
+
+            if not _are_valid_values_for_property(
+                small_name=small_name,
+                small_value=small_value,
+                large_name=large_name,
+                large_value=large_value,
+                prop_id=prop_id,
+            ):
+                logging.info(f"Skipping {small_name} ({small_value}) and {large_name} ({large_value}) because values are not valid for {prop_id}")
+                continue
+
             q_str = properties.gt_question.format(x=small_name, y=large_name)
             qid = hashlib.sha256(q_str.encode()).hexdigest()
             rag_values_for_q = None
@@ -172,9 +323,8 @@ def _sample_pairs(
 ) -> list[PotentialPairInfo]:
     """Sample n pairs from the available pairs."""
     total_pairs = len(pairs)
-    if total_pairs == 0:
-        logging.warning("No pairs generated after filtering. Skipping generation.")
-        return []
+    assert total_pairs > 0, "No pairs available to sample."
+
     n = min(target_n, total_pairs)
     if n == 0:
         logging.info("No pairs available to sample.")
@@ -251,11 +401,14 @@ def gen_qs(
     prop_id: str,
     n: int,
     max_comparisons: int,
-    entity_popularity_filter: int | None,
+    min_popularity: int | None,
+    max_popularity: int | None,
     min_percent_value_diff: float | None,
+    max_percent_value_diff: float | None,
     dataset_suffix: str | None,
     remove_ambiguous: bool,
     non_overlapping_rag_values: bool,
+    min_rag_values_count: int | None,
     api_preferences: APIPreferences,
     evaluator_model_id: str,
     evaluator_sampling_params: SamplingParams,
@@ -266,7 +419,7 @@ def gen_qs(
 
     For each comparison type (greater than 'gt' and less than 'lt'), generates n pairs of YES/NO questions.
     The questions are generated by:
-    1. Filtering entities by how well-known they are if entity_popularity_filter is set
+    1. Filtering entities by how well-known they are if min_popularity is set
     2. Sorting all values for the property
     3. Creating pairs of items where one value is greater than the other
     4. Iteratively evaluating ambiguity in batches, only as needed, until enough non-ambiguous pairs are found for each entity
@@ -277,8 +430,11 @@ def gen_qs(
         prop_id: ID of the property to generate questions for
         n: Target number of question pairs to generate for each comparison type
         max_comparisons: Maximum number of comparisons to generate for each item during initial pair generation
-        entity_popularity_filter: Minimum popularity rank for entities
+        min_popularity: Minimum popularity rank for entities
+        max_popularity: Maximum popularity rank for entities
         min_percent_value_diff: Minimum required percentage difference between values
+        max_percent_value_diff: Maximum required percentage difference between values
+        min_rag_values_count: Minimum number of RAG values that each entity should have
         dataset_suffix: Optional suffix for dataset parameters
         remove_ambiguous: Whether to filter out questions deemed ambiguous by an LLM evaluator
         non_overlapping_rag_values: Whether to use RAG values in ambiguity check prompt
@@ -293,11 +449,25 @@ def gen_qs(
     properties = Properties.load(prop_id)
     logging.info(f"Generating questions for {prop_id}, aiming for {n} pairs per comparison type.")
     logging.info(f"We have {len(properties.value_by_name)} entities for {prop_id}")
+
     properties = _filter_entities_by_popularity(
         properties=properties,
         prop_id=prop_id,
-        entity_popularity_filter=entity_popularity_filter
+        min_popularity=min_popularity,
+        max_popularity=max_popularity,
     )
+    if len(properties.value_by_name) == 0:
+        logging.warning(f"No entities left after filtering by popularity. Skipping generation.")
+        return {}
+
+    properties = _filter_entities_by_name(
+        properties=properties,
+        prop_id=prop_id
+    )
+    if len(properties.value_by_name) == 0:
+        logging.warning(f"No entities left after filtering by popularity and name. Skipping generation.")
+        return {}
+
     rag_values_map = None
     if remove_ambiguous and non_overlapping_rag_values:
         rag_eval_path = DATA_DIR / "prop_rag_eval" / "T0.0_P0.9_M1000" / f"{prop_id}.yaml"
@@ -306,13 +476,16 @@ def gen_qs(
         properties = _filter_entities_by_rag_values(
             properties=properties,
             rag_values_map=rag_values_map,
-            prop_id=prop_id
+            prop_id=prop_id,
+            min_rag_values_count=min_rag_values_count,
         )
     all_sorted_values = sorted(properties.value_by_name.items(), key=lambda x: x[1])
     potential_pairs = _generate_potential_pairs(
         properties=properties,
+        prop_id=prop_id,
         all_sorted_values=all_sorted_values,
         min_percent_value_diff=min_percent_value_diff,
+        max_percent_value_diff=max_percent_value_diff,
         rag_values_map=rag_values_map
     )
     # Iterative ambiguity evaluation: only evaluate as many pairs as needed to satisfy max_comparisons for each entity
@@ -395,6 +568,11 @@ def gen_qs(
         non_ambiguous_pairs = accepted_pairs
     else:
         non_ambiguous_pairs = potential_pairs
+    
+    if len(non_ambiguous_pairs) == 0:
+        logging.warning(f"No pairs generated after filtering. Skipping sampling.")
+        return {}
+
     sampled_pairs = _sample_pairs(
         pairs=non_ambiguous_pairs,
         target_n=n

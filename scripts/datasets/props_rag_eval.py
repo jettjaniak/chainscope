@@ -2,6 +2,8 @@
 
 import itertools
 import logging
+import random
+import traceback
 
 import click
 from beartype import beartype
@@ -141,23 +143,25 @@ def perform_rag_eval_using_google_search(
 def perform_rag_eval_using_gpt_4o_web_search(
     prop_id: str,
     props: Properties,
-    entity_names: list[str],
+    entity_names_to_process: list[str],
     sampling_params: SamplingParams,
     existing_rag_eval: PropRAGEval | None = None,
+    save_every: int = 50,
 ) -> None:
+    openai_web_search_model_id = "gpt-4o-mini-search-preview"
     rag_eval = existing_rag_eval or PropRAGEval(
         values_by_entity_name={},
         prop_id=prop_id,
-        model_id="gpt-4o-search-preview",
+        model_id=openai_web_search_model_id,
         sampling_params=sampling_params,
     )
 
-    for entity_name in tqdm(entity_names, desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}"):
+    for i, entity_name in enumerate(tqdm(entity_names_to_process, desc=f"Fetching RAG values via GPT-4o web search for props {prop_id}")):
         if entity_name not in rag_eval.values_by_entity_name:
             rag_eval.values_by_entity_name[entity_name] = []
 
         query = build_rag_query(entity_name, props)
-        values = get_openai_web_search_rag_values(query, model_id="gpt-4o-search-preview", search_context_size="medium")
+        values = get_openai_web_search_rag_values(query, model_id=openai_web_search_model_id, search_context_size="medium")
 
         for value in values:
             same_url = next((v for v in rag_eval.values_by_entity_name[entity_name] if v.source.url == value.source.url), None)
@@ -165,6 +169,11 @@ def perform_rag_eval_using_gpt_4o_web_search(
                 rag_eval.values_by_entity_name[entity_name].append(value)
             else:
                 logging.info(f"NOT replacing value for {entity_name} in {same_url.source.url} from {same_url.value} to {value.value}")
+        
+        # Save periodically
+        if (i + 1) % save_every == 0:
+            logging.info(f"Saving intermediate results after processing {i + 1} entities")
+            rag_eval.save()
     
     logging.info(f"RAG eval for {prop_id} saved to {rag_eval.save()}")
 
@@ -179,10 +188,15 @@ def cli() -> None:
 @click.option("--temperature", default=0)
 @click.option("--top-p", default=0.9)
 @click.option("--max-tokens", default=1000)
-@click.option("--entity-popularity-filter",
+@click.option("--min-popularity",
     type=int,
     default=None,
     help="Perform RAG eval only for entities with popularity >= this value (1-10)",
+)
+@click.option("--max-popularity",
+    type=int,
+    default=None,
+    help="Perform RAG eval only for entities with popularity <= this value (1-10)",
 )
 @click.option(
     "--skip-processed-entities",
@@ -190,9 +204,31 @@ def cli() -> None:
     help="Skip entities that have already been processed",
 )
 @click.option(
+    "--eval-sample-pct",
+    type=float,
+    default=None,
+    help="Sample this percentage of entities to evaluate (0-1)",
+)
+@click.option(
+    "--max-sample-size",
+    type=int,
+    default=None,
+    help="Maximum number of entities to sample (overrides eval-sample-pct if it would sample more)",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be processed without actually running the RAG evaluation",
+)
+@click.option(
     "--test",
     is_flag=True,
     help="Test mode: only process 10 properties from first dataset",
+)
+@click.option(
+    "--save-every",
+    default=50,
+    help="Save RAG eval results every N entities (only for gpt-4o-web-search)",
 )
 @click.option("-v", "--verbose", is_flag=True)
 def submit(
@@ -201,16 +237,27 @@ def submit(
     temperature: float,
     top_p: float,
     max_tokens: int,
-    entity_popularity_filter: int | None,
+    min_popularity: int | None,
+    max_popularity: int | None,
     skip_processed_entities: bool,
+    eval_sample_pct: float | None,
+    max_sample_size: int | None,
+    dry_run: bool,
     test: bool,
     verbose: bool,
+    save_every: int,
 ) -> None:
     """Submit batches of properties for RAG evaluation."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
-    if entity_popularity_filter is not None:
-        assert 1 <= entity_popularity_filter <= 10, "Entity popularity filter must be between 1 and 10"
+    if min_popularity is not None:
+        assert 1 <= min_popularity <= 10, "Min popularity must be between 1 and 10"
+    if max_popularity is not None:
+        assert 1 <= max_popularity <= 10, "Max popularity must be between 1 and 10"
+    if eval_sample_pct is not None:
+        assert 0 < eval_sample_pct <= 1, "Sample percentage must be between 0 and 1"
+    if max_sample_size is not None:
+        assert max_sample_size > 0, "Max sample size must be positive"
 
     sampling_params = SamplingParams(
         temperature=float(temperature),
@@ -244,13 +291,18 @@ def submit(
                 logging.info(f"No existing results found for {prop_id}")
 
             # Filter entities by popularity if needed
-            if entity_popularity_filter is not None:
+            if min_popularity is not None or max_popularity is not None:
                 prop_eval = PropEval.load_id(prop_id)
-                filtered_entities = [
-                    entity for entity, pop in prop_eval.popularity_by_entity_name.items()
-                    if pop >= entity_popularity_filter
-                ]
-                props.value_by_name = {k: props.value_by_name[k] for k in filtered_entities}
+                filtered_entities = [(entity, pop) for entity, pop in prop_eval.popularity_by_entity_name.items()]
+                if min_popularity is not None:
+                    filtered_entities = [
+                        (entity, pop) for entity, pop in filtered_entities if pop >= min_popularity
+                    ]
+                if max_popularity is not None:
+                    filtered_entities = [
+                        (entity, pop) for entity, pop in filtered_entities if pop <= max_popularity
+                    ]
+                props.value_by_name = {k: pop for k, pop in filtered_entities}
 
             if test:
                 test_properties = dict(
@@ -272,13 +324,32 @@ def submit(
                 logging.info(f"All entities for {prop_id} have already been processed, skipping")
                 continue
 
+            # Sample entities if requested
+            if eval_sample_pct is not None:
+                random.seed(42)  # For reproducibility
+                sample_size = int(len(entities_to_process) * eval_sample_pct)
+                if max_sample_size is not None:
+                    sample_size = min(sample_size, max_sample_size)
+                sampled_entities = dict(random.sample(
+                    list(entities_to_process.items()),
+                    k=sample_size
+                ))
+                logging.info(f"Sampled {len(sampled_entities)} entities out of {len(entities_to_process)} ({eval_sample_pct*100:.1f}%, max {max_sample_size if max_sample_size else 'unlimited'})")
+                entities_to_process = sampled_entities
+
+            if dry_run:
+                logging.warning(f"DRY RUN: Would process {len(entities_to_process)} entities for {prop_id}")
+                logging.warning(f"DRY RUN: First 5 entities: {list(entities_to_process.keys())[:5]}")
+                continue
+
             if rag_method == "gpt-4o-web-search":
                 perform_rag_eval_using_gpt_4o_web_search(
                     prop_id=prop_id,
                     props=props,
-                    entity_names=list(entities_to_process.keys()),
+                    entity_names_to_process=list(entities_to_process.keys()),
                     sampling_params=sampling_params,
                     existing_rag_eval=existing_rag_eval,
+                    save_every=save_every,
                 )
             elif rag_method == "google-search-with-zyte":
                 perform_rag_eval_using_google_search(
@@ -293,6 +364,8 @@ def submit(
 
         except Exception as e:
             logging.error(f"Error processing {property_file}: {e}")
+            # print stack trace
+            traceback.print_exc()
 
 @cli.command()
 @click.option("-v", "--verbose", is_flag=True)

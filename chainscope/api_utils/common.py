@@ -38,7 +38,10 @@ async def get_responses_async(
         if isinstance(response, tuple):
             reasoning = response[0] or ""
             answer = response[1] or ""
-            return f"<think>{reasoning}</think>{answer}"
+            if reasoning != "":
+                return f"<think>{reasoning}</think>{answer}"
+            else:
+                return answer
         return response
 
     processor = APISelector[BatchItem, str](api_preferences).get_batch_processor(

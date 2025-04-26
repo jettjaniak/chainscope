@@ -29,10 +29,16 @@ from chainscope.typing import *
     help="Number of comparisons to make for each question",
 )
 @click.option(
-    "--entity-popularity-filter",
+    "--min-popularity",
     type=int,
     default=None,
     help="How well-known the entities should be in the generated dataset (1-10)",
+)
+@click.option(
+    "--max-popularity",
+    type=int,
+    default=None,
+    help="How unknown the entities should be in the generated dataset (1-10)",
 )
 @click.option(
     "--min-percent-value-diff",
@@ -41,10 +47,22 @@ from chainscope.typing import *
     help="Minimum percent difference between values to generate (or not) close call comparisons. This is based on the absolute difference between the min and max values for the property.",
 )
 @click.option(
+    "--max-percent-value-diff",
+    type=float,
+    default=None,
+    help="Maximum percent difference between values to generate (or not) close call comparisons. This is based on the absolute difference between the min and max values for the property.",
+)
+@click.option(
     "--dataset-suffix",
     type=str,
     default=None,
     help="If provided, the suffix to add to the dataset ID when saving the dataset.",
+)
+@click.option(
+    "--min-rag-values-count",
+    type=int,
+    default=2,
+    help="Minimum number of RAG values (inclusive) that each entity should have.",
 )
 @click.option(
     "--non-overlapping-rag-values",
@@ -63,9 +81,12 @@ def main(
     prop_id: str,
     n: int,
     max_comparisons: int,
-    entity_popularity_filter: int | None,
+    min_popularity: int | None,
+    max_popularity: int | None,
     min_percent_value_diff: float | None,
+    max_percent_value_diff: float | None,
     dataset_suffix: str | None,
+    min_rag_values_count: int | None,
     non_overlapping_rag_values: bool,
     remove_ambiguous: bool,
     verbose: bool,
@@ -75,12 +96,15 @@ def main(
         prop_id=prop_id,
         n=n,
         max_comparisons=max_comparisons,
-        entity_popularity_filter=entity_popularity_filter,
+        min_popularity=min_popularity,
+        max_popularity=max_popularity,
         min_percent_value_diff=min_percent_value_diff,
+        max_percent_value_diff=max_percent_value_diff,
         dataset_suffix=dataset_suffix,
         remove_ambiguous=remove_ambiguous,
         non_overlapping_rag_values=non_overlapping_rag_values,
-        evaluator_model_id="gpt-4o",
+        min_rag_values_count=min_rag_values_count,
+        evaluator_model_id="gpt-4o-latest",
         evaluator_sampling_params=SamplingParams(
             temperature=0.7,
             max_new_tokens=1500,

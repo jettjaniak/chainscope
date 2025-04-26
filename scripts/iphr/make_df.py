@@ -103,6 +103,7 @@ def analyze_cot_eval(
                 "comparison": ds_params.comparison,
                 "answer": ds_params.answer,
                 "dataset_id": ds_params.id,
+                "dataset_suffix": ds_params.suffix,
                 "model_id": model_id,
                 "p_yes": p_yes,
                 "p_no": p_no,
@@ -127,11 +128,21 @@ def analyze_cot_eval(
     return results
 
 
-def process_wm_cot_evals():
+def process_wm_cot_evals(dataset_pattern: str | None = None, out_path: str | None = None):
+    """Process CoT evaluations for the WM instruction."""
+    if out_path is None:
+        out_path = DATA_DIR / "df-wm.pkl"
+    assert out_path is not None
+    logging.info(f"Processing WM CoT evaluations for {out_path}")
+
     all_results = []
     instr_id = "instr-wm"
     dataset_ids = get_dataset_ids(instr_id)
     for dataset_id in tqdm(dataset_ids):
+        if dataset_pattern and dataset_pattern not in dataset_id:
+            logging.info(f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}")
+            continue
+        
         ds_params = DatasetParams.from_id(dataset_id)
 
         # Process CoT evaluations
@@ -154,18 +165,26 @@ def process_wm_cot_evals():
 
     # Create DataFrame and save
     df = pd.DataFrame(all_results)
-    out_path = DATA_DIR / "df-wm.pkl"
     df.to_pickle(out_path)
     print(f"Saved analysis results to {out_path}")
     print(f"Total rows: {len(df)}")
     print("\nColumns:", ", ".join(df.columns))
 
 
-def process_v0_cot_evals():
+def process_v0_cot_evals(dataset_pattern: str | None = None, out_path: str | None = None):
+    """Process CoT evaluations for the V0 instruction."""
+    if out_path is None:
+        out_path = DATA_DIR / "df.pkl"
+    assert out_path is not None
+
     all_results = []
     instr_id = "instr-v0"
     dataset_ids = get_dataset_ids(instr_id)
     for dataset_id in tqdm(dataset_ids):
+        if dataset_pattern and dataset_pattern not in dataset_id:
+            logging.info(f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}")
+            continue
+        
         ds_params = DatasetParams.from_id(dataset_id)
 
         # # Process direct evaluations
@@ -197,7 +216,6 @@ def process_v0_cot_evals():
 
     # Create DataFrame and save
     df = pd.DataFrame(all_results)
-    out_path = DATA_DIR / "df.pkl"
     df.to_pickle(out_path)
     print(f"Saved analysis results to {out_path}")
     print(f"Total rows: {len(df)}")
@@ -212,11 +230,32 @@ def process_v0_cot_evals():
     default="instr-wm",
     help="Instruction ID to process",
 )
-def main(instr_id: str):
+@click.option(
+    "--dataset-pattern",
+    "-p",
+    type=str,
+    default=None,
+    help="Dataset pattern to process. This pattern must be a substring of the dataset ID.",
+)
+@click.option(
+    "--out-path",
+    "-o",
+    type=str,
+    default=None,
+    help="Output path to save the DataFrame",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Verbose logging",
+)
+def main(instr_id: str, dataset_pattern: str | None = None, out_path: str | None = None, verbose: bool = False):
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
     if instr_id == "instr-wm":
-        process_wm_cot_evals()
+        process_wm_cot_evals(dataset_pattern, out_path)
     elif instr_id == "instr-v0":
-        process_v0_cot_evals()
+        process_v0_cot_evals(dataset_pattern, out_path)
     else:
         raise click.BadParameter(f"Invalid instruction ID: {instr_id}")
 

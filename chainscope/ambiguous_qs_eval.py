@@ -89,6 +89,7 @@ def build_prompt_for_ambiguous_eval(
     rag_values_by_entity_name: dict[str, list[RAGValue]] | None,
 ) -> str:
     """Build a prompt for ambiguous evaluation."""
+    question = question.replace("\n\n", " ")
     prompt_template = """Please classify the following question into CLEAR or AMBIGUOUS. Please also use the provided RAG values to help you make your decision.
 
 Guidelines:

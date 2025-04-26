@@ -3,12 +3,8 @@ import re
 
 import numpy as np
 import torch
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    PreTrainedModel,
-    PreTrainedTokenizerBase,
-)
+from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
+                          PreTrainedTokenizerBase)
 
 # for convenience, you can use any model id directly
 MODELS_MAP = {
@@ -36,7 +32,7 @@ MODELS_MAP = {
     # OpenAI
     # "GPT3.5": "openai/gpt-3.5-turbo",
     "GPT4OM": "openai/gpt-4o-mini",
-    "GPT4O": "openai/gpt-4o",
+    "GPT4O": "openai/gpt-4o-2024-08-06",
     "GPT4OL": "openai/chatgpt-4o-latest",
     "GPT4.5": "openai/gpt-4.5-preview",
     "O1M": "openai/o1-mini",
@@ -52,6 +48,7 @@ MODELS_MAP = {
     "C3.5H": "anthropic/claude-3.5-haiku",
     "C3S": "anthropic/claude-3-sonnet",
     "C3.5S": "anthropic/claude-3.5-sonnet",
+    "C3.6S": "anthropic/claude-3.6-sonnet",
     "C3O": "anthropic/claude-3-opus",
     "C3.7S": "anthropic/claude-3.7-sonnet",  # No thinking
     "C3.7S_1K": "anthropic/claude-3.7-sonnet_1k",  # Thinking with 1k budget
@@ -63,7 +60,7 @@ MODELS_MAP = {
     "GK2M": "x-ai/grok-2-mini",
     # DeepSeek
     "DSV3": "deepseek/deepseek-chat",  # DeepkSeek-V3
-    "DSR1": "deepseek/deepseek-reasoner",  # DeepSeek-R1
+    "DSR1": "deepseek/deepseek-r1",  # DeepSeek-R1
 }
 
 CLOSED_SOURCE_MODELS = [

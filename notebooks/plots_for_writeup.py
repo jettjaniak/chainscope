@@ -9,20 +9,22 @@ import seaborn as sns
 import yaml
 
 from chainscope.typing import *
-from chainscope.utils import (
-    MODELS_MAP,
-    get_model_display_name,
-    get_model_family,
-    sort_models,
-)
+from chainscope.utils import (MODELS_MAP, get_model_display_name,
+                              get_model_family, sort_models)
 
 # df = pd.read_pickle(DATA_DIR / "df.pkl")
 # filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
 # df = df[~df.prop_id.isin(filter_prop_ids)]
 
-df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+df_path = DATA_DIR / "df-wm-non-ambiguous.pkl"
+df = pd.read_pickle(df_path)
 
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
+
+
+n_pairs = 7400
+if "ambiguous" in str(df_path):
+    n_pairs = 1922
 
 # %%
 
@@ -703,6 +705,17 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         "openai": "#00A67E",  # Green for GPT
     }
 
+    props_with_suffix = set()
+    for row in df.itertuples():
+        prop_id = str(row.prop_id)
+        dataset_suffix = None
+        if "dataset_suffix" in df.columns:
+            dataset_suffix = str(row.dataset_suffix)
+        if dataset_suffix:
+            props_with_suffix.add(prop_id + "_" + dataset_suffix)
+        else:
+            props_with_suffix.add(prop_id)
+
     # Load faithfulness data for each model
     results = []
     for model_id in sort_models(df["model_id"].unique().tolist()):
@@ -725,7 +738,6 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
             print(
                 f"Faithfulness directory not found for {model_id}. Expected at {faith_dir}"
             )
-            continue
 
         # Initialize merged data dictionary
         merged_faith_data = {}
@@ -740,20 +752,26 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
                 print(
                     f"No faithfulness YAML files found in directory for {model_id}: {faith_dir}"
                 )
-                continue
+            else:
+                # Load and merge all YAML files
+                print(
+                    f"Loading faithfulness data for {model_id} from {len(yaml_files)} files in {faith_dir}"
+                )
+                for yaml_file in yaml_files:
+                    yaml_prop_id = yaml_file.stem
+                    if yaml_prop_id not in props_with_suffix:
+                        # print(
+                        #     f"Skipping {yaml_file} because {yaml_prop_id} not in {props_with_suffix}"
+                        # )
+                        continue
 
-            # Load and merge all YAML files
-            print(
-                f"Loading faithfulness data for {model_id} from {len(yaml_files)} files in {faith_dir}"
-            )
-            for yaml_file in yaml_files:
-                try:
-                    with open(yaml_file) as f:
-                        faith_data = yaml.safe_load(f)
-                        if faith_data:
-                            merged_faith_data.update(faith_data)
-                except Exception as e:
-                    print(f"Error loading {yaml_file}: {e}")
+                    try:
+                        with open(yaml_file) as f:
+                            faith_data = yaml.safe_load(f)
+                            if faith_data:
+                                merged_faith_data.update(faith_data)
+                    except Exception as e:
+                        print(f"Error loading {yaml_file}: {e}")
 
             # Cache the merged data
             faithfulness_yamls_cache[model_id] = merged_faith_data
@@ -762,7 +780,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         unfaithful_count = len(merged_faith_data.keys())
 
         # Calculate percentage
-        percentage = float((unfaithful_count / 7400) * 100)
+        percentage = float((unfaithful_count / n_pairs) * 100)
 
         # Correct special case for Sonnet 3.5
         if model_id == "claude-3-5-sonnet-20241022":
@@ -887,10 +905,17 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     ax.tick_params(axis="x", which="major", length=4, width=2)
 
     # Customize the plot
-    plt.ylabel("Hard Qs Unfaithfulness (%)", fontsize=24, labelpad=10)
+    if "ambiguous" in str(df_path):
+        ylabel = "Non-Ambiguous Qs Unfaithfulness (%)"
+        plt.ylabel(ylabel, fontsize=22, labelpad=10)
+    else:
+        ylabel = "Hard Qs Unfaithfulness (%)"
+        plt.ylabel(ylabel, fontsize=24, labelpad=10)
+
+    
     plt.xlabel("Model", fontsize=24, labelpad=10)
-    plt.ylim(0, 22)  # Increased upper limit slightly to fit labels
-    plt.yticks([0, 5, 10, 15, 20])
+    plt.ylim(0, 7)  # Increased upper limit slightly to fit labels
+    plt.yticks(np.arange(0, 7, 1))
 
     # Add grid for better readability
     ax.yaxis.grid(True, linestyle="--", alpha=0.7)

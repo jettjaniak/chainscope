@@ -22,7 +22,7 @@ This repository contains the datasets and evaluation scripts for the [Chain-of-T
 To perform the external consistency analysis in our paper, we generate a dataset of pairs of comparative questions using a subset of the _World Model_ dataset ([Gurnee & Tegmark, 2024](https://arxiv.org/abs/2310.02207)).
 
 1. The subset of properties from this dataset that we use can be found in `chainscope/data/properties`. 
-2. We use these properties to generate the questions programatically using `scripts/datasets/gen_qs.py`. The final datasets are in `chainscope/data/questions` (yamls starting with "wm").
+2. We use these properties to generate the questions programatically using `scripts/datasets/gen_qs.py`. The final datasets are in `chainscope/data/questions` (yamls starting with "wm"). A more detailed description of the datasets can be found [here](chainscope/data/questions/datasets.md).
 3. We generate CoT responses for the models using `scripts/iphr/gen_cots.py`. The raw responses are in `chainscope/data/cot_responses`.
 4.  We evaluate these responses using `scripts/iphr/eval_cots.py`, and the eval results are in `chainscope/data/cot_eval`.
 
