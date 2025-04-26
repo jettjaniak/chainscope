@@ -104,7 +104,7 @@ def main(
         remove_ambiguous=remove_ambiguous,
         non_overlapping_rag_values=non_overlapping_rag_values,
         min_rag_values_count=min_rag_values_count,
-        evaluator_model_id="gpt-4o-latest",
+        evaluator_model_id="chatgpt-4o-latest",
         evaluator_sampling_params=SamplingParams(
             temperature=0.7,
             max_new_tokens=1500,
