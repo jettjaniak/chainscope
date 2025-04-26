@@ -46,6 +46,7 @@ def get_value(props: Properties) -> str:
         "populous": "Population",
         "area": "Area",
         "longer total runtime": "Total runtime",
+        "has more pages": "Number of pages",
     }
     for key, value in value_map.items():
         if key in props.gt_open_ended_question:

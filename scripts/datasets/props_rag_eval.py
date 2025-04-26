@@ -216,6 +216,13 @@ def cli() -> None:
     help="Maximum number of entities to sample (overrides eval-sample-pct if it would sample more)",
 )
 @click.option(
+    "--property",
+    "-p",
+    type=str,
+    default=None,
+    help="Evaluate a specific property. If not provided, all properties will be evaluated.",
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     help="Show what would be processed without actually running the RAG evaluation",
@@ -242,6 +249,7 @@ def submit(
     skip_processed_entities: bool,
     eval_sample_pct: float | None,
     max_sample_size: int | None,
+    property: str | None,
     dry_run: bool,
     test: bool,
     verbose: bool,
@@ -275,9 +283,13 @@ def submit(
 
     for property_file in tqdm(property_files, desc="Processing properties"):
         try:
-            logging.info(f"Processing property file {property_file}")
             props = Properties.load_from_path(property_file)
             prop_id = property_file.stem
+            if property is not None and prop_id != property:
+                logging.info(f"Skipping property {prop_id} because it doesn't match {property}")
+                continue
+
+            logging.info(f"Processing property {prop_id}")
 
             # Check for existing processed results
             existing_rag_eval = None
