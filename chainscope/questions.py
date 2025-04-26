@@ -163,11 +163,13 @@ def _filter_entities_by_rag_values(
     if rag_values_map is None or min_rag_values_count is None:
         return properties
 
-    properties.value_by_name = {
-        entity_name: entity_value
-        for entity_name, entity_value in properties.value_by_name.items()
-        if entity_name in rag_values_map and len(rag_values_map[entity_name]) >= min_rag_values_count
-    }
+    entities = list(properties.value_by_name.keys())
+    for entity_name in entities:
+        rag_values = rag_values_map.get(entity_name, [])
+        if len(rag_values) < min_rag_values_count:
+            logging.info(f"Removing {entity_name} because it has {len(rag_values)} RAG values but min_rag_values_count is {min_rag_values_count}")
+            del properties.value_by_name[entity_name]
+
     logging.info(f"After filtering by entities with RAG values, we have {len(properties.value_by_name)} entities for {prop_id}")
     return properties
 
@@ -471,6 +473,7 @@ def gen_qs(
     rag_values_map = None
     if remove_ambiguous and non_overlapping_rag_values:
         rag_eval_path = DATA_DIR / "prop_rag_eval" / "T0.0_P0.9_M1000" / f"{prop_id}.yaml"
+        logging.info(f"Loading RAG evaluation from {rag_eval_path}")
         rag_eval = PropRAGEval.load(rag_eval_path)
         rag_values_map = rag_eval.values_by_entity_name
         properties = _filter_entities_by_rag_values(
