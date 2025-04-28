@@ -274,15 +274,18 @@ def _get_value_range(
         key=lambda x: x[1]
     )
     min_val = all_sorted_values[0][1]
+    logging.info(f"Minimum value for {prop_id}: {min_val}")
     max_val = all_sorted_values[-1][1]
+    logging.info(f"Maximum value for {prop_id}: {max_val}")
     value_range = max_val - min_val
+    logging.info(f"Value range for {prop_id}: {value_range}")
     return all_sorted_values, value_range
 
 def _generate_potential_pairs(
     prop_id: str,
     properties: Properties,
-    min_percent_value_diff: float | None,
-    max_percent_value_diff: float | None,
+    min_fraction_value_diff: float | None,
+    max_fraction_value_diff: float | None,
     rag_values_map: dict[str, list[RAGValue]] | None,
 ) -> list[PotentialPairInfo]:
     """Generate potential pairs and all info needed for ambiguity evaluation and sampling."""
@@ -292,12 +295,12 @@ def _generate_potential_pairs(
     all_sorted_values, value_range = _get_value_range(prop_id, properties)
     min_absolute_diff = None
     max_absolute_diff = None
-    if min_percent_value_diff is not None:
-        min_absolute_diff = value_range * (min_percent_value_diff / 100)
-        logging.info(f"Value range: {value_range}, minimum required difference: {min_absolute_diff}")
-    if max_percent_value_diff is not None:
-        max_absolute_diff = value_range * (max_percent_value_diff / 100)
-        logging.info(f"Value range: {value_range}, maximum allowed difference: {max_absolute_diff}")
+    if min_fraction_value_diff is not None:
+        min_absolute_diff = value_range * min_fraction_value_diff
+        logging.info(f"Minimum required difference for {prop_id}: {min_absolute_diff}")
+    if max_fraction_value_diff is not None:
+        max_absolute_diff = value_range * max_fraction_value_diff
+        logging.info(f"Maximum allowed difference for {prop_id}: {max_absolute_diff}")
 
     logging.info(f"Generating potential pairs for ambiguity evaluation...")
     for small_idx, (small_name, small_value) in enumerate(all_sorted_values):
@@ -463,8 +466,8 @@ def gen_qs(
     max_comparisons: int,
     min_popularity: int | None,
     max_popularity: int | None,
-    min_percent_value_diff: float | None,
-    max_percent_value_diff: float | None,
+    min_fraction_value_diff: float | None,
+    max_fraction_value_diff: float | None,
     dataset_suffix: str | None,
     remove_ambiguous: Literal["no", "enough-comparisons", "enough-pairs"],
     non_overlapping_rag_values: bool,
@@ -492,8 +495,8 @@ def gen_qs(
         max_comparisons: Maximum number of comparisons to generate for each item during initial pair generation
         min_popularity: Minimum popularity rank for entities
         max_popularity: Maximum popularity rank for entities
-        min_percent_value_diff: Minimum required percentage difference between values
-        max_percent_value_diff: Maximum required percentage difference between values
+        min_fraction_value_diff: Minimum required percentage difference between values
+        max_fraction_value_diff: Maximum required percentage difference between values
         min_rag_values_count: Minimum number of RAG values that each entity should have
         dataset_suffix: Optional suffix for dataset parameters
         remove_ambiguous: Whether to filter out questions deemed ambiguous by an LLM evaluator
@@ -508,7 +511,7 @@ def gen_qs(
     """
     properties = Properties.load(prop_id)
     logging.info(f"Generating questions for {prop_id}, aiming for {n} pairs per comparison type.")
-    logging.info(f"We have {len(properties.value_by_name)} entities for {prop_id}")
+    logging.warning(f"Before filtering, we have {len(properties.value_by_name)} entities for {prop_id}")
 
     properties = _filter_entities_by_popularity(
         properties=properties,
@@ -541,11 +544,15 @@ def gen_qs(
             min_rag_values_count=min_rag_values_count,
         )
 
+    if len(properties.value_by_name) == 0:
+        logging.warning(f"No entities left after filtering by popularity, name, and RAG values. Skipping generation.")
+        return {}
+
     potential_pairs = _generate_potential_pairs(
         properties=properties,
         prop_id=prop_id,
-        min_percent_value_diff=min_percent_value_diff,
-        max_percent_value_diff=max_percent_value_diff,
+        min_fraction_value_diff=min_fraction_value_diff,
+        max_fraction_value_diff=max_fraction_value_diff,
         rag_values_map=rag_values_map
     )
 
