@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 
 from chainscope.ambiguous_qs_eval import (FinalAmbiguityEvalResult,
                                           evaluate_questions_in_batch)
@@ -239,10 +240,41 @@ def _are_valid_values_for_property(
     
     return True
 
+def _convert_to_comparable_value(value: int | float, prop_id: str) -> int | float:
+    """Convert YYMMDD format to days if the property is a date property, otherwise return the value as is."""
+    date_props = ["release", "pubdate"]
+    if not any(date_prop in prop_id for date_prop in date_props):
+        return value
+
+    # Convert YYMMDD format (e.g., "19570719") to days
+    yymmdd_str = str(int(value))  # Convert to int first to handle float values
+    year = int(yymmdd_str[:4])
+    month = int(yymmdd_str[4:6])
+    day = int(yymmdd_str[6:8])
+
+    date = datetime(year, month, day)
+    base_date = datetime(1900, 1, 1)
+
+    return (date - base_date).days
+
+def _get_value_range(
+    prop_id: str,
+    properties: Properties,
+) -> tuple[list[tuple[str, int | float]], int | float]:
+    """Get the range of values for the property."""
+    # Convert all values to days if needed and sort
+    all_sorted_values: list[tuple[str, int | float]] = sorted(
+        [(name, _convert_to_comparable_value(value, prop_id)) for name, value in properties.value_by_name.items()],
+        key=lambda x: x[1]
+    )
+    min_val = all_sorted_values[0][1]
+    max_val = all_sorted_values[-1][1]
+    value_range = max_val - min_val
+    return all_sorted_values, value_range
+
 def _generate_potential_pairs(
     prop_id: str,
     properties: Properties,
-    all_sorted_values: list[tuple[str, int | float]],
     min_percent_value_diff: float | None,
     max_percent_value_diff: float | None,
     rag_values_map: dict[str, list[RAGValue]] | None,
@@ -251,9 +283,7 @@ def _generate_potential_pairs(
     potential_pairs: list[PotentialPairInfo] = []
 
     # Calculate value range for percentage difference filtering
-    min_val = all_sorted_values[0][1]
-    max_val = all_sorted_values[-1][1]
-    value_range = max_val - min_val
+    all_sorted_values, value_range = _get_value_range(prop_id, properties)
     min_absolute_diff = None
     max_absolute_diff = None
     if min_percent_value_diff is not None:
@@ -268,7 +298,7 @@ def _generate_potential_pairs(
         logging.info(f"Generating questions for entity `{small_name}` ({small_value}), index {small_idx}/{len(all_sorted_values)}")
         for large_idx, (large_name, large_value) in enumerate(all_sorted_values[small_idx + 1:]):
             logging.info(f"Comparing {small_name} ({small_value}) and {large_name} ({large_value}), index {large_idx}/{len(all_sorted_values) - small_idx - 1}")
-            value_diff = abs(large_value - small_value)
+            value_diff = abs(_convert_to_comparable_value(large_value, prop_id) - _convert_to_comparable_value(small_value, prop_id))
             if value_diff == 0:
                 logging.info(f"Skipping {small_name} and {large_name} because values are equal ({small_value})")
                 continue
@@ -482,11 +512,10 @@ def gen_qs(
             prop_id=prop_id,
             min_rag_values_count=min_rag_values_count,
         )
-    all_sorted_values = sorted(properties.value_by_name.items(), key=lambda x: x[1])
+
     potential_pairs = _generate_potential_pairs(
         properties=properties,
         prop_id=prop_id,
-        all_sorted_values=all_sorted_values,
         min_percent_value_diff=min_percent_value_diff,
         max_percent_value_diff=max_percent_value_diff,
         rag_values_map=rag_values_map
