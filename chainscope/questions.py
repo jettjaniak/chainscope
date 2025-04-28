@@ -4,6 +4,8 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
+import yaml
+
 from chainscope.ambiguous_qs_eval import (FinalAmbiguityEvalResult,
                                           evaluate_questions_in_batch)
 from chainscope.api_utils.api_selector import APIPreferences
@@ -101,7 +103,7 @@ def _filter_entities_by_popularity(
                 if prop_eval.popularity_by_entity_name[entity_name] <= max_popularity
             }
         assert len(properties.value_by_name) > 1, f"Not enough entities left after filtering by popularity of {min_popularity} and {max_popularity} for {prop_id}"
-        logging.info(f"After filtering by popularity, we have {len(properties.value_by_name)} entities for {prop_id}")
+        logging.warning(f"After filtering by popularity, we have {len(properties.value_by_name)} entities for {prop_id}")
         return properties
     except FileNotFoundError:
         raise ValueError(f"Entity popularity filter set to {min_popularity} but prop eval not found for {prop_id}")
@@ -151,7 +153,7 @@ def _filter_entities_by_name(
         if name not in to_remove
     }
     
-    logging.info(f"After filtering by name, we have {len(properties.value_by_name)} entities for {prop_id}")
+    logging.warning(f"After filtering by name, we have {len(properties.value_by_name)} entities for {prop_id}")
     return properties
 
 def _filter_entities_by_rag_values(
@@ -171,7 +173,7 @@ def _filter_entities_by_rag_values(
             logging.info(f"Removing {entity_name} because it has {len(rag_values)} RAG values but min_rag_values_count is {min_rag_values_count}")
             del properties.value_by_name[entity_name]
 
-    logging.info(f"After filtering by entities with RAG values, we have {len(properties.value_by_name)} entities for {prop_id}")
+    logging.warning(f"After filtering by entities with RAG values, we have {len(properties.value_by_name)} entities for {prop_id}")
     return properties
 
 def _are_valid_values_for_property(
@@ -350,7 +352,7 @@ def _generate_potential_pairs(
                 large_value=large_value,
                 rag_values_for_q=rag_values_for_q,
             ))
-    logging.info(f"Generated {len(potential_pairs)} potential pairs before ambiguity filtering.")
+    logging.warning(f"Generated {len(potential_pairs)} potential pairs before ambiguity filtering.")
     return potential_pairs
 
 def _sample_pairs(
@@ -433,6 +435,28 @@ def _generate_datasets(
     logging.info(f"Generated {len(sampled_pairs)} YES/NO pairs for each comparison type (gt/lt).")
     return datasets
 
+def _load_ambiguity_cache(prop_id: str) -> dict[tuple[str, str], str]:
+    """Load ambiguity evaluation cache for a property."""
+    cache_path = DATA_DIR / "ambiguity_eval" / "gen_qs" / f"{prop_id}.yaml"
+    if not cache_path.exists():
+        return {}
+    try:
+        with open(cache_path) as f:
+            return yaml.safe_load(f) or {}
+    except Exception as e:
+        logging.error(f"Error loading ambiguity cache from {cache_path}: {e}")
+        return {}
+
+def _save_ambiguity_cache(prop_id: str, cache: dict[tuple[str, str], str]) -> None:
+    """Save ambiguity evaluation cache for a property."""
+    cache_path = DATA_DIR / "ambiguity_eval" / "gen_qs" / f"{prop_id}.yaml"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(cache_path, "w") as f:
+            yaml.safe_dump(cache, f)
+    except Exception as e:
+        logging.error(f"Error saving ambiguity cache to {cache_path}: {e}")
+
 def gen_qs(
     prop_id: str,
     n: int,
@@ -442,7 +466,7 @@ def gen_qs(
     min_percent_value_diff: float | None,
     max_percent_value_diff: float | None,
     dataset_suffix: str | None,
-    remove_ambiguous: bool,
+    remove_ambiguous: Literal["no", "enough-comparisons", "enough-pairs"],
     non_overlapping_rag_values: bool,
     min_rag_values_count: int | None,
     api_preferences: APIPreferences,
@@ -524,14 +548,19 @@ def gen_qs(
         max_percent_value_diff=max_percent_value_diff,
         rag_values_map=rag_values_map
     )
+
     # Iterative ambiguity evaluation: only evaluate as many pairs as needed to satisfy max_comparisons for each entity
-    if remove_ambiguous:
+    if remove_ambiguous != "no":
         qid_to_pair = {p.qid: p for p in potential_pairs}
         unevaluated_qids = set(p.qid for p in potential_pairs)
         accepted_pairs: list[PotentialPairInfo] = []
         # Initialize comparison counts for all entities to 0
         comparisons_per_entity = {entity_name: 0 for entity_name in properties.value_by_name.keys()}
         batch_size = max(n, 100)  # Evaluate in batches of at least n or 100
+
+        # Load ambiguity cache
+        ambiguity_cache = _load_ambiguity_cache(prop_id)
+        logging.info(f"Loaded {len(ambiguity_cache)} cached ambiguity evaluations for {prop_id}")
 
         def get_entity_priority_score(qid: str) -> int:
             """Calculate priority score for a pair based on its entities' comparison counts.
@@ -549,6 +578,8 @@ def gen_qs(
             return small_comparisons < max_comparisons and large_comparisons < max_comparisons
 
         while unevaluated_qids:
+            logging.warning(f"Starting iterative ambiguity evaluation with {len(unevaluated_qids)} unevaluated pairs.")
+
             # Sort unevaluated pairs by priority and take the top batch_size
             sorted_qids = sorted(unevaluated_qids, key=get_entity_priority_score)
             batch_qids = sorted_qids[:batch_size]
@@ -562,45 +593,76 @@ def gen_qs(
                     break
             
             if not any_useful_pairs:
-                logging.info("No pairs in batch contain entities needing more comparisons. Breaking loop.")
+                logging.warning("No pairs in batch contain entities needing more comparisons. Breaking loop.")
                 break
 
-            batch_questions = [
-                (qid_to_pair[qid].qid, qid_to_pair[qid].q_str, qid_to_pair[qid].small_name, qid_to_pair[qid].large_name, qid_to_pair[qid].rag_values_for_q)
-                for qid in batch_qids
-            ]
+            # Filter out questions that are already in the cache
+            questions_to_evaluate = []
+            for qid in batch_qids:
+                pair = qid_to_pair[qid]
+                entity_pair = (pair.small_name, pair.large_name)
+                if entity_pair in ambiguity_cache:
+                    # Use cached result
+                    if ambiguity_cache[entity_pair] == "CLEAR":
+                        if can_add_pair(pair):
+                            comparisons_per_entity[pair.small_name] += 1
+                            comparisons_per_entity[pair.large_name] += 1
+                            accepted_pairs.append(pair)
+                    unevaluated_qids.remove(qid)
+                else:
+                    # Add to evaluation batch
+                    questions_to_evaluate.append((pair.qid, pair.q_str, pair.small_name, pair.large_name, pair.rag_values_for_q))
+
+            if not questions_to_evaluate:
+                continue
+
             ambiguity_results: dict[str, FinalAmbiguityEvalResult] = asyncio.run(evaluate_questions_in_batch(
-                questions_to_evaluate=batch_questions,
+                questions_to_evaluate=questions_to_evaluate,
                 evaluator_model_id=evaluator_model_id,
                 sampling_params=evaluator_sampling_params,
                 api_preferences=api_preferences,
                 num_evals=num_ambiguity_evals,
                 max_retries=max_ambiguity_eval_retries,
             ))
-            for qid in batch_qids:
-                result = ambiguity_results.get(qid)
-                if result is not None and result.final_classification == "CLEAR":
+
+            # Process results and update cache
+            for qid, result in ambiguity_results.items():
+                if result is not None:
                     pair = qid_to_pair[qid]
-                    if can_add_pair(pair):
-                        # Update comparison counts for both entities
-                        comparisons_per_entity[pair.small_name] += 1
-                        comparisons_per_entity[pair.large_name] += 1
-                        accepted_pairs.append(pair)
+                    entity_pair = (pair.small_name, pair.large_name)
+                    # Save result to cache
+                    ambiguity_cache[entity_pair] = result.final_classification
+                    if result.final_classification == "CLEAR":
+                        if can_add_pair(pair):
+                            comparisons_per_entity[pair.small_name] += 1
+                            comparisons_per_entity[pair.large_name] += 1
+                            accepted_pairs.append(pair)
                 unevaluated_qids.remove(qid)
 
-            if all(v >= max_comparisons for v in comparisons_per_entity.values()) and len(accepted_pairs) >= n:
-                break
-            else:
-                num_entities = len(properties.value_by_name)
-                num_with_enough = sum(v >= max_comparisons for v in comparisons_per_entity.values())
-                num_missing = num_entities - num_with_enough
-                logging.info(f"{num_missing} entities are still missing max_comparisons after this batch.")
-                logging.info(f"We have {len(accepted_pairs)} accepted pairs so far.")
-                # Print all entities that need more comparisons
-                logging.info("Entities needing more comparisons:")
-                for entity, count in comparisons_per_entity.items():
-                    if count < max_comparisons:
-                        logging.info(f"- `{entity}` needs {max_comparisons - count} more comparisons")
+            # Save cache after each batch
+            _save_ambiguity_cache(prop_id, ambiguity_cache)
+
+            # Check stopping conditions based on remove_ambiguous value
+            if remove_ambiguous == "enough-comparisons":
+                if all(v >= max_comparisons for v in comparisons_per_entity.values()):
+                    logging.warning("All entities have enough comparisons. Stopping evaluation.")
+                    break
+            elif remove_ambiguous == "enough-pairs":
+                if len(accepted_pairs) >= n:
+                    logging.warning(f"Found enough pairs ({len(accepted_pairs)} >= {n}). Stopping evaluation.")
+                    break
+
+            # Log progress
+            num_entities = len(properties.value_by_name)
+            num_with_enough = sum(v >= max_comparisons for v in comparisons_per_entity.values())
+            num_missing = num_entities - num_with_enough
+            logging.warning(f"{num_missing} entities are still missing max_comparisons after this batch.")
+            logging.warning(f"We have {len(accepted_pairs)} accepted pairs so far.")
+            # Print all entities that need more comparisons
+            logging.info("Entities needing more comparisons:")
+            for entity, count in comparisons_per_entity.items():
+                if count < max_comparisons:
+                    logging.info(f"- `{entity}` needs {max_comparisons - count} more comparisons")
         non_ambiguous_pairs = accepted_pairs
     else:
         non_ambiguous_pairs = potential_pairs

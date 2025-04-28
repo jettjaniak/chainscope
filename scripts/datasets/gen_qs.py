@@ -72,9 +72,9 @@ from chainscope.typing import *
 )
 @click.option(
     "--remove-ambiguous",
-    is_flag=True,
-    default=False,
-    help="Whether to remove ambiguous questions from the dataset.",
+    type=click.Choice(["no", "enough-comparisons", "enough-pairs"], case_sensitive=False),
+    default="enough-pairs",
+    help="Whether to remove ambiguous questions from the dataset. 'no' means no filtering, 'enough-comparisons' evaluate each pair of potential questions until we have max_comparisons for each entity, 'enough-pairs' evaluate each pair of potential entities until they have enough pairs (n)",
 )
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output")
 def main(
@@ -88,7 +88,7 @@ def main(
     dataset_suffix: str | None,
     min_rag_values_count: int | None,
     non_overlapping_rag_values: bool,
-    remove_ambiguous: bool,
+    remove_ambiguous: Literal["no", "enough-comparisons", "enough-pairs"],
     verbose: bool,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
