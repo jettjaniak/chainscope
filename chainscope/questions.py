@@ -247,13 +247,17 @@ def _convert_to_comparable_value(value: int | float, prop_id: str) -> int | floa
         return value
 
     # Convert YYMMDD format (e.g., "19570719") to days
-    yymmdd_str = str(int(value))  # Convert to int first to handle float values
-    year = int(yymmdd_str[:4])
-    month = int(yymmdd_str[4:6])
-    day = int(yymmdd_str[6:8])
+    try:
+        yymmdd_str = str(int(value))  # Convert to int first to handle float values
+        year = int(yymmdd_str[:4])
+        month = int(yymmdd_str[4:6])
+        day = int(yymmdd_str[6:8])
 
-    date = datetime(year, month, day)
-    base_date = datetime(1900, 1, 1)
+        date = datetime(year, month, day)
+        base_date = datetime(1900, 1, 1)
+    except Exception as e:
+        logging.error(f"Failed to convert value {value} to date: {e}")
+        raise
 
     return (date - base_date).days
 
@@ -298,7 +302,7 @@ def _generate_potential_pairs(
         logging.info(f"Generating questions for entity `{small_name}` ({small_value}), index {small_idx}/{len(all_sorted_values)}")
         for large_idx, (large_name, large_value) in enumerate(all_sorted_values[small_idx + 1:]):
             logging.info(f"Comparing {small_name} ({small_value}) and {large_name} ({large_value}), index {large_idx}/{len(all_sorted_values) - small_idx - 1}")
-            value_diff = abs(_convert_to_comparable_value(large_value, prop_id) - _convert_to_comparable_value(small_value, prop_id))
+            value_diff = abs(large_value - small_value)
             if value_diff == 0:
                 logging.info(f"Skipping {small_name} and {large_name} because values are equal ({small_value})")
                 continue
