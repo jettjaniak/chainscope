@@ -326,7 +326,7 @@ class QsDataset(YAMLWizard):
     def load(cls, dataset_id: str) -> "QsDataset":
         params = DatasetParams.from_id(dataset_id)
         qs_dataset = params.load_qs_dataset()
-        assert qs_dataset.params == params
+        assert qs_dataset.params == params, f"params: {params}, qs_dataset.params: {qs_dataset.params}"
         return qs_dataset
 
     @classmethod
