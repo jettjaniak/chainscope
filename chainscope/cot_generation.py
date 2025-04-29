@@ -1,22 +1,20 @@
 import random
+from typing import (
+    List,
+    Literal,
+    Optional,
+    Union,
+)
 from uuid import uuid4
 
 import torch
 import torch as t
+from jaxtyping import Float, Int
 from tqdm import tqdm
-from transformer_lens import HookedTransformer
+from transformer_lens import HookedTransformer, utils
 from transformer_lens.HookedTransformerConfig import HookedTransformerConfig
-from transformer_lens import utils
 from transformer_lens.past_key_value_caching import HookedTransformerKeyValueCache
 from transformer_lens.utilities import devices
-from transformer_lens.utils import (
-    USE_DEFAULT_VALUE,
-    init_kaiming_normal_,
-    init_kaiming_uniform_,
-    init_xavier_normal_,
-    init_xavier_uniform_,
-)
-
 from vllm import LLM
 from vllm import SamplingParams as VLLMSamplingParams
 
@@ -24,20 +22,19 @@ from chainscope.questions import QsDataset
 from chainscope.typing import *
 from chainscope.utils import is_instruct_model, make_chat_prompt
 
-from typing import Optional, Union, List, Literal, Sequence, Tuple, Dict, Any, Callable, Generator
-from jaxtyping import Float, Int
 
 class HookedTransformerWithGenerator:
-    
     def __init__(self, hooked_transformer: HookedTransformer, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.hooked_transformer = hooked_transformer
-    
+
     def __getattr__(self, name):
         if name != "generate":
             return getattr(self.hooked_transformer, name)
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
-    
+        raise AttributeError(
+            f"'{self.__class__.__name__}' object has no attribute '{name}'"
+        )
+
     @torch.inference_mode()
     def generate(
         self,
@@ -143,10 +140,12 @@ class HookedTransformerWithGenerator:
             if isinstance(input, (str, list)):
                 input_type = "str"
                 # If text, convert to tokens (batch_size=1)
-                assert (
-                    self.tokenizer is not None
-                ), "Must provide a tokenizer if passing a string to the model"
-                input = self.to_tokens(input, prepend_bos=prepend_bos, padding_side=padding_side)
+                assert self.tokenizer is not None, (
+                    "Must provide a tokenizer if passing a string to the model"
+                )
+                input = self.to_tokens(
+                    input, prepend_bos=prepend_bos, padding_side=padding_side
+                )
             elif input.ndim == 2:
                 input_type = "tokens"
             else:
@@ -173,12 +172,13 @@ class HookedTransformerWithGenerator:
             assert self.tokenizer is not None
             if stop_at_eos:
                 tokenizer_has_eos_token = (
-                    self.tokenizer is not None and self.tokenizer.eos_token_id is not None
+                    self.tokenizer is not None
+                    and self.tokenizer.eos_token_id is not None
                 )
                 if eos_token_id is None:
-                    assert (
-                        tokenizer_has_eos_token
-                    ), "Must pass a eos_token_id if stop_at_eos is True and tokenizer is None or has no eos_token_id"
+                    assert tokenizer_has_eos_token, (
+                        "Must pass a eos_token_id if stop_at_eos is True and tokenizer is None or has no eos_token_id"
+                    )
 
                     eos_token_id = self.tokenizer.eos_token_id
 
@@ -189,11 +189,15 @@ class HookedTransformerWithGenerator:
                     # eos_token_id is a Sequence (e.g. list or tuple)
                     stop_tokens = eos_token_id
                     eos_token_for_padding = (
-                        self.tokenizer.eos_token_id if tokenizer_has_eos_token else eos_token_id[0]
+                        self.tokenizer.eos_token_id
+                        if tokenizer_has_eos_token
+                        else eos_token_id[0]
                     )
 
             # An array to track which sequences in the batch have finished.
-            finished_sequences = torch.zeros(batch_size, dtype=torch.bool, device=self.cfg.device)
+            finished_sequences = torch.zeros(
+                batch_size, dtype=torch.bool, device=self.cfg.device
+            )
 
             # Currently nothing in HookedTransformer changes with eval, but this is here in case
             # that changes in the future.
@@ -204,7 +208,9 @@ class HookedTransformerWithGenerator:
 
                 tokens = torch.zeros((embeds.size(0), embeds.size(1))).to(torch.int)
                 attention_mask = utils.get_attention_mask(
-                    self.tokenizer, tokens, False if prepend_bos is None else prepend_bos
+                    self.tokenizer,
+                    tokens,
+                    False if prepend_bos is None else prepend_bos,
                 ).to(device)
                 residual, shortformer_pos_embed = self.get_residual(
                     embeds,
@@ -265,14 +271,18 @@ class HookedTransformerWithGenerator:
                             temperature=temperature,
                             freq_penalty=freq_penalty,
                             tokens=torch.cat(
-                                (input_tokens, torch.cat(sampled_tokens_list, dim=1)), dim=1
+                                (input_tokens, torch.cat(sampled_tokens_list, dim=1)),
+                                dim=1,
                             )
                             if "sampled_tokens" in locals()
                             else input_tokens,
                         ).to(devices.get_device_for_block_index(0, self.cfg))
                     else:
                         sampled_tokens = utils.sample_logits(
-                            final_logits, top_k=top_k, top_p=top_p, temperature=temperature
+                            final_logits,
+                            top_k=top_k,
+                            top_p=top_p,
+                            temperature=temperature,
                         ).to(devices.get_device_for_block_index(0, self.cfg))
                 else:
                     sampled_tokens = final_logits.argmax(-1).to(
@@ -292,7 +302,9 @@ class HookedTransformerWithGenerator:
                         )
                     )
 
-                embeds = torch.hstack([embeds, self.embed(sampled_tokens.unsqueeze(-1))])
+                embeds = torch.hstack(
+                    [embeds, self.embed(sampled_tokens.unsqueeze(-1))]
+                )
 
                 if stop_at_eos and finished_sequences.all():
                     break
@@ -506,7 +518,7 @@ def get_local_responses_tl(
                     verbose=True,
                 ):
                     generated.append(token)
-            except Exception as e:
+            except Exception:
                 pass
             generated = torch.cat(generated, dim=1)
             generated = torch.cat((tokens, generated), dim=1)
@@ -521,9 +533,9 @@ def get_local_responses_tl(
             skip_special_tokens=True,
             clean_up_tokenization_spaces=True,
         )[0]
-        assert isinstance(
-            generated_text, str
-        ), f"Generated text is not a string: {type(generated_text)}, {generated_text}"
+        assert isinstance(generated_text, str), (
+            f"Generated text is not a string: {type(generated_text)}, {generated_text}"
+        )
 
         # Find the first occurrence of any stop sequence and truncate
         min_stop_idx = len(generated_text)
@@ -636,4 +648,3 @@ def create_cot_responses(
         ds_params=ds_params,
         sampling_params=sampling_params,
     )
-
