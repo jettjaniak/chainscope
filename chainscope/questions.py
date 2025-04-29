@@ -12,6 +12,15 @@ from chainscope.api_utils.api_selector import APIPreferences
 from chainscope.rag import RAGValue
 from chainscope.typing import *
 
+location_min_comparison_limits = {
+    "zip": 1,
+    "college": 1,
+    "structure": 1,
+    "city": 1,
+    "populated": 10, # Populated area
+    "natural": 10, # Natural area
+    "county": 10,
+}
 
 @dataclass
 class PotentialPairInfo:
@@ -206,28 +215,19 @@ def _are_valid_values_for_property(
             return False
 
     # We set specific minimums when comparing locations, depending on their size.
-    location_comparison_limits = {
-        "zip": 1,
-        "college": 1,
-        "structure": 1,
-        "city": 1,
-        "populated": 10, # Populated area
-        "natural": 10, # Natural area
-        "county": 10,
-    }
     if "-long" in prop_id: # checks for longitude comparisons
         # the values should not be too far apart (more than 120 degrees)
         valid = abs(small_value - large_value) <= 120
         # the values should not be close to the limit of -180 or 180, where it gets fuzzy what's west or east of what.
         valid = valid and abs(small_value) < 150 and abs(large_value) < 150
         # check that the values have the minimum required difference
-        required_diff = next((limit for location_type, limit in location_comparison_limits.items() if location_type in prop_id), None)
+        required_diff = next((limit for location_type, limit in location_min_comparison_limits.items() if location_type in prop_id), None)
         assert required_diff is not None, f"No minimum required difference set for location comparison {prop_id}"
         valid = valid and abs(small_value - large_value) >= required_diff
         return valid
     elif "-lat" in prop_id: # checks for latitude comparisons
         # check that the values have the minimum required difference
-        required_diff = next((limit for location_type, limit in location_comparison_limits.items() if location_type in prop_id), None)
+        required_diff = next((limit for location_type, limit in location_min_comparison_limits.items() if location_type in prop_id), None)
         assert required_diff is not None, f"No minimum required difference set for location comparison {prop_id}"
         return abs(small_value - large_value) >= required_diff
     elif "age" in prop_id:
@@ -291,7 +291,7 @@ def _generate_potential_pairs(
     """Generate potential pairs and all info needed for ambiguity evaluation and sampling."""
     potential_pairs: list[PotentialPairInfo] = []
 
-    # Calculate value range for percentage difference filtering
+    # Calculate value range for fraction difference filtering
     all_sorted_values, value_range = _get_value_range(prop_id, properties)
     min_absolute_diff = None
     max_absolute_diff = None
@@ -301,6 +301,17 @@ def _generate_potential_pairs(
     if max_fraction_value_diff is not None:
         max_absolute_diff = value_range * max_fraction_value_diff
         logging.info(f"Maximum allowed difference for {prop_id}: {max_absolute_diff}")
+
+    if "-lat" in prop_id or "-long" in prop_id:
+        required_diff = next((limit for location_type, limit in location_min_comparison_limits.items() if location_type in prop_id), None)
+        if required_diff is not None:
+            # Add the required difference as a base minimum/maximum
+            # Otherwise we might end up with no pairs at all since these two requirements will produce an empty set
+            if min_absolute_diff is not None:
+                min_absolute_diff += required_diff
+            if max_absolute_diff is not None:
+                max_absolute_diff += required_diff
+            logging.info(f"Setting min_absolute_diff for {prop_id} to {min_absolute_diff} and max_absolute_diff to {max_absolute_diff} due to location comparison")
 
     logging.info(f"Generating potential pairs for ambiguity evaluation...")
     for small_idx, (small_name, small_value) in enumerate(all_sorted_values):
@@ -326,7 +337,8 @@ def _generate_potential_pairs(
                     f"because difference ({value_diff}) is greater than "
                     f"maximum allowed ({max_absolute_diff})"
                 )
-                continue
+                logging.info(f"Skipping the rest of the pairs for {small_name} since we have already surpassed the max_absolute_diff")
+                break
 
             if not _are_valid_values_for_property(
                 small_name=small_name,
@@ -445,7 +457,9 @@ def _load_ambiguity_cache(prop_id: str) -> dict[tuple[str, str], str]:
         return {}
     try:
         with open(cache_path) as f:
-            return yaml.safe_load(f) or {}
+            # Convert string keys back to tuples
+            raw_cache = yaml.safe_load(f) or {}
+            return {tuple(k.split("|")): v for k, v in raw_cache.items()}
     except Exception as e:
         logging.error(f"Error loading ambiguity cache from {cache_path}: {e}")
         return {}
@@ -455,8 +469,10 @@ def _save_ambiguity_cache(prop_id: str, cache: dict[tuple[str, str], str]) -> No
     cache_path = DATA_DIR / "ambiguity_eval" / "gen_qs" / f"{prop_id}.yaml"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     try:
+        # Convert tuple keys to strings for YAML serialization
+        serializable_cache = {f"{k[0]}|{k[1]}": v for k, v in cache.items()}
         with open(cache_path, "w") as f:
-            yaml.safe_dump(cache, f)
+            yaml.safe_dump(serializable_cache, f)
     except Exception as e:
         logging.error(f"Error saving ambiguity cache to {cache_path}: {e}")
 
@@ -495,8 +511,8 @@ def gen_qs(
         max_comparisons: Maximum number of comparisons to generate for each item during initial pair generation
         min_popularity: Minimum popularity rank for entities
         max_popularity: Maximum popularity rank for entities
-        min_fraction_value_diff: Minimum required percentage difference between values
-        max_fraction_value_diff: Maximum required percentage difference between values
+        min_fraction_value_diff: Minimum required fraction difference between values
+        max_fraction_value_diff: Maximum required fraction difference between values
         min_rag_values_count: Minimum number of RAG values that each entity should have
         dataset_suffix: Optional suffix for dataset parameters
         remove_ambiguous: Whether to filter out questions deemed ambiguous by an LLM evaluator
@@ -511,7 +527,7 @@ def gen_qs(
     """
     properties = Properties.load(prop_id)
     logging.info(f"Generating questions for {prop_id}, aiming for {n} pairs per comparison type.")
-    logging.warning(f"Before filtering, we have {len(properties.value_by_name)} entities for {prop_id}")
+    logging.info(f"Before filtering, there are {len(properties.value_by_name)} entities for {prop_id}")
 
     properties = _filter_entities_by_popularity(
         properties=properties,
