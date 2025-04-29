@@ -41,7 +41,7 @@ def get_value(props: Properties) -> str:
         "published": "Publication date",
         "lived longer": "Lifespan in years",
         "born": "Birth year",
-        "died later": "Death year",
+        "died": "Death year",
         "densely populated": "Population density",
         "populous": "Population",
         "area": "Area",

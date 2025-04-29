@@ -211,7 +211,8 @@ def _are_valid_values_for_property(
                 large_state = large_state.upper()
             else:
                 large_state = None
-        if small_state == large_state:
+        if small_state is not None and large_state is not None and small_state == large_state:
+            # If the states are the same, we don't want to compare them
             return False
 
     # We set specific minimums when comparing locations, depending on their size.
