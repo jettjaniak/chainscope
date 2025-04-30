@@ -3,14 +3,14 @@
 # set -euo pipefail
 
 QUESTIONS_DIR="d/questions"
-SUFFIX="non-ambiguous-obscure-or-close-call-2"      # dataset filter
+SUFFIX="non-ambiguous-hard"      # dataset filter
 COMMON_ARGS=(-n 10 -i instr-wm)                     # shared gen_cots flags
 
 wait_for_batches() {
   local api="$1"
   echo "Checking ${api} batches..."
   while true; do
-    if python ./scripts/other/check_batches.py --api "${api}" | grep -q "Pending: 0"; then
+    if python ./scripts/other/check_batches.py --api "${api}" 2>&1 | grep -q "Pending: 0"; then
       echo "All ${api} batches are completed."
       break
     fi
