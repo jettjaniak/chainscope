@@ -188,7 +188,16 @@ def get_budget_tokens(model_id: str) -> int:
     elif budget_part == "64k":
         return 64000
     else:
-        return int(budget_part)
+        try:
+            if "k" in budget_part:
+                return int(budget_part.replace("k", "")) * 1000
+            else:
+                return int(budget_part)
+        except ValueError:
+            raise ValueError(
+                f"Invalid budget tokens for model {model_id}. "
+                f"Expected an integer, with optional `k` suffix, got `{budget_part}`"
+            )
 
 
 async def generate_an_response_async(
@@ -483,6 +492,7 @@ def submit_anthropic_batch(
         evaluated_sampling_params=evaluated_sampling_params,
         evaluator_model_id=evaluator_model_id,
         evaluator_sampling_params=evaluator_sampling_params,
+        metadata={}
     )
     batch_info.save()
     return batch_info

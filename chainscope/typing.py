@@ -1,4 +1,3 @@
-
 import logging
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -900,6 +899,7 @@ class AnthropicBatchInfo(YAMLWizard):
     evaluated_sampling_params: SamplingParams
     evaluator_model_id: str | None
     evaluator_sampling_params: SamplingParams | None
+    metadata: dict[str, Any]
 
     def save(self) -> Path:
         """Save batch info to disk."""
@@ -1358,3 +1358,88 @@ class PropRAGEval(YAMLWizard):
         directory = DATA_DIR / "prop_rag_eval" / self.sampling_params.id
         path = get_path(directory, self.prop_id)
         return path
+
+
+@dataclass
+class UnfaithfulnessResponseAnalysis(YAMLWizard):
+    """Analysis of a single response in the unfaithfulness pattern evaluation."""
+    confidence: int  # 1-10 score
+    key_steps: str  # Reasoning chain with arrows
+    answer_flipping_analysis: str  # Detailed analysis of answer flipping
+    answer_flipping_classification: Literal["YES", "NO", "UNCLEAR"]  # Classification of answer flipping
+    unfaithfulness_patterns: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "None"]]  # List of patterns found
+
+
+@dataclass
+class UnfaithfulnessQuestionAnalysis(YAMLWizard):
+    """Analysis of responses to a single question in the unfaithfulness pattern evaluation."""
+    responses: dict[str, UnfaithfulnessResponseAnalysis]  # response_id -> analysis
+
+
+@dataclass
+class UnfaithfulnessFullAnalysis(YAMLWizard):
+    """Complete analysis of unfaithfulness patterns across both questions."""
+    first_impressions: str | None = None  # Brief overview of reasoning patterns
+    q1_analysis: UnfaithfulnessQuestionAnalysis | None = None  # Analysis of Q1 responses
+    q2_analysis: UnfaithfulnessQuestionAnalysis | None = None  # Analysis of Q2 responses
+    summary: str | None = None  # Key reasoning pattern analysis
+    unfaithfulness_analysis: str | None = None  # Detailed unfaithfulness analysis
+
+
+@dataclass
+class UnfaithfulnessPatternEval(YAMLWizard):
+    """Results from evaluating unfaithfulness patterns in model responses."""
+    # qid -> analysis
+    pattern_analysis_by_qid: dict[str, UnfaithfulnessFullAnalysis]
+    model_id: str
+    evaluator_model_id: str
+    sampling_params: SamplingParams
+    dataset_suffix: str | None = None
+
+    def save(self) -> Path:
+        """Save unfaithfulness pattern evaluation to disk."""
+        directory = DATA_DIR / "unfaithfulness_pattern_eval" / self.sampling_params.id
+        if self.dataset_suffix:
+            directory = directory / self.dataset_suffix
+        path = get_path(directory, self.model_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, path: Path) -> "UnfaithfulnessPatternEval":
+        pattern_eval = cls.from_yaml_file(path)
+        assert isinstance(pattern_eval, cls)
+        return pattern_eval
+
+    @classmethod
+    def load_id(cls, model_id: str, sampling_params: SamplingParams) -> "UnfaithfulnessPatternEval":
+        directory = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id
+        path = get_path(directory, model_id)
+        return cls.load(path)
+
+    def get_path(self) -> Path:
+        directory = DATA_DIR / "unfaithfulness_pattern_eval" / self.sampling_params.id
+        path = get_path(directory, self.model_id)
+        return path
+
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(UnfaithfulnessPatternEval)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessPatternEval)
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(UnfaithfulnessResponseAnalysis)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessResponseAnalysis)
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(UnfaithfulnessQuestionAnalysis)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessQuestionAnalysis)
+
+LoadMeta(
+    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+).bind_to(UnfaithfulnessFullAnalysis)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessFullAnalysis)
