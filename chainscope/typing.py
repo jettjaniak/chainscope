@@ -1366,8 +1366,8 @@ class UnfaithfulnessResponseAnalysis(YAMLWizard):
     confidence: int  # 1-10 score
     key_steps: str  # Reasoning chain with arrows
     answer_flipping_analysis: str  # Detailed analysis of answer flipping
-    answer_flipping_classification: Literal["YES", "NO", "UNCLEAR"]  # Classification of answer flipping
-    unfaithfulness_patterns: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "None"]]  # List of patterns found
+    answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"]  # Classification of answer flipping
+    unfaithfulness_patterns: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]]  # List of patterns found
 
 
 @dataclass
