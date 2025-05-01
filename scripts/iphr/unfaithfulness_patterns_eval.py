@@ -213,7 +213,7 @@ def submit_batch(
     sampling_params: SamplingParams,
     dataset_suffix: str | None = None,
     api: str = "ant-batch",
-) -> AnthropicBatchInfo | None:
+) -> dict[str, Any] | None:
     """Submit a batch of unfaithfulness pattern evaluations.
     
     Args:
@@ -259,8 +259,9 @@ def submit_batch(
             "dataset_suffix": dataset_suffix,
         }
         batch_info.save()
+        logging.info(f"Submitted batch {batch_info.batch_id} with {len(prompt_by_qid)} questions")
         
-        return batch_info
+        return None
     else:  # api == "ant"
         # Process synchronously using Anthropic API
         results = asyncio.run(
@@ -292,7 +293,7 @@ def submit_batch(
             
             # Analyze patterns
             analysis = analyze_patterns(pattern_eval)
-            logging.warning(f"Pattern analysis: {analysis}")
+            return analysis
         
         return None
 
@@ -478,6 +479,74 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
 
 
 @beartype
+def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[str, Any]:
+    """Aggregate pattern analyses from multiple evaluations.
+    
+    Args:
+        pattern_analyses: List of pattern analysis dictionaries from analyze_patterns()
+        
+    Returns:
+        Dictionary containing aggregated statistics:
+        - total_q_pairs: Total number of question pairs across all analyses
+        - all_none_q_pairs: Total number of question pairs where all responses have no patterns
+        - q_pairs_with_pattern: Total number of question pairs with at least one pattern
+        - q_pairs_by_pattern: Dict mapping pattern types to total number of question pairs with that pattern
+        - responses_by_pattern: Dict mapping pattern types to total number of responses with that pattern
+    """
+    # Initialize aggregated stats
+    total_q_pairs = 0
+    all_none_q_pairs = 0
+    q_pairs_with_pattern = 0
+    q_pairs_by_pattern: dict[str, int] = {
+        "fact-manipulation": 0,
+        "argument-switching": 0,
+        "answer-flipping": 0,
+        "other": 0,
+    }
+    responses_by_pattern: dict[str, int] = {
+        "fact-manipulation": 0,
+        "argument-switching": 0,
+        "answer-flipping": 0,
+        "other": 0,
+    }
+    
+    # Aggregate stats from each analysis
+    for analysis in pattern_analyses:
+        total_q_pairs += analysis["total_q_pairs"]
+        all_none_q_pairs += analysis["all_none_q_pairs"]
+        q_pairs_with_pattern += analysis["q_pairs_with_pattern"]
+        
+        # Aggregate pattern counts
+        for pattern in q_pairs_by_pattern:
+            q_pairs_by_pattern[pattern] += analysis["q_pairs_by_pattern"][pattern]
+            responses_by_pattern[pattern] += analysis["responses_by_pattern"][pattern]
+    
+    # Log aggregated results
+    logging.warning("\nAggregated Pattern Analysis Results:")
+    logging.warning(f"Total question pairs: {total_q_pairs}")
+    logging.warning(f"Question pairs with no patterns: {all_none_q_pairs} ({all_none_q_pairs/total_q_pairs:.1%})")
+    logging.warning(f"Question pairs with patterns: {q_pairs_with_pattern} ({q_pairs_with_pattern/total_q_pairs:.1%})")
+    
+    logging.warning("\nQuestion pairs by pattern:")
+    for pattern, count in q_pairs_by_pattern.items():
+        if count > 0:
+            logging.warning(f"- {pattern}: {count} ({count/total_q_pairs:.1%})")
+    
+    logging.warning("\nResponses by pattern:")
+    for pattern, count in responses_by_pattern.items():
+        if count > 0:
+            logging.warning(f"- {pattern}: {count}")
+    
+    return {
+        "total_q_pairs": total_q_pairs,
+        "all_none_q_pairs": all_none_q_pairs,
+        "q_pairs_with_pattern": q_pairs_with_pattern,
+        "q_pairs_by_pattern": q_pairs_by_pattern,
+        "responses_by_pattern": responses_by_pattern,
+    }
+
+
+@beartype
 def process_faithfulness_files(
     model_id: str,
     evaluator_model_id: str,
@@ -510,6 +579,9 @@ def process_faithfulness_files(
     if test:
         yaml_files = yaml_files[:1]
         logging.info("Test mode: Processing only the first YAML file")
+
+    # Collect pattern analyses for aggregation
+    pattern_analyses = []
 
     # Process each file
     for yaml_file in tqdm(yaml_files, desc=f"Processing faithfulness files for {model_id}"):
@@ -570,7 +642,7 @@ def process_faithfulness_files(
                 continue
 
             # Submit batch for all questions in this file
-            batch_info = submit_batch(
+            unfaithfulness_analysis = submit_batch(
                 model_id=model_id,
                 prompt_by_qid=prompt_by_qid,
                 metadata_by_qid=metadata_by_qid,
@@ -579,12 +651,16 @@ def process_faithfulness_files(
                 dataset_suffix=dataset_suffix,
                 api=api,
             )
-            if batch_info:
-                logging.info(f"Submitted batch {batch_info.batch_id} with {len(prompt_by_qid)} questions")
+            if unfaithfulness_analysis:
+                pattern_analyses.append(unfaithfulness_analysis)
 
         except Exception as e:
             logging.error(f"Error processing {yaml_file}: {e}")
             traceback.print_exc()
+
+    # Aggregate and log results if we have any analyses
+    if pattern_analyses:
+        aggregate_pattern_analyses(pattern_analyses)
 
 
 @click.group()
@@ -710,6 +786,9 @@ def process(
     batch_files = list(DATA_DIR.glob("anthropic_batches/**/unfaithfulness_pattern_eval*.yaml"))
     logging.info(f"Found {len(batch_files)} batch files to process")
 
+    # Collect pattern analyses for aggregation
+    pattern_analyses = []
+
     # Process each batch file
     for batch_path in tqdm(batch_files, desc="Processing batches"):
         try:
@@ -739,13 +818,17 @@ def process(
             saved_path = pattern_eval.save()
             logging.info(f"Results saved to {saved_path}")
             
-            # Analyze patterns
+            # Analyze patterns and collect for aggregation
             analysis = analyze_patterns(pattern_eval)
-            logging.warning(f"Pattern analysis: {analysis}")
+            pattern_analyses.append(analysis)
 
         except Exception as e:
             logging.error(f"Error processing {batch_path}: {e}")
             traceback.print_exc()
+
+    # Aggregate and log results if we have any analyses
+    if pattern_analyses:
+        aggregate_pattern_analyses(pattern_analyses)
 
 
 @beartype
