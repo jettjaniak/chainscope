@@ -7,6 +7,9 @@ import click
 import openai
 from anthropic import Anthropic
 
+from chainscope.api_utils.anthropic_utils import \
+    cancel_batch as cancel_an_batch
+from chainscope.api_utils.open_ai_utils import cancel_batch as cancel_oa_batch
 from chainscope.typing import *
 
 
@@ -17,7 +20,12 @@ from chainscope.typing import *
     required=True,
     help="API to check batches for",
 )
-def main(api: str):
+@click.option(
+    "--cancel-pending",
+    is_flag=True,
+    help="Cancel all pending batches",
+)
+def main(api: str, cancel_pending: bool):
     """Check status of all batches for the specified API."""
     logging.basicConfig(level=logging.INFO)
 
@@ -65,7 +73,7 @@ def main(api: str):
             elif status in ["failed", "cancelled", "expired"]:
                 failed.append((batch_file.name, status))
             else:
-                pending.append((batch_file.name, status))
+                pending.append((batch_file.name, status, batch_info))
 
         except Exception as e:
             logging.error(f"Error checking batch {batch_file}: {str(e)}")
@@ -80,8 +88,20 @@ def main(api: str):
 
     if pending:
         logging.info("\nPending Batches:")
-        for name, status in pending:
+        for name, status, _ in pending:
             logging.info(f"  {name}: {status}")
+
+        if cancel_pending:
+            logging.info("\nCancelling pending batches...")
+            for name, status, batch_info in pending:
+                try:
+                    if api == "ant-batch":
+                        cancel_an_batch(batch_info.batch_id)
+                    else:  # oai-batch
+                        cancel_oa_batch(batch_info.batch_id)
+                    logging.info(f"Successfully cancelled batch: {name}")
+                except Exception as e:
+                    logging.error(f"Error cancelling batch {name}: {str(e)}")
 
     if failed:
         logging.info("\nFailed Batches:")

@@ -547,3 +547,19 @@ def process_batch_results(
                 print(f"Request expired {result.custom_id}")
 
     return processed_results
+
+
+def cancel_batch(batch_id: str) -> None:
+    """Cancel a pending Anthropic batch.
+
+    Args:
+        batch_id: The ID of the batch to cancel
+    """
+    client = Anthropic()
+    try:
+        client.messages.batches.cancel(batch_id)
+    except Exception as e:
+        logging.error(f"Error cancelling batch {batch_id}: {str(e)}")
+        raise
+    finally:
+        client.close()

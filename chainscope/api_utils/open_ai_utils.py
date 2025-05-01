@@ -641,3 +641,19 @@ def process_batch_results(
             logging.error(f"Batch error: {error}")
 
     return processed_results
+
+
+def cancel_batch(batch_id: str) -> None:
+    """Cancel a pending OpenAI batch.
+
+    Args:
+        batch_id: The ID of the batch to cancel
+    """
+    client = openai.OpenAI()
+    try:
+        client.batches.cancel(batch_id)
+    except Exception as e:
+        logging.error(f"Error cancelling batch {batch_id}: {str(e)}")
+        raise
+    finally:
+        client.close()
