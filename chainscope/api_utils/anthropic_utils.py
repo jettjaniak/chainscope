@@ -142,8 +142,6 @@ class ANRateLimiter:
             self.output_tokens = self.tokens_per_interval
             self.requests = self.requests_per_interval
             self.last_update = now
-            # Clear preemptive usage on interval reset
-            self._preemptive_usage.clear()
 
     def has_enough_output_tokens(self, max_new_tokens: int) -> bool:
         """Check if we have enough tokens for a new request.
@@ -154,7 +152,6 @@ class ANRateLimiter:
         Returns:
             bool: True if we have enough tokens, False otherwise
         """
-        self._update_limits()
         # We need to have enough output tokens for the maximum possible response
         return self.output_tokens >= max_new_tokens
 
@@ -188,12 +185,18 @@ class ANRateLimiter:
             actual_tokens: Actual number of tokens used in the response
         """
         if request_id not in self._preemptive_usage:
-            logging.warning(f"No preemptive usage found for request {request_id}")
+            logging.info(f"No preemptive usage found for request {request_id}")
             return
 
         preemptive_tokens = self._preemptive_usage[request_id]
         # Calculate the difference between preemptive and actual usage
         token_diff = preemptive_tokens - actual_tokens
+        
+        # Log the difference between preemptive and actual usage
+        logging.warning(
+            f"Token usage difference for request {request_id}: "
+            f"preemptive={preemptive_tokens}, actual={actual_tokens}, diff={token_diff}"
+        )
         
         # Adjust the output tokens
         self.output_tokens = max(0, self.output_tokens + token_diff)
@@ -369,6 +372,7 @@ async def generate_an_response_async(
 
             if rate_limiter and request_id is not None:
                 # Adjust token usage with actual usage
+                logging.info(f"Got usage: {an_response.usage}")
                 rate_limiter.adjust_token_usage(request_id, an_response.usage.output_tokens)
 
             if (
@@ -388,6 +392,17 @@ async def generate_an_response_async(
                 and isinstance(an_response.content[0], ThinkingBlock)
                 and isinstance(an_response.content[1], TextBlock)
             ):
+                # Log token usage for thinking vs output
+                thinking_tokens = await client.messages.count_tokens(model=model_id, messages=[{"role": "user", "content": an_response.content[0].thinking}])
+                output_tokens = await client.messages.count_tokens(model=model_id, messages=[{"role": "user", "content": an_response.content[1].text}])
+                total_tokens = an_response.usage.output_tokens
+                logging.info(
+                    f"Token usage breakdown for {model_id}:\n"
+                    f"  Thinking tokens: {thinking_tokens.input_tokens}\n"
+                    f"  Output tokens: {output_tokens.input_tokens}\n"
+                    f"  Total tokens: {total_tokens}\n"
+                    f"  Thinking percentage: {(thinking_tokens.input_tokens / total_tokens * 100):.1f}%"
+                )
                 result = get_result_from_response(
                     (
                         an_response.content[0].thinking,

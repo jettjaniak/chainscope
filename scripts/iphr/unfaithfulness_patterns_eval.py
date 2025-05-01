@@ -603,7 +603,7 @@ def cli() -> None:
 )
 @click.option(
     "--evaluator-model-id",
-    default="claude-3.7-sonnet_16k",
+    default="claude-3.7-sonnet_8k",
     help="Model ID to use for evaluation",
 )
 @click.option(
@@ -618,7 +618,7 @@ def cli() -> None:
 )
 @click.option(
     "--max-tokens",
-    default=32000,
+    default=16000,
     help="Max tokens for evaluation",
 )
 @click.option(
