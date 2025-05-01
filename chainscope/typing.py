@@ -1428,21 +1428,21 @@ class UnfaithfulnessPatternEval(YAMLWizard):
 
 
 LoadMeta(
-    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
 ).bind_to(UnfaithfulnessPatternEval)
 DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessPatternEval)
 
 LoadMeta(
-    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
 ).bind_to(UnfaithfulnessResponseAnalysis)
 DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessResponseAnalysis)
 
 LoadMeta(
-    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
 ).bind_to(UnfaithfulnessQuestionAnalysis)
 DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessQuestionAnalysis)
 
 LoadMeta(
-    v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
 ).bind_to(UnfaithfulnessFullAnalysis)
 DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessFullAnalysis)

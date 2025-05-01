@@ -524,6 +524,9 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
             q_pairs_by_pattern[pattern] += analysis["q_pairs_by_pattern"][pattern]
             responses_by_pattern[pattern] += analysis["responses_by_pattern"][pattern]
     
+    # Calculate total responses for percentage calculation
+    total_responses = sum(responses_by_pattern.values())
+    
     # Log aggregated results
     logging.warning("\nAggregated Pattern Analysis Results:")
     logging.warning(f"Total question pairs: {total_q_pairs}")
@@ -538,7 +541,7 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     logging.warning("\nResponses by pattern:")
     for pattern, count in responses_by_pattern.items():
         if count > 0:
-            logging.warning(f"- {pattern}: {count}")
+            logging.warning(f"- {pattern}: {count} ({count/total_responses:.1%})")
     
     return {
         "total_q_pairs": total_q_pairs,
@@ -923,6 +926,123 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
         "q_pairs_by_pattern": q_pairs_by_pattern,
         "responses_by_pattern": responses_by_pattern,
     }
+
+
+@cli.command()
+@click.option(
+    "--model",
+    "-m",
+    type=str,
+    required=True,
+    help="Model ID to analyze",
+)
+@click.option(
+    "--temperature",
+    default=0,
+    help="Temperature for evaluation",
+)
+@click.option(
+    "--top-p",
+    default=0.9,
+    help="Top-p for evaluation",
+)
+@click.option(
+    "--max-tokens",
+    default=8000,
+    help="Max tokens for evaluation",
+)
+@click.option(
+    "--dataset-suffix",
+    "-s",
+    type=str,
+    default=None,
+    help="Only analyze YAML files ending with _{suffix}.yaml",
+)
+@click.option(
+    "--no-dataset-suffix",
+    "-n",
+    is_flag=True,
+    help="Do not include YAML files with dataset suffix",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Print verbose output",
+)
+def analysis(
+    model: str,
+    temperature: float,
+    top_p: float,
+    max_tokens: int,
+    dataset_suffix: str | None,
+    no_dataset_suffix: bool,
+    verbose: bool,
+) -> None:
+    """Run aggregated analysis over existing unfaithfulness pattern evaluation files."""
+    logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+
+    if dataset_suffix and no_dataset_suffix:
+        raise ValueError("Cannot specify both dataset suffix and no dataset suffix")
+
+    # Create sampling params to get the directory name
+    sampling_params = SamplingParams(
+        temperature=float(temperature),
+        top_p=top_p,
+        max_new_tokens=max_tokens,
+    )
+
+    # Find the specific sampling param directory
+    model_dir = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id
+    if not model_dir.exists():
+        logging.error(f"No unfaithfulness pattern eval files found in {model_dir}")
+        return
+
+    # Find all prop_id directories
+    prop_dirs = [d for d in model_dir.iterdir() if d.is_dir()]
+    logging.info(f"Found {len(prop_dirs)} property directories")
+
+    # Collect pattern analyses for aggregation
+    pattern_analyses = []
+
+    # Process each prop directory
+    for prop_dir in tqdm(prop_dirs, desc="Processing property directories"):
+        logging.info(f"Processing {prop_dir}")
+
+        # Find the model's YAML file
+        model_name = model.split("/")[-1]
+        model_file = prop_dir / f"{model_name}.yaml"
+        if not model_file.exists():
+            logging.info(f"Skipping {prop_dir.name} because the model file {model_file} does not exist")
+            continue
+
+        # Check if we should process this file based on dataset suffix
+        if dataset_suffix and not prop_dir.name.endswith(f"_{dataset_suffix}"):
+            logging.info(f"Skipping {prop_dir.name} because it does not end with the dataset suffix {dataset_suffix}")
+            continue
+
+        if no_dataset_suffix and "_" in prop_dir.name:
+            logging.info(f"Skipping {prop_dir.name} because it contains a dataset suffix")
+            continue
+
+        try:
+            logging.info(f"Processing {model_file}")
+            pattern_eval = UnfaithfulnessPatternEval.load(model_file)
+            
+            # Analyze patterns and collect for aggregation
+            analysis = analyze_patterns(pattern_eval)
+            pattern_analyses.append(analysis)
+
+        except Exception as e:
+            logging.error(f"Error processing {model_file}: {e}")
+            traceback.print_exc()
+
+    # Aggregate and log results if we have any analyses
+    if pattern_analyses:
+        logging.warning("Aggregating pattern analyses for %s (dataset suffix: %s)", model, dataset_suffix)
+        aggregate_pattern_analyses(pattern_analyses)
+    else:
+        logging.error("No pattern analyses found to aggregate")
 
 
 if __name__ == "__main__":
