@@ -211,6 +211,7 @@ def submit_batch(
     metadata_by_qid: dict[str, dict[str, Any]],
     evaluator_model_id: str,
     sampling_params: SamplingParams,
+    prop_id: str,
     dataset_suffix: str | None = None,
     api: str = "ant-batch",
 ) -> dict[str, Any] | None:
@@ -256,6 +257,7 @@ def submit_batch(
                 "max_new_tokens": sampling_params.max_new_tokens,
             },
             "model_id": model_id,
+            "prop_id": prop_id,
             "dataset_suffix": dataset_suffix,
         }
         batch_info.save()
@@ -284,6 +286,7 @@ def submit_batch(
                 model_id=model_id,
                 evaluator_model_id=evaluator_model_id,
                 sampling_params=sampling_params,
+                prop_id=prop_id,
                 dataset_suffix=dataset_suffix,
             )
             
@@ -587,6 +590,7 @@ def process_faithfulness_files(
     for yaml_file in tqdm(yaml_files, desc=f"Processing faithfulness files for {model_id}"):
         try:
             logging.info(f"Processing {yaml_file}")
+            prop_id = yaml_file.stem.split("_")[0]
             
             # Load the faithfulness data
             with open(yaml_file, "r") as f:
@@ -648,6 +652,7 @@ def process_faithfulness_files(
                 metadata_by_qid=metadata_by_qid,
                 evaluator_model_id=evaluator_model_id,
                 sampling_params=sampling_params,
+                prop_id=prop_id,
                 dataset_suffix=dataset_suffix,
                 api=api,
             )
@@ -811,6 +816,7 @@ def process(
                 model_id=batch_info.metadata["model_id"],
                 evaluator_model_id=batch_info.evaluator_model_id or "",
                 sampling_params=sampling_params,
+                prop_id=batch_info.metadata["prop_id"],
                 dataset_suffix=batch_info.metadata.get("dataset_suffix"),
             )
             

@@ -1394,13 +1394,16 @@ class UnfaithfulnessPatternEval(YAMLWizard):
     model_id: str
     evaluator_model_id: str
     sampling_params: SamplingParams
+    prop_id: str
     dataset_suffix: str | None = None
 
     def save(self) -> Path:
         """Save unfaithfulness pattern evaluation to disk."""
-        directory = DATA_DIR / "unfaithfulness_pattern_eval" / self.sampling_params.id
+        prop_id_with_suffix = self.prop_id
         if self.dataset_suffix:
-            directory = directory / self.dataset_suffix
+            prop_id_with_suffix = f"{self.prop_id}_{self.dataset_suffix}"
+        directory = DATA_DIR / "unfaithfulness_pattern_eval" / self.sampling_params.id / prop_id_with_suffix
+        path = get_path(directory, self.model_id)
         path = get_path(directory, self.model_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.to_yaml_file(path)
