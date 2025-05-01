@@ -35,6 +35,7 @@ run() {
       ./scripts/iphr/gen_cots.py submit \
           -d "${dataset_id}" \
           -m "${model}" \
+	  -n 10 \
           "${COMMON_ARGS[@]}" \
           --api "${api}" \
           ${extra}
