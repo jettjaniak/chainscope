@@ -100,6 +100,7 @@ def get_anthropic_limits() -> AnthropicLimits:
         org_tpm_reset=response.headers.get("anthropic-ratelimit-org-tpm-reset", ""),
     )
 
+
 @dataclass
 class ANRateLimiter:
     requests_per_interval: int
@@ -114,8 +115,6 @@ class ANRateLimiter:
     org_tpm_limit: int = 80000
     org_tpm_usage: float = field(init=False)
     org_tpm_last_update: float = field(init=False)
-    # Track preemptive token usage for each request
-    _preemptive_usage: dict[str, int] = field(init=False)
 
     def __post_init__(self):
         self.input_tokens = self.tokens_per_interval
@@ -125,7 +124,6 @@ class ANRateLimiter:
         self._lock = asyncio.Lock()
         self.org_tpm_usage = 0
         self.org_tpm_last_update = time.time()
-        self._preemptive_usage = {}
 
         logging.info(
             f"ANRateLimiter initialized with {self.requests_per_interval} requests, "
@@ -133,128 +131,32 @@ class ANRateLimiter:
             f"and org TPM limit of {self.org_tpm_limit}"
         )
 
-    def _update_limits(self):
-        """Update rate limits based on time passed since last update"""
-        now = time.time()
-        time_passed = now - self.last_update
-        if time_passed >= self.interval_seconds:
-            self.input_tokens = self.tokens_per_interval
-            self.output_tokens = self.tokens_per_interval
-            self.requests = self.requests_per_interval
-            self.last_update = now
-
-    def has_enough_output_tokens(self, max_new_tokens: int) -> bool:
-        """Check if we have enough tokens for a new request.
-        
-        Args:
-            max_new_tokens: Maximum number of new tokens that could be generated
-            
-        Returns:
-            bool: True if we have enough tokens, False otherwise
-        """
-        # We need to have enough output tokens for the maximum possible response
-        # and also check if we're within the org TPM limit
-        return self.output_tokens >= max_new_tokens and (self.org_tpm_usage + max_new_tokens) <= self.org_tpm_limit
-
-    def preempt_token_usage(self, request_id: str, max_new_tokens: int):
-        """Preemptively update token usage before sending request.
-        
-        Args:
-            request_id: Unique identifier for the request
-            max_new_tokens: Maximum number of new tokens that could be generated
-        """
-        self._update_limits()
-        # Store the preemptive usage
-        self._preemptive_usage[request_id] = max_new_tokens
-        # Update the output tokens
-        self.output_tokens = max(0, self.output_tokens - max_new_tokens)
-        # Update org TPM usage
-        now = time.time()
-        time_passed = now - self.org_tpm_last_update
-        self.org_tpm_usage = max(
-            0,
-            self.org_tpm_usage * (1 - time_passed / 60),  # Decay over 1 minute
-        )
-        self.org_tpm_usage += max_new_tokens
-        self.org_tpm_last_update = now
-
-    def adjust_token_usage(self, request_id: str, actual_tokens: int):
-        """Adjust token usage after receiving response.
-        
-        Args:
-            request_id: Unique identifier for the request
-            actual_tokens: Actual number of tokens used in the response
-        """
-        if request_id not in self._preemptive_usage:
-            logging.info(f"No preemptive usage found for request {request_id}")
-            return
-
-        preemptive_tokens = self._preemptive_usage[request_id]
-        # Calculate the difference between preemptive and actual usage
-        token_diff = preemptive_tokens - actual_tokens
-        
-        # Log the difference between preemptive and actual usage
-        logging.warning(
-            f"Token usage difference for request {request_id}: "
-            f"preemptive={preemptive_tokens}, actual={actual_tokens}, diff={token_diff}"
-        )
-        
-        # Adjust the output tokens
-        self.output_tokens = max(0, self.output_tokens + token_diff)
-        
-        # Adjust org TPM usage
-        now = time.time()
-        time_passed = now - self.org_tpm_last_update
-        self.org_tpm_usage = max(
-            0,
-            self.org_tpm_usage * (1 - time_passed / 60),  # Decay over 1 minute
-        )
-        self.org_tpm_usage -= token_diff
-        self.org_tpm_last_update = now
-        
-        # Remove the preemptive usage record
-        del self._preemptive_usage[request_id]
-
-    async def acquire(self, prompt: str, max_new_tokens: int):
-        """Acquire rate limit for a new request.
-        
-        Args:
-            prompt: The prompt to be sent
-            max_new_tokens: Maximum number of new tokens that could be generated
-        """
+    async def acquire(self, prompt: str, model: str):
         async with self._lock:
-            self._update_limits()
-            
-            if not self.has_enough_output_tokens(max_new_tokens):
-                wait_time = self.interval_seconds - (time.time() - self.last_update)
-                if wait_time > 0:
-                    logging.info(f"Waiting {wait_time:.2f}s for token limit reset")
-                    await asyncio.sleep(wait_time)
-                    self._update_limits()
-            
-            # Update token usage based on prompt length
-            # This is a rough estimate - actual usage will be updated after response
-            estimated_input_tokens = len(prompt.split()) * 1.3  # Rough estimate
-            self.input_tokens = max(0, self.input_tokens - estimated_input_tokens)
-            self.requests = max(0, self.requests - 1)
+            # Everything else was too complicated to implement
+            await asyncio.sleep(0.5)
 
-    async def acquire_with_backoff(self, prompt: str, max_new_tokens: int, max_retries: int = 3):
-        """Acquire rate limit with exponential backoff retry logic
-        
-        Args:
-            prompt: The prompt to be sent
-            max_new_tokens: Maximum number of new tokens that could be generated
-            max_retries: Maximum number of retry attempts
-        """
-        import random
+    def update_token_usage(self, output_tokens: int):
+        """Update output token count after receiving a response"""
+        self.output_tokens = max(0, self.output_tokens - output_tokens)
+        # Update org TPM usage with actual tokens used
+        now = time.time()
+        time_passed = now - self.org_tpm_last_update
+        self.org_tpm_usage = max(
+            0,
+            self.org_tpm_usage * (1 - time_passed / 60),  # Decay over 1 minute
+        )
+        self.org_tpm_usage += output_tokens
+        self.org_tpm_last_update = now
+
+    async def acquire_with_backoff(self, prompt: str, model: str, max_retries: int = 3):
+        """Acquire rate limit with exponential backoff retry logic"""
+        import random  # Add at top of file if not already present
 
         for attempt in range(max_retries):
             try:
-                await self.acquire(prompt, max_new_tokens)
-                # Generate a unique request ID and preemptively update token usage
-                request_id = f"{time.time()}_{attempt}"
-                self.preempt_token_usage(request_id, max_new_tokens)
-                return request_id
+                await self.acquire(prompt, model)
+                return
             except Exception as e:
                 if attempt == max_retries - 1:
                     raise
@@ -321,7 +223,6 @@ async def generate_an_response_async(
         max_retries: Maximum number of retry attempts for each model
         get_result_from_response: Callback that processes the model response and returns
             either a valid result or None if the response should be retried
-        rate_limiter: Optional rate limiter to use
 
     Returns:
         Processed result or None if all attempts failed
@@ -340,6 +241,9 @@ async def generate_an_response_async(
                 logging.info(
                     f"Retry attempt {attempt} of {max_retries} for generating a response"
                 )
+
+            if rate_limiter:
+                await rate_limiter.acquire_with_backoff(prompt, model_id)
 
             create_params = {
                 "model": model_id,
@@ -362,19 +266,12 @@ async def generate_an_response_async(
                 # this request _potentially_ taking too long
                 create_params["timeout"] = MAX_THINKING_TIMEOUT
 
-            request_id = None
-            if rate_limiter:
-                # Calculate total max tokens including thinking budget if applicable
-                total_max_tokens = create_params["max_tokens"]
-                request_id = await rate_limiter.acquire_with_backoff(prompt, total_max_tokens)
-
             # Use acreate instead of create for async operation
             an_response = await client.messages.create(**create_params)
 
-            if rate_limiter and request_id is not None:
-                # Adjust token usage with actual usage
+            if rate_limiter:
                 logging.info(f"Got usage: {an_response.usage}")
-                rate_limiter.adjust_token_usage(request_id, an_response.usage.output_tokens)
+                rate_limiter.update_token_usage(an_response.usage.output_tokens)
 
             if (
                 not an_response
@@ -394,16 +291,16 @@ async def generate_an_response_async(
                 and isinstance(an_response.content[1], TextBlock)
             ):
                 # Log token usage for thinking vs output
-                thinking_tokens = await client.messages.count_tokens(model=model_id, messages=[{"role": "user", "content": an_response.content[0].thinking}])
-                output_tokens = await client.messages.count_tokens(model=model_id, messages=[{"role": "user", "content": an_response.content[1].text}])
-                total_tokens = an_response.usage.output_tokens
-                logging.info(
-                    f"Token usage breakdown for {model_id}:\n"
-                    f"  Thinking tokens: {thinking_tokens.input_tokens}\n"
-                    f"  Output tokens: {output_tokens.input_tokens}\n"
-                    f"  Total tokens: {total_tokens}\n"
-                    f"  Thinking percentage: {(thinking_tokens.input_tokens / total_tokens * 100):.1f}%"
-                )
+                # thinking_tokens = await client.messages.count_tokens(model=model_id, messages=[{"role": "user", "content": an_response.content[0].thinking}])
+                # output_tokens = await client.messages.count_tokens(model=model_id, messages=[{"role": "user", "content": an_response.content[1].text}])
+                # total_tokens = an_response.usage.output_tokens
+                # logging.info(
+                #     f"Token usage breakdown for {model_id}:\n"
+                #     f"  Thinking tokens: {thinking_tokens.input_tokens}\n"
+                #     f"  Output tokens: {output_tokens.input_tokens}\n"
+                #     f"  Total tokens: {total_tokens}\n"
+                #     f"  Thinking percentage: {(thinking_tokens.input_tokens / total_tokens * 100):.1f}%"
+                # )
                 result = get_result_from_response(
                     (
                         an_response.content[0].thinking,
