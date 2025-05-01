@@ -153,7 +153,8 @@ class ANRateLimiter:
             bool: True if we have enough tokens, False otherwise
         """
         # We need to have enough output tokens for the maximum possible response
-        return self.output_tokens >= max_new_tokens
+        # and also check if we're within the org TPM limit
+        return self.output_tokens >= max_new_tokens and (self.org_tpm_usage + max_new_tokens) <= self.org_tpm_limit
 
     def preempt_token_usage(self, request_id: str, max_new_tokens: int):
         """Preemptively update token usage before sending request.
