@@ -618,7 +618,7 @@ def cli() -> None:
 )
 @click.option(
     "--max-tokens",
-    default=16000,
+    default=8000,
     help="Max tokens for evaluation",
 )
 @click.option(
