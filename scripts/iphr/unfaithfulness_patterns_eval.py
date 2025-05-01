@@ -289,6 +289,10 @@ def submit_batch(
             # Save results
             saved_path = pattern_eval.save()
             logging.info(f"Results saved to {saved_path}")
+            
+            # Analyze patterns
+            analysis = analyze_patterns(pattern_eval)
+            logging.warning(f"Pattern analysis: {analysis}")
         
         return None
 
@@ -734,6 +738,10 @@ def process(
             # Save results
             saved_path = pattern_eval.save()
             logging.info(f"Results saved to {saved_path}")
+            
+            # Analyze patterns
+            analysis = analyze_patterns(pattern_eval)
+            logging.warning(f"Pattern analysis: {analysis}")
 
         except Exception as e:
             logging.error(f"Error processing {batch_path}: {e}")
@@ -753,6 +761,79 @@ def process_batch(
     
     # Process responses
     return _process_responses(results, metadata_by_qid)
+
+
+@beartype
+def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
+    """Analyze the distribution of unfaithfulness patterns.
+    
+    Args:
+        pattern_eval: The UnfaithfulnessPatternEval object to analyze
+        
+    Returns:
+        Dictionary containing:
+        - total_q_pairs: Total number of question pairs
+        - all_none_q_pairs: Number of question pairs where all responses have no patterns
+        - q_pairs_with_pattern: Number of question pairs with at least one pattern
+        - q_pairs_by_pattern: Dict mapping pattern types to number of question pairs with that pattern
+        - responses_by_pattern: Dict mapping pattern types to number of responses with that pattern
+    """
+    total_q_pairs = len(pattern_eval.pattern_analysis_by_qid)
+    all_none_q_pairs = 0
+    q_pairs_with_pattern = 0
+    q_pairs_by_pattern: dict[str, int] = {
+        "fact-manipulation": 0,
+        "argument-switching": 0,
+        "answer-flipping": 0,
+        "other": 0,
+    }
+    responses_by_pattern: dict[str, int] = {
+        "fact-manipulation": 0,
+        "argument-switching": 0,
+        "answer-flipping": 0,
+        "other": 0,
+    }
+
+    for qid, analysis in pattern_eval.pattern_analysis_by_qid.items():
+        # Check if all responses have no patterns
+        all_none = True
+        q_patterns = set[str]()
+        
+        # Check Q1 responses
+        if analysis.q1_analysis:
+            for resp_analysis in analysis.q1_analysis.responses.values():
+                patterns = set(resp_analysis.unfaithfulness_patterns)
+                if "none" not in patterns:
+                    all_none = False
+                    q_patterns.update(patterns)
+                    for pattern in patterns:
+                        responses_by_pattern[pattern] += 1
+        
+        # Check Q2 responses
+        if analysis.q2_analysis:
+            for resp_analysis in analysis.q2_analysis.responses.values():
+                patterns = set(resp_analysis.unfaithfulness_patterns)
+                if "none" not in patterns:
+                    all_none = False
+                    q_patterns.update(patterns)
+                    for pattern in patterns:
+                        responses_by_pattern[pattern] += 1
+        
+        if all_none:
+            all_none_q_pairs += 1
+        else:
+            q_pairs_with_pattern += 1
+            for pattern in q_patterns:
+                if pattern != "none":
+                    q_pairs_by_pattern[pattern] += 1
+
+    return {
+        "total_q_pairs": total_q_pairs,
+        "all_none_q_pairs": all_none_q_pairs,
+        "q_pairs_with_pattern": q_pairs_with_pattern,
+        "q_pairs_by_pattern": q_pairs_by_pattern,
+        "responses_by_pattern": responses_by_pattern,
+    }
 
 
 if __name__ == "__main__":
