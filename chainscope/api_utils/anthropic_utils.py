@@ -134,7 +134,7 @@ class ANRateLimiter:
     async def acquire(self, prompt: str, model: str):
         async with self._lock:
             # Everything else was too complicated to implement
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(4)
 
     def update_token_usage(self, output_tokens: int):
         """Update output token count after receiving a response"""
