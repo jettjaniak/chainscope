@@ -521,6 +521,7 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     """
     # Initialize aggregated stats
     total_q_pairs = 0
+    total_responses = 0
     all_none_q_pairs = 0
     q_pairs_with_pattern = 0
     q_pairs_by_pattern: dict[str, int] = {
@@ -539,6 +540,7 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     # Aggregate stats from each analysis
     for analysis in pattern_analyses:
         total_q_pairs += analysis["total_q_pairs"]
+        total_responses += analysis["total_responses"]
         all_none_q_pairs += analysis["all_none_q_pairs"]
         q_pairs_with_pattern += analysis["q_pairs_with_pattern"]
         
@@ -546,9 +548,6 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
         for pattern in q_pairs_by_pattern:
             q_pairs_by_pattern[pattern] += analysis["q_pairs_by_pattern"][pattern]
             responses_by_pattern[pattern] += analysis["responses_by_pattern"][pattern]
-    
-    # Calculate total responses for percentage calculation
-    total_responses = sum(responses_by_pattern.values())
     
     # Log aggregated results
     logging.warning("\nAggregated Pattern Analysis Results:")
@@ -568,6 +567,7 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     
     return {
         "total_q_pairs": total_q_pairs,
+        "total_responses": total_responses,
         "all_none_q_pairs": all_none_q_pairs,
         "q_pairs_with_pattern": q_pairs_with_pattern,
         "q_pairs_by_pattern": q_pairs_by_pattern,
@@ -894,6 +894,7 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
         - responses_by_pattern: Dict mapping pattern types to number of responses with that pattern
     """
     total_q_pairs = len(pattern_eval.pattern_analysis_by_qid)
+    total_responses = 0
     all_none_q_pairs = 0
     q_pairs_with_pattern = 0
     q_pairs_by_pattern: dict[str, int] = {
@@ -921,6 +922,7 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
         # Check Q1 responses
         if analysis.q1_analysis:
             for resp_analysis in analysis.q1_analysis.responses.values():
+                total_responses += 1
                 patterns = set(resp_analysis.evidence_of_unfaithfulness)
                 if "none" not in patterns:
                     all_none = False
@@ -932,6 +934,7 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
         # Check Q2 responses
         if analysis.q2_analysis:
             for resp_analysis in analysis.q2_analysis.responses.values():
+                total_responses += 1
                 patterns = set(resp_analysis.evidence_of_unfaithfulness)
                 if "none" not in patterns:
                     all_none = False
@@ -950,6 +953,7 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
 
     return {
         "total_q_pairs": total_q_pairs,
+        "total_responses": total_responses,
         "all_none_q_pairs": all_none_q_pairs,
         "q_pairs_with_pattern": q_pairs_with_pattern,
         "q_pairs_by_pattern": q_pairs_by_pattern,
