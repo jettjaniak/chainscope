@@ -28,7 +28,8 @@ class AmbiguityEvalResult(NamedTuple):
 class FinalAmbiguityEvalResult(NamedTuple):
     """Aggregated result after multiple evaluations for a single question."""
     final_classification: Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]
-    analyses: list[str | None] # Keep all analyses for potential inspection
+    ambiguity_analyses: list[str | None] = [] # Analyses from ambiguity evaluations
+    consistency_analyses: list[str | None] = [] # Analyses from consistency evaluations
 
 
 @beartype
@@ -303,7 +304,7 @@ async def _run_ambiguity_eval_batch(
 
         final_results[qid] = FinalAmbiguityEvalResult(
             final_classification=final_classification,
-            analyses=analyses,
+            ambiguity_analyses=analyses,
         )
         logging.debug(f"Final aggregated result for qid={qid}: {final_classification}")
 
@@ -401,7 +402,7 @@ async def _run_consistency_eval_batch(
 
         final_results[qid] = FinalAmbiguityEvalResult(
             final_classification=final_classification,
-            analyses=analyses,
+            consistency_analyses=analyses,
         )
         logging.debug(f"Final aggregated consistency result for qid={qid}: {final_classification}")
 
@@ -456,7 +457,8 @@ async def evaluate_questions_ambiguity_in_batch(
             if result.final_classification == "AMBIGUOUS":
                 ambiguity_results[qid] = FinalAmbiguityEvalResult(
                     final_classification="AMBIGUOUS",
-                    analyses=result.analyses,
+                    ambiguity_analyses=ambiguity_results[qid].ambiguity_analyses,
+                    consistency_analyses=result.consistency_analyses,
                 )
 
     logging.info(f"Finished batch ambiguity evaluation. Final results obtained for {len(ambiguity_results)} unique questions initially submitted.")
