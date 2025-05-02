@@ -6,8 +6,8 @@ from datetime import datetime
 
 import yaml
 
-from chainscope.ambiguous_qs_eval import (FinalAmbiguityEvalResult,
-                                          evaluate_questions_in_batch)
+from chainscope.ambiguous_qs_eval import (
+    FinalAmbiguityEvalResult, evaluate_questions_ambiguity_in_batch)
 from chainscope.api_utils.api_selector import APIPreferences
 from chainscope.rag import RAGValue
 from chainscope.typing import *
@@ -636,7 +636,7 @@ def gen_qs(
             if not questions_to_evaluate:
                 continue
 
-            ambiguity_results: dict[str, FinalAmbiguityEvalResult] = asyncio.run(evaluate_questions_in_batch(
+            ambiguity_results: dict[str, FinalAmbiguityEvalResult] = asyncio.run(evaluate_questions_ambiguity_in_batch(
                 questions_to_evaluate=questions_to_evaluate,
                 evaluator_model_id=evaluator_model_id,
                 sampling_params=evaluator_sampling_params,

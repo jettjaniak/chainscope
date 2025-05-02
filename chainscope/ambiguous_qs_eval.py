@@ -409,7 +409,7 @@ async def _run_consistency_eval_batch(
 
 
 @beartype
-async def evaluate_questions_in_batch(
+async def evaluate_questions_ambiguity_in_batch(
     questions_to_evaluate: list[PotentialQuestionPair],
     evaluator_model_id: str,
     sampling_params: SamplingParams,
