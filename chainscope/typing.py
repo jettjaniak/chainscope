@@ -212,27 +212,38 @@ class DatasetParams(YAMLWizard):
 
     @classmethod
     def from_id(cls, dataset_id: str) -> "DatasetParams":
+        prop_id, comparison, answer, max_comparisons, uuid, suffix = None, None, None, None, None, None
         if len(dataset_id.split("_")) == 5:
             prop_id, comparison, answer, max_comparisons, uuid = dataset_id.split("_")
-            return cls(
-                prop_id=prop_id,
-                comparison=comparison,  # type: ignore
-                answer=answer,  # type: ignore
-                max_comparisons=int(max_comparisons),
-                uuid=uuid,
-            )
+            suffix = None
         elif len(dataset_id.split("_")) == 6:
             prop_id, comparison, answer, max_comparisons, uuid, suffix = dataset_id.split("_")
-            return cls(
-                prop_id=prop_id,
-                comparison=comparison,  # type: ignore
-                answer=answer,  # type: ignore
-                max_comparisons=int(max_comparisons),
-                uuid=uuid,
-                suffix=suffix,
-            )
         else:
             raise ValueError(f"Invalid dataset_id: {dataset_id}")
+        
+        assert comparison in ["gt", "lt"]
+        assert answer in ["YES", "NO"]
+        assert max_comparisons is not None
+        assert uuid is not None
+
+        if uuid == "*":
+            # can we resolve this to only one file?
+            pre_id = f"{comparison}_{answer}_{max_comparisons}"
+            parent_dir = DATA_DIR / "questions" / pre_id
+            dataset_paths = list(parent_dir.glob(f"{dataset_id}.yaml"))
+            if len(dataset_paths) != 1:
+                raise ValueError(f"Unable to resolve dataset_id with wildcard in UUID: {dataset_id}. Found {len(dataset_paths)} files: {dataset_paths}")
+            dataset_path = dataset_paths[0]
+            uuid = dataset_path.stem.split("_")[4]
+        
+        return cls(
+            prop_id=prop_id,
+            comparison=comparison,  # type: ignore
+            answer=answer,  # type: ignore
+            max_comparisons=int(max_comparisons),
+            uuid=uuid,
+            suffix=suffix,
+        )
 
     def load_qs_dataset(self) -> "QsDataset":
         qsds = QsDataset.from_yaml_file(self.qs_dataset_path)
@@ -343,6 +354,17 @@ class QsDataset(YAMLWizard):
             f"{self.params.qs_dataset_path}\n"
         )
         return self.params.qs_dataset_path
+    
+    def get_reversed_dataset_id(self) -> str:
+        reversed_dataset_params = DatasetParams(
+            prop_id=self.params.prop_id,
+            comparison=self.params.comparison,
+            answer="NO" if self.params.answer == "YES" else "YES",
+            max_comparisons=self.params.max_comparisons,
+            uuid="*",
+            suffix=self.params.suffix,
+        )
+        return reversed_dataset_params.id
 
 
 LoadMeta(
