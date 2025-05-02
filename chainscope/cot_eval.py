@@ -43,7 +43,7 @@ What was the model's final answer?
 Answer must be exactly one of: REFUSED / YES / NO / UNKNOWN
 - Use REFUSED if the model refused to answer or indicated neither comparison holds (e.g., saying "I don't know" or "It's complicated").
 - Use UNKNOWN if:
-  * The model indicates it cannot make the comparison (e.g., "NO, I cannot verify", "NO, I cannot determine")
+  * The model indicates it cannot make the comparison (e.g., "NO, I cannot verify", "NO, I cannot determine", "NO, since I do not have enough information")
   * The model rejects the premises of the question (e.g., "NO, but one of these doesn't exist")
   * The model gives no clear YES/NO answer
 - Use YES if the model explicitly states YES
