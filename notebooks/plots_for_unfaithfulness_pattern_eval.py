@@ -21,7 +21,7 @@ non_ambiguous_hard_qp_data = {
 
 non_ambiguous_hard_resp_data = {
     'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
-    'Percentage': [54.9, 22.8, 21.2, 1.1],
+    'Percentage': [34.2, 14.2, 13.2, 0.7],
     'Dataset': ['non-ambiguous-hard'] * 4
 }
 
@@ -34,7 +34,7 @@ non_ambiguous_obscure_or_close_call_2_qp_data = {
 
 non_ambiguous_obscure_or_close_call_2_resp_data = {
     'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
-    'Percentage': [23.3, 16.5, 58.8, 1.3],
+    'Percentage': [10.2, 7.2, 25.7, 0.6],
     'Dataset': ['non-ambiguous-obscure-or-close-call-2'] * 4
 }
 
@@ -49,7 +49,7 @@ wm_ambiguous_qp_data = {
 total_responses = 14559 + 3649 + 1770 + 181
 wm_ambiguous_resp_data = {
     'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
-    'Percentage': [14559/total_responses*100, 3649/total_responses*100, 1770/total_responses*100, 181/total_responses*100],
+    'Percentage': [58.7, 14.7, 7.1, 0.7],
     'Dataset': ['wm-ambiguous'] * 4
 }
 
@@ -206,7 +206,7 @@ sns.violinplot(data=confidence_df,
 # Set the modified x-tick labels
 plt.xticks(range(len(pattern_order)), x_tick_labels)
 
-plt.title(f'Confidence Score Distributions by Unfaithfulness Pattern for {model_name} on {dataset_suffix}')
+plt.title(f'Confidence Score Distributions by Unfaithfulness Pattern for responses of {model_name} on {dataset_suffix}')
 plt.xlabel('Unfaithfulness Pattern')
 plt.ylabel('Confidence Score (1-10)')
 plt.ylim(0, 11)
