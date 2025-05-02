@@ -1,5 +1,7 @@
 # %%
 
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -99,4 +101,117 @@ plt.tight_layout()
 # Show the plot
 plt.show()
 
+# %%
+
+dataset_suffix = "non-ambiguous-hard"
+model_name = "claude-3.5-haiku"
+
+# %%
+
+# Function to extract confidence scores from unfaithfulness pattern evaluation files
+def extract_confidence_scores(base_dir, dataset_suffix, model_name):
+    # Initialize data collection
+    all_confidence_scores = []
+    pattern_confidence_scores = {
+        'fact-manipulation': [],
+        'argument-switching': [],
+        'answer-flipping': [],
+        'other': [],
+        'none': []
+    }
+    
+    # Get all pattern evaluation directories for the specified dataset suffix
+    eval_files = list(Path(base_dir).glob(f"*_{dataset_suffix}/{model_name}.yaml"))
+    
+    def process_responses(responses):
+        for resp_id, resp_analysis in responses.items():
+            # Add to overall confidence scores
+            all_confidence_scores.append(resp_analysis["confidence"])
+            
+            # Add to pattern-specific confidence scores
+            patterns_in_resp = set(resp_analysis["unfaithfulness_patterns"])
+
+            assert len(resp_analysis["unfaithfulness_patterns"]) == len(patterns_in_resp), f"Duplicate patterns in response {resp_id}: {resp_analysis['unfaithfulness_patterns']}"
+            assert "none" not in patterns_in_resp or len(patterns_in_resp) == 1, f"Response {resp_id} has none pattern mixed with other patterns: {resp_analysis['unfaithfulness_patterns']}"
+
+            for pattern in patterns_in_resp:
+                if pattern in pattern_confidence_scores:
+                    pattern_confidence_scores[pattern].append(resp_analysis["confidence"])
+
+    for eval_file in eval_files:
+        # Load the evaluation file using yaml
+        with open(eval_file, 'r') as f:
+            eval_data = yaml.safe_load(f)
+        
+        # Extract confidence scores from all responses
+        for qid, analysis in eval_data["pattern_analysis_by_qid"].items():
+            if analysis["q1_analysis"] and analysis["q1_analysis"]["responses"]:
+                process_responses(analysis["q1_analysis"]["responses"])
+                            
+            if analysis["q2_analysis"] and analysis["q2_analysis"]["responses"]:
+                process_responses(analysis["q2_analysis"]["responses"])
+    
+    return all_confidence_scores, pattern_confidence_scores
+
+# Extract confidence scores
+base_dir = Path(DATA_DIR) / "unfaithfulness_pattern_eval" / "T0.0_P0.9_M8000"
+all_scores, pattern_scores = extract_confidence_scores(base_dir, dataset_suffix, model_name)
+del pattern_scores["none"]
+
+# %%
+
+# Create dataframe for plotting
+confidence_df = pd.DataFrame({
+    'Confidence': all_scores,
+    'Pattern': ['All'] * len(all_scores)
+})
+
+# Add pattern-specific data
+for pattern, scores in pattern_scores.items():
+    if scores:  # Only include patterns with data
+        pattern_df = pd.DataFrame({
+            'Confidence': scores,
+            'Pattern': [pattern.capitalize()] * len(scores)
+        })
+        confidence_df = pd.concat([confidence_df, pattern_df], ignore_index=True)
+
+# %%
+
+# Create a separate violin plot to better visualize the distribution by pattern
+plt.figure(figsize=(12, 6))
+
+# Set a specific order for the patterns with "All" first
+pattern_order = ['All'] + sorted([p for p in confidence_df['Pattern'].unique() if p != 'All'])
+
+# Calculate percentage of total responses for each pattern
+total_responses = len(all_scores)
+print(f"Total responses: {total_responses}")
+
+pattern_percentages = {}
+pattern_percentages['All'] = 100.0  # All is 100% as specified
+
+for pattern in pattern_order:
+    if pattern != 'All':
+        pattern_count = len(confidence_df[confidence_df['Pattern'] == pattern])
+        pattern_percentages[pattern] = (pattern_count / total_responses) * 100
+
+# Create new x-tick labels with percentages
+x_tick_labels = [f"{pattern}\n({pattern_percentages[pattern]:.1f}%)" for pattern in pattern_order]
+
+# Create the violin plot
+sns.violinplot(data=confidence_df, 
+               x='Pattern', y='Confidence', palette='viridis',
+               inner='quartile', order=pattern_order)
+
+# Set the modified x-tick labels
+plt.xticks(range(len(pattern_order)), x_tick_labels)
+
+plt.title(f'Confidence Score Distributions by Unfaithfulness Pattern for {model_name} on {dataset_suffix}')
+plt.xlabel('Unfaithfulness Pattern')
+plt.ylabel('Confidence Score (1-10)')
+plt.ylim(0, 11)
+plt.yticks(range(0, 11, 1))
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.tight_layout()
+plt.show()
 # %%
