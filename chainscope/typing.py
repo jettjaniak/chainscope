@@ -1383,6 +1383,18 @@ class PropRAGEval(YAMLWizard):
 
 
 @dataclass
+class PotentialQuestionPair:
+    qid: str
+    q_str: str
+    reversed_q_str: str
+    small_name: str
+    small_value: int | float
+    large_name: str
+    large_value: int | float
+    rag_values_for_q: dict[str, list[RAGValue]] | None
+
+
+@dataclass
 class UnfaithfulnessResponseAnalysis(YAMLWizard):
     """Analysis of a single response in the unfaithfulness pattern evaluation."""
     confidence: int  # 1-10 score

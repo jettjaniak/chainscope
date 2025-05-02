@@ -22,16 +22,6 @@ location_min_comparison_limits = {
     "county": 10,
 }
 
-@dataclass
-class PotentialPairInfo:
-    qid: str
-    q_str: str
-    small_name: str
-    small_value: int | float
-    large_name: str
-    large_value: int | float
-    rag_values_for_q: dict[str, list[RAGValue]] | None
-
 
 def make_yes_no_question_pair(
     template: str,
@@ -288,9 +278,9 @@ def _generate_potential_pairs(
     min_fraction_value_diff: float | None,
     max_fraction_value_diff: float | None,
     rag_values_map: dict[str, list[RAGValue]] | None,
-) -> list[PotentialPairInfo]:
+) -> list[PotentialQuestionPair]:
     """Generate potential pairs and all info needed for ambiguity evaluation and sampling."""
-    potential_pairs: list[PotentialPairInfo] = []
+    potential_pairs: list[PotentialQuestionPair] = []
 
     # Calculate value range for fraction difference filtering
     all_sorted_values, value_range = _get_value_range(prop_id, properties)
@@ -352,6 +342,7 @@ def _generate_potential_pairs(
                 continue
 
             q_str = properties.gt_question.format(x=small_name, y=large_name)
+            reversed_q_str = properties.gt_question.format(x=large_name, y=small_name)
             qid = hashlib.sha256(q_str.encode()).hexdigest()
             rag_values_for_q = None
             if rag_values_map:
@@ -359,9 +350,10 @@ def _generate_potential_pairs(
                     name: rag_values_map.get(name, [])
                     for name in [small_name, large_name]
                 }
-            potential_pairs.append(PotentialPairInfo(
+            potential_pairs.append(PotentialQuestionPair(
                 qid=qid,
                 q_str=q_str,
+                reversed_q_str=reversed_q_str,
                 small_name=small_name,
                 small_value=small_value,
                 large_name=large_name,
@@ -372,9 +364,9 @@ def _generate_potential_pairs(
     return potential_pairs
 
 def _sample_pairs(
-    pairs: list[PotentialPairInfo],
+    pairs: list[PotentialQuestionPair],
     target_n: int,
-) -> list[PotentialPairInfo]:
+) -> list[PotentialQuestionPair]:
     """Sample n pairs from the available pairs."""
     total_pairs = len(pairs)
     assert total_pairs > 0, "No pairs available to sample."
@@ -394,7 +386,7 @@ def _sample_pairs(
     return sampled_pairs
 
 def _generate_datasets(
-    sampled_pairs: list[PotentialPairInfo],
+    sampled_pairs: list[PotentialQuestionPair],
     properties: Properties,
     prop_id: str,
     max_comparisons: int,
@@ -451,9 +443,13 @@ def _generate_datasets(
     logging.info(f"Generated {len(sampled_pairs)} YES/NO pairs for each comparison type (gt/lt).")
     return datasets
 
+def _get_ambiguity_eval_cache_path(prop_id: str) -> Path:
+    """Get the path to the ambiguity evaluation cache for a property."""
+    return DATA_DIR / "ambiguity_eval" / "gen_qs_cache" / f"{prop_id}.yaml"
+
 def _load_ambiguity_cache(prop_id: str) -> dict[tuple[str, str], str]:
     """Load ambiguity evaluation cache for a property."""
-    cache_path = DATA_DIR / "ambiguity_eval" / "gen_qs" / f"{prop_id}.yaml"
+    cache_path = _get_ambiguity_eval_cache_path(prop_id)
     if not cache_path.exists():
         return {}
     try:
@@ -467,7 +463,7 @@ def _load_ambiguity_cache(prop_id: str) -> dict[tuple[str, str], str]:
 
 def _save_ambiguity_cache(prop_id: str, cache: dict[tuple[str, str], str]) -> None:
     """Save ambiguity evaluation cache for a property."""
-    cache_path = DATA_DIR / "ambiguity_eval" / "gen_qs" / f"{prop_id}.yaml"
+    cache_path = _get_ambiguity_eval_cache_path(prop_id)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         # Convert tuple keys to strings for YAML serialization
@@ -577,7 +573,7 @@ def gen_qs(
     if remove_ambiguous != "no":
         qid_to_pair = {p.qid: p for p in potential_pairs}
         unevaluated_qids = set(p.qid for p in potential_pairs)
-        accepted_pairs: list[PotentialPairInfo] = []
+        accepted_pairs: list[PotentialQuestionPair] = []
         # Initialize comparison counts for all entities to 0
         comparisons_per_entity = {entity_name: 0 for entity_name in properties.value_by_name.keys()}
         batch_size = max(n, 100)  # Evaluate in batches of at least n or 100
@@ -595,7 +591,7 @@ def gen_qs(
             # Prioritize pairs where both entities need more comparisons
             return min(small_comparisons, large_comparisons)
 
-        def can_add_pair(pair: PotentialPairInfo) -> bool:
+        def can_add_pair(pair: PotentialQuestionPair) -> bool:
             """Check if adding this pair would exceed max_comparisons for either entity"""
             small_comparisons = comparisons_per_entity[pair.small_name]
             large_comparisons = comparisons_per_entity[pair.large_name]

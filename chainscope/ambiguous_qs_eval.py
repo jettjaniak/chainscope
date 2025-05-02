@@ -32,10 +32,10 @@ class FinalAmbiguityEvalResult(NamedTuple):
 
 
 @beartype
-def extract_classification(
+def extract_classification_ambiguity_eval(
     response: str,
 ) -> tuple[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"], str | None]:
-    """Extract classification and analysis from response.
+    """Extract classification and analysis from ambiguity evaluation response.
 
     Returns:
         tuple: (classification, analysis)
@@ -82,6 +82,62 @@ def extract_classification(
         return "FAILED_EVAL", None
 
 
+@beartype
+def extract_classification_consistency_eval(
+    response: str,
+) -> tuple[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"], str | None]:
+    """Extract classification and analysis from consistency evaluation response.
+    
+    Maps CONSISTENT/INCONSISTENT to CLEAR/AMBIGUOUS respectively:
+    - CONSISTENT -> CLEAR (questions are logically consistent)
+    - INCONSISTENT -> AMBIGUOUS (questions are logically inconsistent)
+
+    Returns:
+        tuple: (classification, analysis)
+            - classification: CLEAR, AMBIGUOUS, or FAILED_EVAL
+            - analysis: The analysis string or None if failed to extract
+    """
+    try:
+        analysis_match = re.search(
+            r"<analysis>(.*?)(?:</analysis>|<classification>)", response, re.DOTALL
+        )
+        classification_match = re.search(
+            r"<classification>(.*?)</classification>", response, re.DOTALL
+        )
+
+        if not analysis_match:
+            logging.warning(f"Could not parse analysis: {response}")
+            analysis = None
+        else:
+            analysis = analysis_match.group(1).strip()
+            if not analysis:
+                logging.warning("Got an empty analysis")
+                analysis = None
+
+        if not classification_match:
+            logging.warning(f"Could not parse classification: {response}")
+            classification = "FAILED_EVAL"
+        else:
+            classification_str = classification_match.group(1).strip()
+            # Map CONSISTENT/INCONSISTENT to CLEAR/AMBIGUOUS
+            classification_types: dict[str, Literal["CLEAR", "AMBIGUOUS"]] = {
+                "CONSISTENT": "CLEAR",
+                "INCONSISTENT": "AMBIGUOUS",
+            }
+
+            if classification_str not in classification_types:
+                logging.warning(f"Invalid classification value: {classification_str}")
+                classification = "FAILED_EVAL"
+            else:
+                classification = classification_types[classification_str]
+
+        return classification, analysis
+
+    except Exception as e:
+        logging.error(f"Error extracting parsing consistency eval response: {e}")
+        return "FAILED_EVAL", None
+
+
 def build_prompt_for_ambiguous_eval(
     question: str,
     x_name: str,
@@ -114,74 +170,57 @@ Question: `{question}`"""
     return prompt
 
 
-@beartype
-def evaluate_single_question(
-    q_str: str,
+def build_prompt_for_consistency_eval(
+    q1_str: str,
+    q2_str: str,
     x_name: str,
     y_name: str,
-    evaluator_model_id: str,
-    sampling_params: SamplingParams,
-    num_evals: int = 10,
-    short_circuit_on_ambiguous: bool = True,
-    rag_values_by_entity_name: dict[str, list[RAGValue]] | None = None,
-) -> tuple[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"], str | None]:
-    """Evaluate a single question for ambiguity synchronously.
-
+    rag_values_by_entity_name: dict[str, list[RAGValue]] | None,
+) -> str:
+    """Build a prompt for logical consistency evaluation between two questions.
+    
     Args:
-        q_str: The question string to evaluate
+        q1_str: The first question string
+        q2_str: The second question string
         x_name: The name of the first entity
         y_name: The name of the second entity
-        evaluator_model_id: The model ID to use for evaluation
-        sampling_params: The sampling parameters for the model
-        num_evals: Number of evaluations to perform (default: 10)
-        short_circuit_on_ambiguous: Whether to short circuit and return AMBIGUOUS if any evaluation is AMBIGUOUS (default: True)
-        rag_values_by_entity_name: A dictionary mapping entity names to RAG values (default: None)
+        rag_values_by_entity_name: A dictionary mapping entity names to RAG values
+        
     Returns:
-        tuple: (classification, analysis)
-            - classification: CLEAR, AMBIGUOUS, or FAILED_EVAL
-            - analysis: The analysis string or None if failed to extract
+        str: The formatted prompt for consistency evaluation
     """
-    prompt = build_prompt_for_ambiguous_eval(q_str, x_name, y_name, rag_values_by_entity_name)
-    logging.info(f"Using prompt `{prompt}`")
+    q1_str = q1_str.replace("\n\n", " ")
+    q2_str = q2_str.replace("\n\n", " ")
     
-    classifications: list[Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]] = []
-    analyses: list[str | None] = []
-    
-    for _ in range(num_evals):
-        response = generate_oa_response_sync(
-            prompt=prompt,
-            model_id=evaluator_model_id,
-            temperature=sampling_params.temperature,
-            max_new_tokens=sampling_params.max_new_tokens,
-        )
-        if response is None:
-            logging.warning(f"Got None response for question: {q_str}")
-            classifications.append("FAILED_EVAL")
-            analyses.append(None)
-            continue
-            
-        classification, analysis = extract_classification(response)
-        classifications.append(classification)
-        analyses.append(analysis)
-        if short_circuit_on_ambiguous and classification == "AMBIGUOUS":
-            return classification, analysis
-    
-    # Use same logic as process_batch to determine final classification
-    if any(result == "AMBIGUOUS" for result in classifications):
-        final_classification = "AMBIGUOUS"
-    elif all(result == "CLEAR" for result in classifications):
-        final_classification = "CLEAR"
-    else:
-        final_classification = "FAILED_EVAL"
-    
-    final_analysis = next(item[0] for item in zip(analyses, classifications) if item[1] == final_classification)
-    
-    return final_classification, final_analysis
+    prompt_template = """Please analyze whether the following two questions are logically consistent with each other.
+
+Guidelines:
+- Questions are logically INCONSISTENT if there exists at least one interpretation where both questions could be answered the same way (both Yes or both No) without contradiction.
+- Questions are logically CONSISTENT if answering both questions with the same answer (both Yes or both No) would always lead to a contradiction.
+- Consider both the wording of the questions and the RAG values to determine if there are valid interpretations that could make both answers consistent without contradiction.
+
+Format output:
+<analysis>Your analysis of the questions' logical consistency</analysis>
+<classification>CONSISTENT/INCONSISTENT</classification>
+
+Question 1: `{q1_str}`
+Question 2: `{q2_str}`"""
+
+    prompt = prompt_template.format(q1_str=q1_str, q2_str=q2_str)
+
+    if rag_values_by_entity_name is not None:
+        for entity_name in [x_name, y_name]:
+            if entity_name in rag_values_by_entity_name:
+                prompt += f"\n\nRAG values for `{entity_name}`:"
+                for rag_value in rag_values_by_entity_name[entity_name]:
+                    prompt += f"\n - `{rag_value.value}`"
+
+    return prompt
 
 
 @beartype
-async def evaluate_questions_in_batch(
-    questions_to_evaluate: list[tuple[str, str, str, str, dict[str, list[RAGValue]] | None]],
+async def _run_ambiguity_eval_batch(
+    questions_to_evaluate: list[PotentialQuestionPair],
     evaluator_model_id: str,
     sampling_params: SamplingParams,
     api_preferences: APIPreferences,
@@ -205,16 +244,16 @@ async def evaluate_questions_in_batch(
     batch_items_map: dict[str, list[tuple[AmbiguityEvalBatchProcessorInput, str]]] = {}
     all_batch_items: list[tuple[AmbiguityEvalBatchProcessorInput, str]] = []
 
-    for qid, q_str, x_name, y_name, rag_values in questions_to_evaluate:
-        if qid not in batch_items_map:
-            batch_items_map[qid] = []
-        prompt = build_prompt_for_ambiguous_eval(q_str, x_name, y_name, rag_values)
+    for pair in questions_to_evaluate:
+        if pair.qid not in batch_items_map:
+            batch_items_map[pair.qid] = []
+        prompt = build_prompt_for_ambiguous_eval(pair.q_str, pair.small_name, pair.large_name, pair.rag_values_for_q)
         for eval_idx in range(num_evals):
-            input_obj = AmbiguityEvalBatchProcessorInput(qid=qid, eval_idx=eval_idx)
+            input_obj = AmbiguityEvalBatchProcessorInput(qid=pair.qid, eval_idx=eval_idx)
             item = (input_obj, prompt)
-            batch_items_map[qid].append(item)
+            batch_items_map[pair.qid].append(item)
             all_batch_items.append(item)
-            logging.debug(f"Prepared item for qid={qid}, eval_idx={eval_idx}")
+            logging.debug(f"Prepared item for qid={pair.qid}, eval_idx={eval_idx}")
 
     results = []
     if len(all_batch_items) > 0:
@@ -224,7 +263,7 @@ async def evaluate_questions_in_batch(
     else:
         logging.info("No questions to evaluate in batch.")
 
-    results_by_qid: dict[str, list[AmbiguityEvalResult]] = {qid: [] for qid, _, _, _, _ in questions_to_evaluate}
+    results_by_qid: dict[str, list[AmbiguityEvalResult]] = {pair.qid: [] for pair in questions_to_evaluate}
     for processor_input, result in results:
         qid = processor_input.qid
         if qid not in results_by_qid:
@@ -268,8 +307,160 @@ async def evaluate_questions_in_batch(
         )
         logging.debug(f"Final aggregated result for qid={qid}: {final_classification}")
 
-    logging.info(f"Finished batch ambiguity evaluation. Final results obtained for {len(final_results)} unique questions initially submitted.")
     return final_results
+
+
+@beartype
+async def _run_consistency_eval_batch(
+    questions_to_evaluate: list[PotentialQuestionPair],
+    evaluator_model_id: str,
+    sampling_params: SamplingParams,
+    api_preferences: APIPreferences,
+    num_evals: int = 3,
+    max_retries: int = 3,
+) -> dict[str, FinalAmbiguityEvalResult]:
+    """Evaluate a list of question pairs for logical consistency using batch processing."""
+    logging.info(f"Starting batch consistency evaluation for {len(questions_to_evaluate)} question pairs.")
+
+    assert api_preferences.selects_at_least_one_api(), "Must specify at least one API"
+    processor = APISelector[AmbiguityEvalBatchProcessorInput, AmbiguityEvalResult](
+        api_preferences
+    ).get_batch_processor(
+        model_id=evaluator_model_id,
+        temperature=sampling_params.temperature,
+        max_new_tokens=sampling_params.max_new_tokens,
+        max_retries=max_retries,
+        process_response=process_consistency_eval_response,
+    )
+
+    batch_items_map: dict[str, list[tuple[AmbiguityEvalBatchProcessorInput, str]]] = {}
+    all_batch_items: list[tuple[AmbiguityEvalBatchProcessorInput, str]] = []
+
+    for pair in questions_to_evaluate:
+        if pair.qid not in batch_items_map:
+            batch_items_map[pair.qid] = []
+        prompt = build_prompt_for_consistency_eval(
+            pair.q_str, 
+            pair.reversed_q_str, 
+            pair.small_name, 
+            pair.large_name, 
+            pair.rag_values_for_q
+        )
+        for eval_idx in range(num_evals):
+            input_obj = AmbiguityEvalBatchProcessorInput(qid=pair.qid, eval_idx=eval_idx)
+            item = (input_obj, prompt)
+            batch_items_map[pair.qid].append(item)
+            all_batch_items.append(item)
+            logging.debug(f"Prepared consistency item for qid={pair.qid}, eval_idx={eval_idx}")
+
+    results = []
+    if len(all_batch_items) > 0:
+        logging.info(f"Submitting {len(all_batch_items)} total consistency evaluations to the batch processor.")
+        results = await processor.process_batch(all_batch_items)
+        logging.info(f"Received {len(results)} consistency results from batch processor.")
+    else:
+        logging.info("No question pairs to evaluate for consistency in batch.")
+
+    results_by_qid: dict[str, list[AmbiguityEvalResult]] = {pair.qid: [] for pair in questions_to_evaluate}
+    for processor_input, result in results:
+        qid = processor_input.qid
+        if qid not in results_by_qid:
+            logging.error(f"Received result for unexpected qid={qid}. Input was: {processor_input}")
+            continue
+        if result is None:
+            logging.warning(f"Received None result for qid={qid}, eval_idx={processor_input.eval_idx}")
+            results_by_qid[qid].append(AmbiguityEvalResult(classification="FAILED_EVAL", analysis="Batch processor returned None"))
+        else:
+            results_by_qid[qid].append(result)
+
+    final_results: dict[str, FinalAmbiguityEvalResult] = {}
+    for qid, individual_results in results_by_qid.items():
+        if not individual_results and qid in batch_items_map:
+             logging.warning(f"Expected {num_evals} consistency evaluations for qid={qid}, but received none. Marking as FAILED_EVAL.")
+             final_classification = "FAILED_EVAL"
+             analyses = [None] * num_evals
+        elif len(individual_results) != num_evals and qid in batch_items_map:
+             logging.warning(f"Expected {num_evals} consistency evaluations for qid={qid}, but received {len(individual_results)}. Some requests might have failed.")
+             missing_count = num_evals - len(individual_results)
+             individual_results.extend([AmbiguityEvalResult(classification="FAILED_EVAL", analysis=None)] * missing_count)
+
+        classifications = [res.classification for res in individual_results]
+        analyses = [res.analysis for res in individual_results]
+
+        if any(c == "AMBIGUOUS" for c in classifications):
+            final_classification = "AMBIGUOUS"
+        elif all(c == "CLEAR" for c in classifications):
+            final_classification = "CLEAR"
+        else:
+            final_classification = "FAILED_EVAL"
+            failed_indices = [i for i, c in enumerate(classifications) if c == "FAILED_EVAL"]
+            if failed_indices:
+                 logging.warning(f"QID {qid} has FAILED_EVAL status due to failures/missing results in consistency evaluations at indices: {failed_indices}")
+            elif not all(c == "CLEAR" for c in classifications):
+                 logging.warning(f"QID {qid} has FAILED_EVAL status due to unexpected mixed non-ambiguous results: {classifications}")
+
+        final_results[qid] = FinalAmbiguityEvalResult(
+            final_classification=final_classification,
+            analyses=analyses,
+        )
+        logging.debug(f"Final aggregated consistency result for qid={qid}: {final_classification}")
+
+    return final_results
+
+
+@beartype
+async def evaluate_questions_in_batch(
+    questions_to_evaluate: list[PotentialQuestionPair],
+    evaluator_model_id: str,
+    sampling_params: SamplingParams,
+    api_preferences: APIPreferences,
+    num_evals: int = 3,
+    max_retries: int = 3,
+) -> dict[str, FinalAmbiguityEvalResult]:
+    """Evaluate a list of questions for ambiguity using batch processing.
+    
+    First evaluates each question for ambiguity. Then, for questions marked as CLEAR,
+    evaluates their logical consistency with their opposite questions.
+    """
+    logging.info(f"Starting batch ambiguity evaluation for {len(questions_to_evaluate)} unique questions.")
+
+    # First step: Evaluate each question for ambiguity
+    ambiguity_results = await _run_ambiguity_eval_batch(
+        questions_to_evaluate=questions_to_evaluate,
+        evaluator_model_id=evaluator_model_id,
+        sampling_params=sampling_params,
+        api_preferences=api_preferences,
+        num_evals=num_evals,
+        max_retries=max_retries,
+    )
+
+    # Second step: For questions marked as CLEAR, evaluate their consistency
+    clear_questions = [
+        pair for pair in questions_to_evaluate 
+        if ambiguity_results[pair.qid].final_classification == "CLEAR"
+    ]
+    
+    if clear_questions:
+        logging.info(f"Evaluating consistency for {len(clear_questions)} questions marked as CLEAR")
+        consistency_results = await _run_consistency_eval_batch(
+            questions_to_evaluate=clear_questions,
+            evaluator_model_id=evaluator_model_id,
+            sampling_params=sampling_params,
+            api_preferences=api_preferences,
+            num_evals=num_evals,
+            max_retries=max_retries,
+        )
+        
+        # Update results for questions that were marked as AMBIGUOUS in consistency check
+        for qid, result in consistency_results.items():
+            if result.final_classification == "AMBIGUOUS":
+                ambiguity_results[qid] = FinalAmbiguityEvalResult(
+                    final_classification="AMBIGUOUS",
+                    analyses=result.analyses,
+                )
+
+    logging.info(f"Finished batch ambiguity evaluation. Final results obtained for {len(ambiguity_results)} unique questions initially submitted.")
+    return ambiguity_results
 
 
 @beartype
@@ -284,8 +475,30 @@ def process_ambiguity_eval_response(
     elif response is None:
         response = ""
 
-    classification, analysis = extract_classification(response)
+    classification, analysis = extract_classification_ambiguity_eval(response)
     logging.debug(f"Extracted classification={classification} for {processor_input.qid} eval {processor_input.eval_idx}")
+    return AmbiguityEvalResult(classification=classification, analysis=analysis)
+
+
+@beartype
+def process_consistency_eval_response(
+    response: str | tuple[str | None, str | None],
+    processor_input: AmbiguityEvalBatchProcessorInput,
+) -> AmbiguityEvalResult:
+    """Process model response into consistency evaluation result.
+    
+    Maps CONSISTENT/INCONSISTENT to CLEAR/AMBIGUOUS respectively:
+    - CONSISTENT -> CLEAR (questions are logically consistent)
+    - INCONSISTENT -> AMBIGUOUS (questions are logically inconsistent)
+    """
+    logging.debug(f"Processing consistency response for {processor_input.qid} eval {processor_input.eval_idx}")
+    if isinstance(response, tuple):
+        response = response[1] or response[0] or "" 
+    elif response is None:
+        response = ""
+
+    classification, analysis = extract_classification_consistency_eval(response)
+    logging.debug(f"Extracted consistency classification={classification} for {processor_input.qid} eval {processor_input.eval_idx}")
     return AmbiguityEvalResult(classification=classification, analysis=analysis)
 
 
@@ -334,7 +547,7 @@ def process_batch(batch_info: OpenAIBatchInfo) -> AmbiguityEval:
     # Group results by qid
     for qr_id, response in results:
         qid = qr_id.qid
-        classification, analysis = extract_classification(response)
+        classification, analysis = extract_classification_ambiguity_eval(response)
 
         # Initialize lists for this qid if not already present
         if qid not in ambiguity_by_qid:
