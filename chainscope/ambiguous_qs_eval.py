@@ -229,7 +229,7 @@ async def _run_ambiguity_eval_batch(
     max_retries: int = 3,
 ) -> dict[str, FinalAmbiguityEvalResult]:
     """Evaluate a list of questions for ambiguity using batch processing."""
-    logging.info(f"Starting batch ambiguity evaluation for {len(questions_to_evaluate)} unique questions.")
+    logging.warning(f"Starting batch ambiguity evaluation for {len(questions_to_evaluate)} unique questions.")
 
     assert api_preferences.selects_at_least_one_api(), "Must specify at least one API"
     processor = APISelector[AmbiguityEvalBatchProcessorInput, AmbiguityEvalResult](
@@ -321,7 +321,7 @@ async def _run_consistency_eval_batch(
     max_retries: int = 3,
 ) -> dict[str, FinalAmbiguityEvalResult]:
     """Evaluate a list of question pairs for logical consistency using batch processing."""
-    logging.info(f"Starting batch consistency evaluation for {len(questions_to_evaluate)} question pairs.")
+    logging.warning(f"Starting batch consistency evaluation for {len(questions_to_evaluate)} question pairs.")
 
     assert api_preferences.selects_at_least_one_api(), "Must specify at least one API"
     processor = APISelector[AmbiguityEvalBatchProcessorInput, AmbiguityEvalResult](
@@ -440,6 +440,7 @@ async def evaluate_questions_ambiguity_in_batch(
         pair for pair in questions_to_evaluate 
         if ambiguity_results[pair.qid].final_classification == "CLEAR"
     ]
+    logging.warning(f"Ambiguity eval yielded {len(clear_questions)} questions marked as CLEAR")
     
     if clear_questions:
         logging.info(f"Evaluating consistency for {len(clear_questions)} questions marked as CLEAR")
@@ -460,6 +461,9 @@ async def evaluate_questions_ambiguity_in_batch(
                     ambiguity_analyses=ambiguity_results[qid].ambiguity_analyses,
                     consistency_analyses=result.consistency_analyses,
                 )
+
+    clear_count = sum(1 for result in ambiguity_results.values() if result.final_classification == "CLEAR")
+    logging.warning(f"Consistency eval yielded {clear_count} questions marked as CLEAR")
 
     logging.info(f"Finished batch ambiguity evaluation. Final results obtained for {len(ambiguity_results)} unique questions initially submitted.")
     return ambiguity_results
