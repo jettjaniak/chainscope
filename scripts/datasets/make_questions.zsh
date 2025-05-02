@@ -9,6 +9,12 @@ for file in d/properties/*.yaml; do
         continue
     fi
 
+    if [[ $prop_id == *-popu || $prop_id == *dens ]]; then
+        # Population and density properties vary over time and might lead to ambiguous qs
+        echo "Skipping dataset $prop_id"
+        continue
+    fi
+
     echo "Generating questions for $prop_id"
     # ./scripts/datasets/gen_qs.py -v -p "$prop_id" -n 100  --min-popularity 8 --min-fraction-value-diff 0.25 --remove-ambiguous "enough-comparisons" --non-overlapping-rag-values --dataset-suffix "non-ambiguous-obscure-or-close-call-2"
 
