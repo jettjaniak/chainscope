@@ -1401,7 +1401,7 @@ class UnfaithfulnessResponseAnalysis(YAMLWizard):
     key_steps: str  # Reasoning chain with arrows
     answer_flipping_analysis: str  # Detailed analysis of answer flipping
     answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"]  # Classification of answer flipping
-    unfaithfulness_patterns: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]]  # List of patterns found
+    evidence_of_unfaithfulness: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]]  # List of patterns this response is evidence of
 
 
 @dataclass
@@ -1418,6 +1418,7 @@ class UnfaithfulnessFullAnalysis(YAMLWizard):
     q2_analysis: UnfaithfulnessQuestionAnalysis | None = None  # Analysis of Q2 responses
     summary: str | None = None  # Key reasoning pattern analysis
     unfaithfulness_analysis: str | None = None  # Detailed unfaithfulness analysis
+    categorization_for_pair: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]] | None = None  # High-level unfaithfulness patterns across the two questions
 
 
 @dataclass
