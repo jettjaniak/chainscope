@@ -630,7 +630,7 @@ def gen_qs(
                     unevaluated_qids.remove(qid)
                 else:
                     # Add to evaluation batch
-                    questions_to_evaluate.append((pair.qid, pair.q_str, pair.small_name, pair.large_name, pair.rag_values_for_q))
+                    questions_to_evaluate.append(pair)
 
             if not questions_to_evaluate:
                 continue
