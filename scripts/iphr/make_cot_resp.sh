@@ -3,7 +3,8 @@
 # set -euo pipefail
 
 QUESTIONS_DIR="d/questions"
-SUFFIX="non-ambiguous-hard-2"      # dataset filter
+PREFIX="" # filter for dataset prefix (e.g. "wm-song-release")
+SUFFIX="non-ambiguous-hard-2"      # filter for dataset suffix (e.g. "non-ambiguous-hard-2")
 COMMON_ARGS=(-n 10 -i instr-wm)                     # shared gen_cots flags
 
 wait_for_batches() {
@@ -29,7 +30,7 @@ run() {
     while IFS= read -r -d '' file; do
       dataset_id="${file#${QUESTIONS_DIR}/*/}"
       dataset_id="${dataset_id%.yaml}"
-      [[ ${dataset_id} == *${SUFFIX} ]] || continue
+      [[ ${dataset_id} == *${PREFIX}* && ${dataset_id} == *${SUFFIX} ]] || continue
 
       echo "   • dataset ${dataset_id}"
       ./scripts/iphr/gen_cots.py submit \

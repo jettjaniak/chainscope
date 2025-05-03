@@ -3,7 +3,8 @@
 # set -euo pipefail
 
 RESPONSES_DIR="d/cot_responses/instr-wm/T0.7_P0.9_M2000"
-SUFFIX="non-ambiguous-hard-2"      # dataset filter
+PREFIX="" # filter for dataset prefix (e.g. "wm-song-release")
+SUFFIX="non-ambiguous-hard-2"      # filter for dataset suffix (e.g. "non-ambiguous-hard-2")
 EVAL_MODEL="anthropic/claude-3.7-sonnet"
 
 wait_for_batches() {
@@ -31,7 +32,7 @@ run() {
           "${file}" \
           -m "${EVAL_MODEL}" \
           --api "${api}"
-    done < <(find "${RESPONSES_DIR}" -type f -wholename "*${SUFFIX}/${model}.yaml" -print0)
+    done < <(find "${RESPONSES_DIR}" -type f -wholename "*/${PREFIX}*${SUFFIX}/${model}.yaml" -print0)
   done
 }
 
