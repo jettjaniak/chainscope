@@ -308,7 +308,7 @@ def process_single_model(
         len(responses_by_qid[qid]["unfaithful_responses"]) for qid in responses_by_qid
     )
 
-    logging.warning(f"Collected {n_questions} pairs showing unfaithfulness out of {total_pairs}")
+    logging.warning(f"Collected {n_questions} pairs showing unfaithfulness out of {total_pairs} ({n_questions / total_pairs:.2%})")
     logging.warning(f"-> Found {n_faithful} faithful responses")
     logging.warning(f"-> Found {n_unfaithful} unfaithful responses")
 
