@@ -523,8 +523,6 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     # Initialize aggregated stats
     total_q_pairs = 0
     total_responses = 0
-    all_none_q_pairs = 0
-    q_pairs_with_pattern = 0
     q_pairs_by_pattern: dict[str, int] = {
         "fact-manipulation": 0,
         "argument-switching": 0,
@@ -542,8 +540,6 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     for analysis in pattern_analyses:
         total_q_pairs += analysis["total_q_pairs"]
         total_responses += analysis["total_responses"]
-        all_none_q_pairs += analysis["all_none_q_pairs"]
-        q_pairs_with_pattern += analysis["q_pairs_with_pattern"]
         
         # Aggregate pattern counts
         for pattern in q_pairs_by_pattern:
@@ -554,8 +550,6 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     logging.warning("\nAggregated Pattern Analysis Results:")
     logging.warning(f"Total question pairs: {total_q_pairs}")
     logging.warning(f"Total responses: {total_responses}")
-    logging.warning(f"Question pairs with no patterns: {all_none_q_pairs} ({all_none_q_pairs/total_q_pairs:.1%})")
-    logging.warning(f"Question pairs with patterns: {q_pairs_with_pattern} ({q_pairs_with_pattern/total_q_pairs:.1%})")
     
     logging.warning("\nQuestion pairs by pattern:")
     for pattern, count in q_pairs_by_pattern.items():
@@ -570,8 +564,6 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     return {
         "total_q_pairs": total_q_pairs,
         "total_responses": total_responses,
-        "all_none_q_pairs": all_none_q_pairs,
-        "q_pairs_with_pattern": q_pairs_with_pattern,
         "q_pairs_by_pattern": q_pairs_by_pattern,
         "responses_by_pattern": responses_by_pattern,
     }
@@ -897,8 +889,6 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
     """
     total_q_pairs = len(pattern_eval.pattern_analysis_by_qid)
     total_responses = 0
-    all_none_q_pairs = 0
-    q_pairs_with_pattern = 0
     q_pairs_by_pattern: dict[str, int] = {
         "fact-manipulation": 0,
         "argument-switching": 0,
@@ -914,51 +904,50 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
 
     for qid, analysis in pattern_eval.pattern_analysis_by_qid.items():
         # Check if all responses have no patterns
-        all_none = True
         q_patterns: set[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]] = set()
         
         # Check if the model has a categorization for the pair
         if analysis.categorization_for_pair:
-            q_patterns.update(analysis.categorization_for_pair)
+            assert "none" not in analysis.categorization_for_pair or len(analysis.categorization_for_pair) == 1, f"Found none and other patterns in question {qid}: {analysis.categorization_for_pair}"
+            for pattern in analysis.categorization_for_pair:
+                if pattern == "none":
+                    continue
+                q_patterns.add(pattern)
         
         # Check Q1 responses
         if analysis.q1_analysis:
-            for resp_analysis in analysis.q1_analysis.responses.values():
+            for resp_id, resp_analysis in analysis.q1_analysis.responses.items():
                 total_responses += 1
                 patterns = set(resp_analysis.evidence_of_unfaithfulness)
-                if "none" not in patterns:
-                    all_none = False
-                    for pattern in patterns:
-                        responses_by_pattern[pattern] += 1
+                assert "none" not in patterns or len(patterns) == 1, f"Found none and other patterns in response {resp_id}: {patterns}"
+                for pattern in patterns:
+                    if pattern == "none":
+                        continue
+                    responses_by_pattern[pattern] += 1
                 if resp_analysis.answer_flipping_classification == "YES":
                     q_patterns.add("answer-flipping")
                     responses_by_pattern["answer-flipping"] += 1
         
         # Check Q2 responses
         if analysis.q2_analysis:
-            for resp_analysis in analysis.q2_analysis.responses.values():
+            for resp_id, resp_analysis in analysis.q2_analysis.responses.items():
                 total_responses += 1
                 patterns = set(resp_analysis.evidence_of_unfaithfulness)
-                if "none" not in patterns:
-                    all_none = False
-                    for pattern in patterns:
-                        responses_by_pattern[pattern] += 1
+                assert "none" not in patterns or len(patterns) == 1, f"Found none and other patterns in response {resp_id}: {patterns}"
+                for pattern in patterns:
+                    if pattern == "none":
+                        continue
+                    responses_by_pattern[pattern] += 1
                 if resp_analysis.answer_flipping_classification == "YES":
                     q_patterns.add("answer-flipping")
                     responses_by_pattern["answer-flipping"] += 1
-        if all_none:
-            all_none_q_pairs += 1
-        else:
-            q_pairs_with_pattern += 1
-            for pattern in q_patterns:
-                if pattern != "none":
-                    q_pairs_by_pattern[pattern] += 1
+
+        for pattern in q_patterns:
+            q_pairs_by_pattern[pattern] += 1
 
     return {
         "total_q_pairs": total_q_pairs,
         "total_responses": total_responses,
-        "all_none_q_pairs": all_none_q_pairs,
-        "q_pairs_with_pattern": q_pairs_with_pattern,
         "q_pairs_by_pattern": q_pairs_by_pattern,
         "responses_by_pattern": responses_by_pattern,
     }
