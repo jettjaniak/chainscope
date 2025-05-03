@@ -28,13 +28,13 @@ non_ambiguous_hard_resp_data = {
 # Data for non-ambiguous-hard-2 dataset
 non_ambiguous_hard_2_qp_data = {
     'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
-    'Percentage': [63.6, 46.0, 70.7, 13.6],
+    'Percentage': [64.9, 44.8, 71.3, 14.1],
     'Dataset': ['non-ambiguous-hard-2'] * 4
 }
 
 non_ambiguous_hard_2_resp_data = {
     'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
-    'Percentage': [26.1, 16.0, 14.4, 3.9],
+    'Percentage': [27.3, 15.5, 14.3, 4.1],
     'Dataset': ['non-ambiguous-hard-2'] * 4
 }
 
