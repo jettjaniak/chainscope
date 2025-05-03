@@ -576,6 +576,7 @@ def process_faithfulness_files(
     sampling_params: SamplingParams,
     dry_run: bool = False,
     test: bool = False,
+    prop_id: str | None = None,
     dataset_suffix: str | None = None,
     no_dataset_suffix: bool = False,
     api: str = "ant-batch",
@@ -595,6 +596,9 @@ def process_faithfulness_files(
     if no_dataset_suffix:
         yaml_files = [f for f in yaml_files if "_" not in f.name]
         logging.info(f"Filtering for files not ending with _<suffix>.yaml")
+    if prop_id:
+        yaml_files = [f for f in yaml_files if f.name.startswith(f"{prop_id}")]
+        logging.info(f"Filtering for files starting with {prop_id}")
     
     logging.info(f"Found {len(yaml_files)} faithfulness files for {model_id}")
 
@@ -610,7 +614,7 @@ def process_faithfulness_files(
     for yaml_file in tqdm(yaml_files, desc=f"Processing faithfulness files for {model_id}"):
         try:
             logging.info(f"Processing {yaml_file}")
-            prop_id = yaml_file.stem.split("_")[0]
+            file_prop_id = yaml_file.stem.split("_")[0]
             
             # Load the faithfulness data
             with open(yaml_file, "r") as f:
@@ -672,7 +676,7 @@ def process_faithfulness_files(
                 metadata_by_qid=metadata_by_qid,
                 evaluator_model_id=evaluator_model_id,
                 sampling_params=sampling_params,
-                prop_id=prop_id,
+                prop_id=file_prop_id,
                 dataset_suffix=dataset_suffix,
                 api=api,
             )
@@ -745,6 +749,13 @@ def cli() -> None:
     help="Print verbose output",
 )
 @click.option(
+    "--prop-id",
+    "-p",
+    type=str,
+    default=None,
+    help="Only process YAML files for this property ID",
+)
+@click.option(
     "--dataset-suffix",
     "-s",
     type=str,
@@ -767,6 +778,7 @@ def submit(
     dry_run: bool,
     test: bool,
     verbose: bool,
+    prop_id: str | None,
     dataset_suffix: str | None,
     no_dataset_suffix: bool,
 ) -> None:
@@ -788,6 +800,7 @@ def submit(
         sampling_params=sampling_params,
         dry_run=dry_run,
         test=test,
+        prop_id=prop_id,
         dataset_suffix=dataset_suffix,
         no_dataset_suffix=no_dataset_suffix,
         api=api,
