@@ -25,6 +25,19 @@ non_ambiguous_hard_resp_data = {
     'Dataset': ['non-ambiguous-hard'] * 4
 }
 
+# Data for non-ambiguous-hard-2 dataset
+non_ambiguous_hard_2_qp_data = {
+    'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
+    'Percentage': [63.6, 46.0, 70.7, 13.6],
+    'Dataset': ['non-ambiguous-hard-2'] * 4
+}
+
+non_ambiguous_hard_2_resp_data = {
+    'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
+    'Percentage': [26.1, 16.0, 14.4, 3.9],
+    'Dataset': ['non-ambiguous-hard-2'] * 4
+}
+
 # Data for the second dataset (non-ambiguous-obscure-or-close-call-2)
 non_ambiguous_obscure_or_close_call_2_qp_data = {
     'Pattern': ['fact-manipulation', 'argument-switching', 'answer-flipping', 'other'],
@@ -58,12 +71,14 @@ wm_ambiguous_resp_data = {
 # Create DataFrames
 qp_df = pd.concat([
     pd.DataFrame(non_ambiguous_hard_qp_data), 
+    pd.DataFrame(non_ambiguous_hard_2_qp_data),
     pd.DataFrame(non_ambiguous_obscure_or_close_call_2_qp_data),
     pd.DataFrame(wm_ambiguous_qp_data)
 ], ignore_index=True)
 
 resp_df = pd.concat([
     pd.DataFrame(non_ambiguous_hard_resp_data), 
+    pd.DataFrame(non_ambiguous_hard_2_resp_data),
     pd.DataFrame(non_ambiguous_obscure_or_close_call_2_resp_data),
     pd.DataFrame(wm_ambiguous_resp_data)
 ], ignore_index=True)
@@ -103,13 +118,14 @@ plt.show()
 
 # %%
 
-dataset_suffix = "non-ambiguous-hard"
+# dataset_suffix = "non-ambiguous-hard-2"
+dataset_suffix = None
 model_name = "claude-3.5-haiku"
 
 # %%
 
 # Function to extract confidence scores from unfaithfulness pattern evaluation files
-def extract_confidence_scores(base_dir, dataset_suffix, model_name):
+def extract_confidence_scores_old_scheme(base_dir, dataset_suffix, model_name):
     # Initialize data collection
     all_confidence_scores = []
     pattern_confidence_scores = {
@@ -121,7 +137,10 @@ def extract_confidence_scores(base_dir, dataset_suffix, model_name):
     }
     
     # Get all pattern evaluation directories for the specified dataset suffix
-    eval_files = list(Path(base_dir).glob(f"*_{dataset_suffix}/{model_name}.yaml"))
+    if dataset_suffix is None:
+        eval_files = list(Path(base_dir).glob(f"*/*.yaml"))
+    else:
+        eval_files = list(Path(base_dir).glob(f"*_{dataset_suffix}/{model_name}.yaml"))
     
     def process_responses(responses):
         for resp_id, resp_analysis in responses.items():
@@ -139,6 +158,12 @@ def extract_confidence_scores(base_dir, dataset_suffix, model_name):
                     pattern_confidence_scores[pattern].append(resp_analysis["confidence"])
 
     for eval_file in eval_files:
+        if dataset_suffix is None and "_" in eval_file.parent.name:
+            logging.warning(f"Skipping {eval_file} because dataset suffix is not provided and {eval_file.parent.name} contains _")
+            continue
+
+        logging.warning(f"Processing {eval_file}")
+
         # Load the evaluation file using yaml
         with open(eval_file, 'r') as f:
             eval_data = yaml.safe_load(f)
@@ -153,9 +178,66 @@ def extract_confidence_scores(base_dir, dataset_suffix, model_name):
     
     return all_confidence_scores, pattern_confidence_scores
 
+def extract_confidence_scores_new_scheme(base_dir, dataset_suffix, model_name):
+    # Initialize data collection
+    all_confidence_scores = []
+    pattern_confidence_scores = {
+        'fact-manipulation': [],
+        'argument-switching': [],
+        'answer-flipping': [],
+        'other': [],
+        'none': []
+    }
+    
+    # Get all pattern evaluation directories for the specified dataset suffix
+    if dataset_suffix is None:
+        eval_files = list(Path(base_dir).glob(f"*/*.yaml"))
+    else:
+        eval_files = list(Path(base_dir).glob(f"*_{dataset_suffix}/{model_name}.yaml"))
+    
+    def process_responses(responses):
+        for resp_id, resp_analysis in responses.items():
+            # Add to overall confidence scores
+            all_confidence_scores.append(resp_analysis["confidence"])
+            
+            # Add to pattern-specific confidence scores
+            patterns_in_resp = set(resp_analysis["evidence_of_unfaithfulness"])
+
+            assert len(resp_analysis["evidence_of_unfaithfulness"]) == len(patterns_in_resp), f"Duplicate patterns in response {resp_id}: {resp_analysis['evidence_of_unfaithfulness']}"
+            assert "none" not in patterns_in_resp or len(patterns_in_resp) == 1, f"Response {resp_id} has none pattern mixed with other patterns: {resp_analysis['evidence_of_unfaithfulness']}"
+
+            for pattern in patterns_in_resp:
+                if pattern in pattern_confidence_scores:
+                    pattern_confidence_scores[pattern].append(resp_analysis["confidence"])
+
+    for eval_file in eval_files:
+        if dataset_suffix is None and "_" in eval_file.parent.name:
+            logging.warning(f"Skipping {eval_file} because dataset suffix is not provided and {eval_file.parent.name} contains _")
+            continue
+
+        logging.warning(f"Processing {eval_file}")
+
+        # Load the evaluation file using yaml
+        with open(eval_file, 'r') as f:
+            eval_data = yaml.safe_load(f)
+        
+        # Extract confidence scores from all responses
+        for qid, analysis in eval_data["pattern_analysis_by_qid"].items():
+            if analysis["q1_analysis"] and analysis["q1_analysis"]["responses"]:
+                process_responses(analysis["q1_analysis"]["responses"])
+                            
+            if analysis["q2_analysis"] and analysis["q2_analysis"]["responses"]:
+                process_responses(analysis["q2_analysis"]["responses"])
+    
+    return all_confidence_scores, pattern_confidence_scores
+
+
 # Extract confidence scores
 base_dir = Path(DATA_DIR) / "unfaithfulness_pattern_eval" / "T0.0_P0.9_M8000"
-all_scores, pattern_scores = extract_confidence_scores(base_dir, dataset_suffix, model_name)
+if dataset_suffix == "non-ambiguous-hard-2":
+    all_scores, pattern_scores = extract_confidence_scores_new_scheme(base_dir, dataset_suffix, model_name)
+else:
+    all_scores, pattern_scores = extract_confidence_scores_old_scheme(base_dir, dataset_suffix, model_name)
 del pattern_scores["none"]
 
 # %%
@@ -206,7 +288,11 @@ sns.violinplot(data=confidence_df,
 # Set the modified x-tick labels
 plt.xticks(range(len(pattern_order)), x_tick_labels)
 
-plt.title(f'Confidence Score Distributions by Unfaithfulness Pattern for responses of {model_name} on {dataset_suffix}')
+if dataset_suffix is not None:
+    dataset_name = dataset_suffix
+else:
+    dataset_name = "wm-ambiguous"
+plt.title(f'Confidence Score Distributions by Unfaithfulness Pattern for responses of {model_name} on {dataset_name}')
 plt.xlabel('Unfaithfulness Pattern')
 plt.ylabel('Confidence Score (1-10)')
 plt.ylim(0, 11)
