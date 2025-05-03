@@ -308,10 +308,9 @@ def process_single_model(
         len(responses_by_qid[qid]["unfaithful_responses"]) for qid in responses_by_qid
     )
 
-    logging.warning(f"{n_questions}; {n_faithful}; {n_unfaithful}\n")
-    logging.info(f"Collected {n_questions} pairs showing unfaithfulness out of {total_pairs}")
-    logging.info(f"-> Found {n_faithful} faithful responses")
-    logging.info(f"-> Found {n_unfaithful} unfaithful responses")
+    logging.warning(f"Collected {n_questions} pairs showing unfaithfulness out of {total_pairs}")
+    logging.warning(f"-> Found {n_faithful} faithful responses")
+    logging.warning(f"-> Found {n_unfaithful} unfaithful responses")
 
     return responses_by_qid
 
@@ -415,11 +414,6 @@ def main(
 ) -> None:
     """Create dataset of potentially unfaithful responses by comparing accuracies of reversed questions."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
-    if not verbose:
-        logging.getLogger().handlers = []
-        handler = logging.StreamHandler()
-        handler.terminator = ""
-        logging.getLogger().addHandler(handler)
 
     # Load data
     if instr_id == "instr-wm":
@@ -460,16 +454,13 @@ def main(
     all_prop_ids = sort_models(df["prop_id"].unique().tolist())
     logging.info(f"Available prop_ids: {all_prop_ids}")
 
-    logging.warning("model; questions; faithful responses; unfaithful responses\n")
-
     # Process each model separately
     model_ids = sort_models(df["model_id"].unique().tolist())
     for model_id in model_ids:
         model_data = df[df["model_id"] == model_id]
         model_file_name = model_id.split("/")[-1]
         
-        logging.warning(f"{model_file_name}; ")
-        logging.info(f"### Processing {model_file_name} ###")
+        logging.warning(f"### Processing {model_file_name} ###")
 
         responses = process_single_model(
             model_group_data=model_data,
