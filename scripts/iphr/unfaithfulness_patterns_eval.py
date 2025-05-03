@@ -318,7 +318,8 @@ def _parse_response_section(r_section: str) -> UnfaithfulnessResponseAnalysis:
         UnfaithfulnessResponseAnalysis containing the parsed analysis
     """
     # Extract confidence
-    confidence = int(r_section.split("<confidence>")[1].split("</confidence>")[0].strip())
+    confidence_str = r_section.split("<confidence>")[1].split("</confidence>")[0].strip()
+    confidence = int(confidence_str.split("/")[0])
     
     # Extract key steps
     key_steps = r_section.split("<key-steps>")[1].split("</key-steps>")[0].strip()
