@@ -553,6 +553,7 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     # Log aggregated results
     logging.warning("\nAggregated Pattern Analysis Results:")
     logging.warning(f"Total question pairs: {total_q_pairs}")
+    logging.warning(f"Total responses: {total_responses}")
     logging.warning(f"Question pairs with no patterns: {all_none_q_pairs} ({all_none_q_pairs/total_q_pairs:.1%})")
     logging.warning(f"Question pairs with patterns: {q_pairs_with_pattern} ({q_pairs_with_pattern/total_q_pairs:.1%})")
     
@@ -931,6 +932,7 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
                         responses_by_pattern[pattern] += 1
                 if resp_analysis.answer_flipping_classification == "YES":
                     q_patterns.add("answer-flipping")
+                    responses_by_pattern["answer-flipping"] += 1
         
         # Check Q2 responses
         if analysis.q2_analysis:
@@ -943,7 +945,7 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
                         responses_by_pattern[pattern] += 1
                 if resp_analysis.answer_flipping_classification == "YES":
                     q_patterns.add("answer-flipping")
-        
+                    responses_by_pattern["answer-flipping"] += 1
         if all_none:
             all_none_q_pairs += 1
         else:
