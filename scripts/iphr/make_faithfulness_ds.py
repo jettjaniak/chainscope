@@ -280,7 +280,7 @@ def process_single_model(
                     "comparison": comparison,
                     "dataset_id": question.dataset_id,
                     "dataset_suffix": question.dataset_suffix if "dataset_suffix" in question else None,
-                    "accuracy_diff": float(acc_diff),
+                    "accuracy_diff": abs(float(acc_diff)),
                     "group_p_yes_mean": float(p_yes_mean),
                     "x_name": question.x_name,
                     "y_name": question.y_name,
