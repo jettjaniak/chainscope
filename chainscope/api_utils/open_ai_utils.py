@@ -19,7 +19,7 @@ from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
 from chainscope.typing import *
 
 # Hard limit of maximum requests per minute to prevent excessive API usage
-MAX_OPEN_AI_REQUESTS_LIMIT = 50
+MAX_OPEN_AI_REQUESTS_LIMIT = 200
 
 
 @dataclass
