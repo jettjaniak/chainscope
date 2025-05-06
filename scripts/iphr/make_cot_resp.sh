@@ -44,10 +44,10 @@ run() {
 }
 
 # -------- configuration blocks --------
-run ant-batch "" C3.5H # C3.6S C3.7S C3.7S_1K C3.7S_64K
-# run oai-batch "" GPT4O
-# run oai ""       GPT4OL
-# run or ""        DSV3 DSR1 GP1.5 L70
+run ant-batch "" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
+run oai-batch "" GPT4O
+run oai ""       GPT4OL
+run or ""        DSV3 DSR1 GP1.5 L70
 # run local-vllm "--model-id-for-fsp meta-llama/Llama-3.3-70B-Instruct" meta-llama/Llama-3.1-70B
 
 # Process batches once there are no more pending batches
