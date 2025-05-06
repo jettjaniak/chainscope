@@ -8,7 +8,8 @@ from typing import Any, Callable
 import openai
 from tqdm.asyncio import tqdm
 
-from chainscope.api_utils.batch_processor import BatchItem, BatchProcessor, BatchResult
+from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
+                                                  BatchResult)
 
 # Hard limit of maximum requests per minute to prevent excessive API usage
 MAX_DEEPSEEK_REQUESTS_LIMIT = 50
@@ -48,7 +49,7 @@ class DeepSeekRateLimiter:
 
 
 def is_deepseek_thinking_model(model_id: str) -> bool:
-    return "reason" in model_id or ("r1" in model_id and "deepseek" in model_id
+    return "reason" in model_id or ("r1" in model_id and "deepseek" in model_id)
 
 
 async def generate_deepseek_response_async(
