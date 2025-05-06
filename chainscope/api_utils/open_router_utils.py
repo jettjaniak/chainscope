@@ -164,6 +164,8 @@ async def generate_or_response_async(
                 "max_tokens": thinking_budget_tokens,
             }
             max_new_tokens = max_new_tokens + thinking_budget_tokens
+            # Remove the budget tokens suffix and add the thinking suffix
+            model_id = model_id.split("_")[0] + ":thinking"
     else:
         extra_body = None
 
