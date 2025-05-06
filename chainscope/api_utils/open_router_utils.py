@@ -10,7 +10,11 @@ import openai
 import requests
 from tqdm.asyncio import tqdm
 
-from chainscope.api_utils.batch_processor import BatchItem, BatchProcessor, BatchResult
+from chainscope.api_utils.anthropic_utils import (get_budget_tokens,
+                                                  is_anthropic_thinking_model)
+from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
+                                                  BatchResult)
+from chainscope.api_utils.deepseek_utils import is_deepseek_thinking_model
 
 # Hard limit of maximum requests per minute to prevent excessive API usage
 MAX_OPEN_ROUTER_REQUESTS_LIMIT = 50
@@ -69,7 +73,7 @@ class ORRateLimiter:
 
 
 def is_thinking_model(model_id: str) -> bool:
-    return "reason" in model_id or ("r1" in model_id and "deepseek" in model_id)
+    return is_deepseek_thinking_model(model_id) or is_anthropic_thinking_model(model_id)
 
 
 def get_openrouter_limits(max_requests_limit: int) -> OpenRouterLimits:
@@ -140,10 +144,11 @@ async def generate_or_response_async(
         Processed result or None if all attempts failed
     """
 
-    # Hacky condition to add reasoning to DeepSeek R1 models:
-    extra_body = (
-        {
+    # Hacky condition to add reasoning to DeepSeek and Anthropic thinking models:
+    if is_thinking_model(model_id):
+        extra_body = {
             "include_reasoning": True,
+            "reasoning": {},
             # "provider": {
             #     "allow_fallbacks": False,
             #     "order": [
@@ -152,9 +157,15 @@ async def generate_or_response_async(
             #     ],
             # },
         }
-        if is_thinking_model(model_id)
-        else None
-    )
+
+        if is_anthropic_thinking_model(model_id):
+            thinking_budget_tokens = get_budget_tokens(model_id)
+            extra_body["reasoning"] = {
+                "max_tokens": thinking_budget_tokens,
+            }
+            max_new_tokens = max_new_tokens + thinking_budget_tokens
+    else:
+        extra_body = None
 
     logging.info(f"Running prompt:\n{prompt}")
 

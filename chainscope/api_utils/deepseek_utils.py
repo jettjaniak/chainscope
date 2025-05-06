@@ -47,6 +47,10 @@ class DeepSeekRateLimiter:
             self.last_update = now
 
 
+def is_deepseek_thinking_model(model_id: str) -> bool:
+    return "reason" in model_id or ("r1" in model_id and "deepseek" in model_id
+
+
 async def generate_deepseek_response_async(
     prompt: str,
     model_id: str,
