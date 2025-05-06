@@ -55,4 +55,4 @@ wait_for_batches "ant-batch"
 find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
 
 # wait_for_batches "oai-batch"
-# find d/openai_batches -name "*.yaml" -exec python scripts/gen_cots.py  process-batch {} \;
+find d/openai_batches -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
