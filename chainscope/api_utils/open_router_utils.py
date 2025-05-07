@@ -74,7 +74,11 @@ class ORRateLimiter:
 
 def is_thinking_model(model_id: str) -> bool:
     is_google_thinking_model = "gemini" in model_id and "thinking" in model_id
-    return is_deepseek_thinking_model(model_id) or is_anthropic_thinking_model(model_id) or is_google_thinking_model
+    is_qwen_thinking_model = "qwen" in model_id and "qwq" in model_id
+    return is_deepseek_thinking_model(model_id) \
+        or is_anthropic_thinking_model(model_id) \
+        or is_google_thinking_model \
+        or is_qwen_thinking_model
 
 
 def get_openrouter_limits(max_requests_limit: int) -> OpenRouterLimits:
