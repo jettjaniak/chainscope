@@ -42,6 +42,8 @@ MODELS_MAP = {
     "GF1.5": "google/gemini-flash-1.5-8b",
     "GF2": "google/gemini-2.0-flash-exp:free",
     "GF2T": "google/gemini-2.0-flash-thinking-exp:free",
+    "GF2.5": "google/gemini-2.5-flash-preview",
+    "GF2.5T": "google/gemini-2.5-flash-preview:thinking",
     "GP1.5": "google/gemini-pro-1.5",
     # Anthropic
     "C3H": "anthropic/claude-3-haiku",
