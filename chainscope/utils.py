@@ -27,7 +27,7 @@ MODELS_MAP = {
     "Q14": "Qwen/Qwen2.5-14B-Instruct",
     "Q32": "Qwen/Qwen2.5-32B-Instruct",
     "Q72": "Qwen/Qwen2.5-72B-Instruct",
-    "QwQ": "qwen/qwq-32b-preview",
+    "QwQ": "qwen/qwq-32b",
     # OpenRouter models
     # OpenAI
     # "GPT3.5": "openai/gpt-3.5-turbo",
