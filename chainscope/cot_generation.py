@@ -472,6 +472,17 @@ def get_local_responses_tl(
     instr_prefix = "Here is a question with a clear YES or NO answer"
     stop_tokens = ["**NO**", "**YES**", "\n\nNO", "\n\nYES", instr_prefix]
 
+    # Load existing responses if any
+    response_path = ds_params.cot_responses_path(
+        instr_id,
+        model_id,
+        sampling_params,
+    )
+    existing_responses = None
+    if response_path.exists():
+        existing_responses = CotResponses.load(response_path)
+        logging.warning(f"Loaded existing responses from {response_path}")
+
     # Prepare prompts
     responses: list[tuple[QuestionResponseId, str]] = []
     model = HookedTransformerWithGenerator(model)
@@ -540,6 +551,20 @@ def get_local_responses_tl(
             generated_text = generated_text.replace(instr_prefix, "")
 
         responses.append((q_resp_id, generated_text))
+        
+        # Save after each response
+        cot_responses = create_cot_responses(
+            responses_by_qid=existing_responses.responses_by_qid if existing_responses else None,
+            new_responses=responses,
+            model_id=model_id,
+            instr_id=instr_id,
+            ds_params=ds_params,
+            sampling_params=sampling_params,
+        )
+        cot_responses.save()
+        
+        # Update existing_responses for next iteration
+        existing_responses = cot_responses
 
     return responses
 
@@ -575,7 +600,9 @@ def create_batch_of_cot_prompts(
 
         # Calculate how many more responses we need
         n_existing = len(existing_q_responses)
-        n_needed = max(0, n_responses - n_existing)
+        # If there are no existing responses, generate exactly n_responses
+        # Otherwise, generate only what's needed to reach n_responses
+        n_needed = n_responses if n_existing == 0 else max(0, n_responses - n_existing)
 
         if n_needed == 0:
             continue

@@ -36,9 +36,10 @@ run() {
           -d "${dataset_id}" \
           -m "${model}" \
 	  -n 10 \
-          "${COMMON_ARGS[@]}" \
+	  -i instr-wm \
           --api "${api}" \
           ${extra}
+          #"${COMMON_ARGS[@]}" \
     done < <(find "${QUESTIONS_DIR}" -type f -name '*.yaml' -print0)
   done
 }
