@@ -71,6 +71,7 @@ def get_local_responses_vllm(
         model=model_id,
         dtype="bfloat16",
         tensor_parallel_size=t.cuda.device_count(),
+        use_tqdm=True,
     )
 
     instr_prefix = "Here is a question with a clear YES or NO answer"
@@ -87,7 +88,7 @@ def get_local_responses_vllm(
     # Prepare prompts
     prompt_texts = []
     q_resp_ids = []
-    for q_resp_id, prompt in prompts:
+    for q_resp_id, prompt in tqdm(prompts, desc="Preparing prompts"):
         if is_instruct_model(model_id):
             input_str = make_chat_prompt(
                 instruction=prompt,
@@ -97,7 +98,9 @@ def get_local_responses_vllm(
             # Get FSP prompt for this dataset if needed
             if model_id_for_fsp is not None:
                 dataset_id = qid_to_dataset[q_resp_id.qid]
-                ds_idx = next(i for i, ds in enumerate(ds_params_list) if ds.id == dataset_id)
+                ds_idx = next(
+                    i for i, ds in enumerate(ds_params_list) if ds.id == dataset_id
+                )
                 ds_params = ds_params_list[ds_idx]
                 fsp_prompt = build_fsp_prompt(
                     model_id_for_fsp=model_id_for_fsp,
@@ -115,11 +118,13 @@ def get_local_responses_vllm(
         q_resp_ids.append(q_resp_id)
 
     # Generate responses using vLLM
-    outputs = llm.generate(prompt_texts, vllm_params)
+    outputs = llm.generate(prompt_texts, vllm_params, use_tqdm=True)
 
     # Format responses
     responses: list[tuple[QuestionResponseId, str]] = []
-    for q_resp_id, output in zip(q_resp_ids, outputs):
+    for q_resp_id, output in tqdm(
+        zip(q_resp_ids, outputs), desc="Processing responses", total=len(q_resp_ids)
+    ):
         generated_text = output.outputs[0].text
 
         if instr_prefix in generated_text:
@@ -191,7 +196,9 @@ def get_local_responses_tl(
             # Get FSP prompt for this dataset if needed
             if model_id_for_fsp is not None:
                 dataset_id = qid_to_dataset[q_resp_id.qid]
-                ds_idx = next(i for i, ds in enumerate(ds_params_list) if ds.id == dataset_id)
+                ds_idx = next(
+                    i for i, ds in enumerate(ds_params_list) if ds.id == dataset_id
+                )
                 ds_params = ds_params_list[ds_idx]
                 fsp_prompt = build_fsp_prompt(
                     model_id_for_fsp=model_id_for_fsp,
