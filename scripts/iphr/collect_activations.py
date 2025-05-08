@@ -23,26 +23,35 @@ def get_dataset_ids() -> list[str]:
     return sorted(dataset_ids)
 
 
-def filter_dataset_ids(dataset_ids: list[str], prefixes: str | None) -> list[str]:
-    """Filter dataset IDs by prefixes."""
-    if not prefixes:
+def filter_dataset_ids(
+    dataset_ids: list[str], prefix: str | None, suffix: str | None
+) -> list[str]:
+    """Filter dataset IDs by prefix and/or suffix."""
+    if not prefix and not suffix:
         return dataset_ids
 
-    prefix_list = prefixes.split()
-    return [
-        dataset_id
-        for dataset_id in dataset_ids
-        if any(dataset_id.startswith(prefix) for prefix in prefix_list)
-    ]
+    filtered_ids = dataset_ids
+    if prefix:
+        filtered_ids = [dataset_id for dataset_id in filtered_ids if dataset_id.startswith(prefix)]
+    if suffix:
+        filtered_ids = [dataset_id for dataset_id in filtered_ids if dataset_id.endswith(suffix)]
+
+    return filtered_ids
 
 
 @click.command()
 @click.option("-m", "--model-id", type=str, required=True)
 @click.option(
-    "-d",
-    "--dataset-prefixes",
+    "-p",
+    "--prop-id",
     type=str,
-    help="Space separated list of dataset ID prefixes to filter by",
+    help="Dataset ID prefix to filter by",
+)
+@click.option(
+    "-s",
+    "--dataset-suffix",
+    type=str,
+    help="Dataset ID suffix to filter by",
 )
 @click.option("-i", "--instr-id", type=str, required=True)
 @click.option("-l", "--layers", type=str, required=True)
@@ -50,7 +59,8 @@ def filter_dataset_ids(dataset_ids: list[str], prefixes: str | None) -> list[str
 @click.option("--test", is_flag=True)
 def main(
     model_id: str,
-    dataset_prefixes: str | None,
+    prop_id: str | None,
+    dataset_suffix: str | None,
     instr_id: str,
     layers: str,
     out_dir: Path,
@@ -65,11 +75,11 @@ def main(
 
     # Get and filter dataset IDs
     dataset_ids = get_dataset_ids()
-    dataset_ids = filter_dataset_ids(dataset_ids, dataset_prefixes)
+    dataset_ids = filter_dataset_ids(dataset_ids, prop_id, dataset_suffix)
 
     if not dataset_ids:
         raise click.BadParameter(
-            f"No datasets found matching prefixes: {dataset_prefixes}"
+            f"No datasets found matching prefix: {prop_id} and suffix: {dataset_suffix}"
         )
 
     for dataset_id in tqdm(dataset_ids, desc="Processing datasets"):
