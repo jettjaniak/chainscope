@@ -43,16 +43,39 @@ run() {
   done
 }
 
+run_local() {
+  local api="$1"; shift
+  local extra=("$1"); shift
+  local models=("$@")
+
+  for model in "${models[@]}"; do
+    echo "▶ Processing model ${model}  (api=${api})"
+    while IFS= read -r -d '' file; do
+      dataset_id="${file#${QUESTIONS_DIR}/*/}"
+      dataset_id="${dataset_id%.yaml}"
+      [[ ${dataset_id} == *${PREFIX}* && ${dataset_id} == *${SUFFIX} ]] || continue
+
+      echo "   • dataset ${dataset_id}"
+      ./scripts/iphr/gen_cots.py local \
+          -d "${dataset_id}" \
+          -m "${model}" \
+          "${COMMON_ARGS[@]}" \
+          --api "${api}" \
+          ${extra}
+    done < <(find "${QUESTIONS_DIR}" -type f -name '*.yaml' -print0)
+  done
+}
+
 # -------- configuration blocks --------
 run ant-batch "" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
 run oai-batch "" GPT4O GPT4OM
 run oai ""       GPT4OL
 run or ""        DSV3 DSR1 GP1.5 L70
-# run local-vllm "--model-id-for-fsp meta-llama/Llama-3.3-70B-Instruct" meta-llama/Llama-3.1-70B
+run_local vllm "--model-id-for-fsp meta-llama/Llama-3.3-70B-Instruct" meta-llama/Llama-3.1-70B
 
 # Process batches once there are no more pending batches
-wait_for_batches "ant-batch"
-find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
+# wait_for_batches "ant-batch"
+# find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
 
-wait_for_batches "oai-batch"
-find d/openai_batches -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
+# wait_for_batches "oai-batch"
+# find d/openai_batches -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
