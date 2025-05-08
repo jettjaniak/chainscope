@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 
 import click
+import pandas as pd
+import yaml
 
 from chainscope.api_utils.anthropic_utils import \
     process_batch_results as process_anthropic_batch_results
@@ -52,6 +54,11 @@ def cli():
 )
 @click.option("--test", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
+@click.option(
+    "--unfaithful-only",
+    is_flag=True,
+    help="Only generate CoTs for unfaithful pairs identified in faithfulness YAMLs",
+)
 def submit(
     n_responses: int,
     dataset_id: str,
@@ -64,6 +71,7 @@ def submit(
     max_retries: int,
     test: bool,
     verbose: bool,
+    unfaithful_only: bool,
 ):
     """Submit CoT generation requests in realtime or using batch APIs."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -79,9 +87,33 @@ def submit(
         max_new_tokens=max_new_tokens,
     )
 
+    ds_params = DatasetParams.from_id(dataset_id)
+
+    # Check that we have data for unfaithful pairs if requested
+    faithfulness_data = None
+    if unfaithful_only:
+        faithfulness_dir = DATA_DIR / "faithfulness" / model_id.split("/")[-1]
+        if not faithfulness_dir.exists():
+            logging.warning(f"No faithfulness data found for model {model_id}")
+            return
+
+        if ds_params.suffix is None:
+            faithfulness_file_name = f"{ds_params.prop_id}.yaml"
+        else:
+            faithfulness_file_name = f"{ds_params.prop_id}_{ds_params.suffix}.yaml"
+        faithfulness_path = faithfulness_dir / faithfulness_file_name
+        if not faithfulness_path.exists():
+            logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}")
+            return
+
+        with open(faithfulness_path, "r") as f:
+            faithfulness_data = yaml.safe_load(f)
+        if faithfulness_data is None:
+            logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}")
+            return
+
     # Try to load existing responses
     existing_responses = None
-    ds_params = DatasetParams.from_id(dataset_id)
     response_path = ds_params.cot_responses_path(
         instr_id,
         model_id,
@@ -94,6 +126,8 @@ def submit(
         logging.warning(
             f"No existing responses found at {response_path}, starting fresh"
         )
+        if unfaithful_only:
+            raise ValueError(f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}")
 
     instructions = Instructions.load(instr_id)
     question_dataset = QsDataset.load(dataset_id)
@@ -110,6 +144,26 @@ def submit(
     if not batch_of_cot_prompts:
         logging.info("No prompts to process")
         return
+
+    # Filter for unfaithful pairs if requested
+    if faithfulness_data is not None:
+        # Collect all unfaithful question IDs
+        unfaithful_qids = set()
+        logging.info(f"Filtering to {len(faithfulness_data)} unfaithful pairs")
+        for qid, qdata in faithfulness_data.items():
+            assert "metadata" in qdata and "reversed_q_id" in qdata["metadata"]
+            unfaithful_qids.add(qid)
+            unfaithful_qids.add(qdata["metadata"]["reversed_q_id"])
+        logging.info(f"Found {len(unfaithful_qids)} question IDs after filtering by faithfulness")
+
+        # Filter prompts to only include unfaithful pairs
+        batch_of_cot_prompts = [
+            (q_resp_id, prompt)
+            for q_resp_id, prompt in batch_of_cot_prompts
+            if q_resp_id.qid in unfaithful_qids
+        ]
+
+    logging.info(f"Number of prompts to process: {len(batch_of_cot_prompts)}")
 
     if api in ["ant-batch", "oai-batch"]:
         # Submit batch using appropriate API
@@ -201,6 +255,11 @@ def submit(
 )
 @click.option("--test", is_flag=True)
 @click.option("-v", "--verbose", is_flag=True)
+@click.option(
+    "--unfaithful-only",
+    is_flag=True,
+    help="Only generate CoTs for unfaithful pairs identified in faithfulness YAMLs",
+)
 def local(
     n_responses: int,
     dataset_ids: str,
@@ -216,6 +275,7 @@ def local(
     local_gen_seed: int,
     test: bool,
     verbose: bool,
+    unfaithful_only: bool,
 ):
     """Generate CoT responses using local models."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -235,12 +295,48 @@ def local(
     existing_responses_list: list[CotResponses | None] = []
     qid_to_dataset: dict[str, str] = {}  # Map question IDs to dataset IDs
 
+    # Check faithfulness data if requested
+    faithfulness_data_by_dataset: dict[str, dict] = {}
+    if unfaithful_only:
+        model_name = model_id.split("/")[-1]
+        faithfulness_dir = DATA_DIR / "faithfulness" / model_name
+        if not faithfulness_dir.exists():
+            logging.warning(f"No faithfulness data found for model {model_id}")
+            return
+
+        for dataset_id in dataset_id_list:
+            ds_params = DatasetParams.from_id(dataset_id)
+            if ds_params.suffix is None:
+                faithfulness_file_name = f"{ds_params.prop_id}.yaml"
+            else:
+                faithfulness_file_name = f"{ds_params.prop_id}_{ds_params.suffix}.yaml"
+            faithfulness_path = faithfulness_dir / faithfulness_file_name
+            if not faithfulness_path.exists():
+                logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}")
+                continue
+
+            with open(faithfulness_path, "r") as f:
+                data = yaml.safe_load(f)
+            if data is None:
+                logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}")
+                continue
+
+            faithfulness_data_by_dataset[dataset_id] = data
+
+        if not faithfulness_data_by_dataset:
+            logging.error("No faithfulness data found for any dataset")
+            return
+
     for dataset_id in dataset_id_list:
         if dataset_id.startswith("wm-"):
             assert instr_id == "instr-wm"
 
         ds_params = DatasetParams.from_id(dataset_id)
         dataset_params_list.append(ds_params)
+
+        # Skip if we need faithfulness data but don't have it for this dataset
+        if unfaithful_only and dataset_id not in faithfulness_data_by_dataset:
+            continue
 
         # Try to load existing responses
         existing_responses = None
@@ -256,6 +352,9 @@ def local(
             logging.warning(
                 f"No existing responses found at {response_path}, starting fresh"
             )
+            if unfaithful_only:
+                raise ValueError(f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}")
+
         existing_responses_list.append(existing_responses)
 
         instructions = Instructions.load(instr_id)
@@ -279,6 +378,24 @@ def local(
     if not all_prompts:
         logging.info("No prompts to process")
         return
+
+    # Filter for unfaithful pairs if requested
+    if unfaithful_only:
+        # Collect all unfaithful question IDs
+        unfaithful_qids = set()
+        for dataset_id, data in faithfulness_data_by_dataset.items():
+            for qid, qdata in data.items():
+                assert "metadata" in qdata and "reversed_q_id" in qdata["metadata"]
+                unfaithful_qids.add(qid)
+                unfaithful_qids.add(qdata["metadata"]["reversed_q_id"])
+
+        # Filter prompts to only include unfaithful pairs
+        all_prompts = [
+            (q_resp_id, prompt)
+            for q_resp_id, prompt in all_prompts
+            if q_resp_id.qid in unfaithful_qids
+        ]
+        logging.warning(f"Filtered to {len(all_prompts)} unfaithful pairs")
 
     # Process using local model
     if api == "vllm":
