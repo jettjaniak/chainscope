@@ -55,26 +55,16 @@ def get_local_responses_vllm(
     prompts: list[tuple[QuestionResponseId, str]],
     model_id: str,
     instr_id: str,
-    ds_params: DatasetParams,
+    ds_params_list: list[DatasetParams],
     sampling_params: SamplingParams,
     model_id_for_fsp: str | None,
     fsp_size: int,
     fsp_seed: int,
+    qid_to_dataset: dict[str, str],
 ) -> list[tuple[QuestionResponseId, str]]:
     assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
-
     if model_id_for_fsp is not None:
         assert not is_instruct_model(model_id), "Why?"
-        fsp_prompt = build_fsp_prompt(
-            model_id_for_fsp=model_id_for_fsp,
-            fsp_size=fsp_size,
-            instr_id=instr_id,
-            ds_params=ds_params,
-            sampling_params=sampling_params,
-            fsp_seed=fsp_seed,
-        )
-    else:
-        fsp_prompt = None
 
     # Initialize vLLM engine
     llm = LLM(
@@ -101,10 +91,22 @@ def get_local_responses_vllm(
         if is_instruct_model(model_id):
             input_str = make_chat_prompt(
                 instruction=prompt,
-                tokenizer=llm.get_tokenizer(),
+                tokenizer=llm.get_tokenizer(),  # type: ignore
             )
         else:
-            if fsp_prompt is not None:
+            # Get FSP prompt for this dataset if needed
+            if model_id_for_fsp is not None:
+                dataset_id = qid_to_dataset[q_resp_id.qid]
+                ds_idx = next(i for i, ds in enumerate(ds_params_list) if ds.id == dataset_id)
+                ds_params = ds_params_list[ds_idx]
+                fsp_prompt = build_fsp_prompt(
+                    model_id_for_fsp=model_id_for_fsp,
+                    fsp_size=fsp_size,
+                    instr_id=instr_id,
+                    ds_params=ds_params,
+                    sampling_params=sampling_params,
+                    fsp_seed=fsp_seed,
+                )
                 input_str = f"{fsp_prompt}\n\n{prompt}"
             else:
                 input_str = prompt
@@ -132,12 +134,13 @@ def get_local_responses_tl(
     prompts: list[tuple[QuestionResponseId, str]],
     model_id: str,
     instr_id: str,
-    ds_params: DatasetParams,
+    ds_params_list: list[DatasetParams],
     sampling_params: SamplingParams,
     model_id_for_fsp: str | None,
     fsp_size: int,
     fsp_seed: int,
     local_gen_seed: int,
+    qid_to_dataset: dict[str, str],
 ) -> list[tuple[QuestionResponseId, str]]:
     """Generate responses using TransformerLens framework.
 
@@ -145,37 +148,26 @@ def get_local_responses_tl(
         prompts: List of (question ID, prompt text) tuples
         model_id: Name of the model to use
         instr_id: Instruction ID
-        ds_params: Dataset parameters
+        ds_params_list: List of dataset parameters
         sampling_params: Sampling parameters
         model_id_for_fsp: Model ID for few-shot prompting (optional)
         fsp_size: Number of few-shot examples
         fsp_seed: Seed for few-shot example selection
         local_gen_seed: Seed for generation
+        qid_to_dataset: Mapping from question IDs to dataset IDs
 
     Returns:
         List of (question ID, generated response) tuples
     """
     assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
+    if model_id_for_fsp is not None:
+        assert not is_instruct_model(model_id), "Why?"
 
     # Set TransformerLens seed for reproducible local generation
     HookedTransformerConfig.set_seed_everywhere(
         None,  # type: ignore
         local_gen_seed,
     )
-
-    # Get few-shot prompt if needed
-    if model_id_for_fsp is not None:
-        assert not is_instruct_model(model_id), "Why?"
-        fsp_prompt = build_fsp_prompt(
-            model_id_for_fsp=model_id_for_fsp,
-            fsp_size=fsp_size,
-            instr_id=instr_id,
-            ds_params=ds_params,
-            sampling_params=sampling_params,
-            fsp_seed=fsp_seed,
-        )
-    else:
-        fsp_prompt = None
 
     # Initialize TransformerLens model
     model = HookedTransformer.from_pretrained(
@@ -193,10 +185,22 @@ def get_local_responses_tl(
         if is_instruct_model(model_id):
             input_str = make_chat_prompt(
                 instruction=prompt,
-                tokenizer=model.tokenizer,
+                tokenizer=model.tokenizer,  # type: ignore
             )
         else:
-            if fsp_prompt is not None:
+            # Get FSP prompt for this dataset if needed
+            if model_id_for_fsp is not None:
+                dataset_id = qid_to_dataset[q_resp_id.qid]
+                ds_idx = next(i for i, ds in enumerate(ds_params_list) if ds.id == dataset_id)
+                ds_params = ds_params_list[ds_idx]
+                fsp_prompt = build_fsp_prompt(
+                    model_id_for_fsp=model_id_for_fsp,
+                    fsp_size=fsp_size,
+                    instr_id=instr_id,
+                    ds_params=ds_params,
+                    sampling_params=sampling_params,
+                    fsp_seed=fsp_seed,
+                )
                 input_str = f"{fsp_prompt}\n\n{prompt}"
             else:
                 input_str = prompt

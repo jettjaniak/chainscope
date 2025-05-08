@@ -163,7 +163,7 @@ def submit(
 
 @cli.command()
 @click.option("-n", "--n-responses", type=int, required=True)
-@click.option("-d", "--dataset-id", type=str, required=True)
+@click.option("-d", "--dataset-ids", type=str, required=True, help="Comma-separated list of dataset IDs")
 @click.option("-m", "--model-id", type=str, required=True)
 @click.option("-i", "--instr-id", type=str, required=True)
 @click.option("-t", "--temperature", type=float, default=0.7)
@@ -203,7 +203,7 @@ def submit(
 @click.option("-v", "--verbose", is_flag=True)
 def local(
     n_responses: int,
-    dataset_id: str,
+    dataset_ids: str,
     model_id: str,
     instr_id: str,
     temperature: float,
@@ -222,85 +222,117 @@ def local(
 
     model_id = MODELS_MAP.get(model_id, model_id)
 
-    if dataset_id.startswith("wm-"):
-        assert instr_id == "instr-wm"
-
     sampling_params = SamplingParams(
         temperature=temperature,
         top_p=top_p,
         max_new_tokens=max_new_tokens,
     )
 
-    # Try to load existing responses
-    existing_responses = None
-    ds_params = DatasetParams.from_id(dataset_id)
-    response_path = ds_params.cot_responses_path(
-        instr_id,
-        model_id,
-        sampling_params,
-    )
-    if response_path.exists():
-        existing_responses = CotResponses.load(response_path)
-        logging.warning(f"Loaded existing responses from {response_path}")
-    else:
-        logging.warning(
-            f"No existing responses found at {response_path}, starting fresh"
+    # Process all datasets
+    dataset_id_list = [ds.strip() for ds in dataset_ids.split(",")]
+    all_prompts: list[tuple[QuestionResponseId, str]] = []
+    dataset_params_list: list[DatasetParams] = []
+    existing_responses_list: list[CotResponses | None] = []
+    qid_to_dataset: dict[str, str] = {}  # Map question IDs to dataset IDs
+
+    for dataset_id in dataset_id_list:
+        if dataset_id.startswith("wm-"):
+            assert instr_id == "instr-wm"
+
+        ds_params = DatasetParams.from_id(dataset_id)
+        dataset_params_list.append(ds_params)
+
+        # Try to load existing responses
+        existing_responses = None
+        response_path = ds_params.cot_responses_path(
+            instr_id,
+            model_id,
+            sampling_params,
         )
+        if response_path.exists():
+            existing_responses = CotResponses.load(response_path)
+            logging.warning(f"Loaded existing responses from {response_path}")
+        else:
+            logging.warning(
+                f"No existing responses found at {response_path}, starting fresh"
+            )
+        existing_responses_list.append(existing_responses)
 
-    instructions = Instructions.load(instr_id)
-    question_dataset = QsDataset.load(dataset_id)
-    batch_of_cot_prompts = create_batch_of_cot_prompts(
-        question_dataset=question_dataset,
-        instructions=instructions,
-        question_type="yes-no",
-        n_responses=n_responses,
-        existing_responses=existing_responses,
-    )
-    if test:
-        batch_of_cot_prompts = batch_of_cot_prompts[:10]
+        instructions = Instructions.load(instr_id)
+        question_dataset = QsDataset.load(dataset_id)
+        batch_of_cot_prompts = create_batch_of_cot_prompts(
+            question_dataset=question_dataset,
+            instructions=instructions,
+            question_type="yes-no",
+            n_responses=n_responses,
+            existing_responses=existing_responses,
+        )
+        if test:
+            batch_of_cot_prompts = batch_of_cot_prompts[:10]
 
-    if not batch_of_cot_prompts:
+        if batch_of_cot_prompts:
+            # Track which dataset each question belongs to
+            for q_resp_id, _ in batch_of_cot_prompts:
+                qid_to_dataset[q_resp_id.qid] = dataset_id
+            all_prompts.extend(batch_of_cot_prompts)
+
+    if not all_prompts:
         logging.info("No prompts to process")
         return
 
     # Process using local model
     if api == "vllm":
         results = get_local_responses_vllm(
-            prompts=batch_of_cot_prompts,
+            prompts=all_prompts,
             model_id=model_id,
             instr_id=instr_id,
-            ds_params=ds_params,
+            ds_params_list=dataset_params_list,
             sampling_params=sampling_params,
             model_id_for_fsp=model_id_for_fsp,
             fsp_size=fsp_size,
             fsp_seed=fsp_seed,
+            qid_to_dataset=qid_to_dataset,
         )
     else:  # ttl
         results = get_local_responses_tl(
-            prompts=batch_of_cot_prompts,
+            prompts=all_prompts,
             model_id=model_id,
             instr_id=instr_id,
-            ds_params=ds_params,
+            ds_params_list=dataset_params_list,
             sampling_params=sampling_params,
             model_id_for_fsp=model_id_for_fsp,
             fsp_size=fsp_size,
             fsp_seed=fsp_seed,
             local_gen_seed=local_gen_seed,
+            qid_to_dataset=qid_to_dataset,
         )
 
     if results:
-        # Create and save CotResponses
-        cot_responses = create_cot_responses(
-            responses_by_qid=existing_responses.responses_by_qid
-            if existing_responses
-            else None,
-            new_responses=results,
-            model_id=model_id,
-            instr_id=instr_id,
-            ds_params=ds_params,
-            sampling_params=sampling_params,
-        )
-        cot_responses.save()
+        # Group results by dataset
+        results_by_dataset: dict[str, list[tuple[QuestionResponseId, str]]] = {}
+        for q_resp_id, response in results:
+            dataset_id = qid_to_dataset[q_resp_id.qid]
+            if dataset_id not in results_by_dataset:
+                results_by_dataset[dataset_id] = []
+            results_by_dataset[dataset_id].append((q_resp_id, response))
+
+        # Save responses for each dataset
+        for dataset_id, dataset_results in results_by_dataset.items():
+            ds_idx = dataset_id_list.index(dataset_id)
+            ds_params = dataset_params_list[ds_idx]
+            existing_responses = existing_responses_list[ds_idx]
+
+            cot_responses = create_cot_responses(
+                responses_by_qid=existing_responses.responses_by_qid
+                if existing_responses
+                else None,
+                new_responses=dataset_results,
+                model_id=model_id,
+                instr_id=instr_id,
+                ds_params=ds_params,
+                sampling_params=sampling_params,
+            )
+            cot_responses.save()
 
 
 @cli.command()
