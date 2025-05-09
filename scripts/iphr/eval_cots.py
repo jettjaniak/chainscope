@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 import click
+from tqdm import tqdm
 
 from chainscope.api_utils.anthropic_utils import process_batch_results
 from chainscope.cot_eval import (create_cot_eval_from_batch_results,
@@ -57,7 +58,7 @@ def submit(
     # Process all response files
     path_list = [path.strip() for path in responses_paths.split(",")]
     
-    for responses_path in path_list:
+    for responses_path in tqdm(path_list, desc="Processing response files"):
         if not Path(responses_path).exists():
             logging.warning(f"Response file not found: {responses_path}")
             continue
