@@ -229,6 +229,7 @@ def submit_batch(
         metadata_by_qid: Dictionary mapping question IDs to their metadata
         evaluator_model_id: The model ID to use for evaluation
         sampling_params: Sampling parameters for the evaluation
+        prop_id: The property ID
         dataset_suffix: Optional suffix used to filter YAML files
         api: API to use for evaluation ("ant-batch" or "ant")
     """
@@ -570,6 +571,201 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
 
 
 @beartype
+def update_unfaithfulness_eval(
+    new_analysis: dict[str, UnfaithfulnessFullAnalysis] | None,
+    existing_pattern_eval: UnfaithfulnessPatternEval | None,
+    qids_showing_unfaithfulness: set[str],
+    model_id: str,
+    evaluator_model_id: str,
+    sampling_params: SamplingParams,
+    prop_id: str,
+    dataset_suffix: str | None = None,
+) -> dict[str, Any] | None:
+    """Update an existing UnfaithfulnessPatternEval or create a new one.
+    
+    Args:
+        new_analysis: New analyses to add to the evaluation
+        existing_pattern_eval: Existing evaluation to update
+        qids_showing_unfaithfulness: Set of question IDs that should be in the final evaluation
+        model_id: The model ID being evaluated
+        evaluator_model_id: The model ID used for evaluation
+        sampling_params: Sampling parameters for the evaluation
+        prop_id: The property ID
+        dataset_suffix: Optional suffix used to filter YAML files
+        
+    Returns:
+        Dictionary with analysis stats, or None if no analysis was performed
+    """
+    # Check if we have anything to do
+    if not new_analysis and not existing_pattern_eval:
+        logging.info("No new analysis and no existing evaluation to update")
+        return None
+    
+    # Create or copy the pattern evaluation object
+    if existing_pattern_eval:
+        # Create a copy of the existing evaluation
+        pattern_eval = UnfaithfulnessPatternEval(
+            pattern_analysis_by_qid=existing_pattern_eval.pattern_analysis_by_qid.copy(),
+            model_id=model_id,
+            evaluator_model_id=evaluator_model_id,
+            sampling_params=sampling_params,
+            prop_id=prop_id,
+            dataset_suffix=dataset_suffix,
+        )
+        logging.info(f"Created copy of existing evaluation with {len(pattern_eval.pattern_analysis_by_qid)} question pairs")
+    else:
+        # Create a new empty pattern evaluation
+        pattern_eval = UnfaithfulnessPatternEval(
+            pattern_analysis_by_qid={},
+            model_id=model_id,
+            evaluator_model_id=evaluator_model_id,
+            sampling_params=sampling_params,
+            prop_id=prop_id,
+            dataset_suffix=dataset_suffix,
+        )
+        logging.info("Created new empty pattern evaluation")
+    
+    # Add new analyses if available
+    if new_analysis:
+        for qid, analysis in new_analysis.items():
+            pattern_eval.pattern_analysis_by_qid[qid] = analysis
+        logging.info(f"Added {len(new_analysis)} new question pairs to the evaluation")
+    
+    # Remove question pairs that should not be in the evaluation
+    current_qids = set(pattern_eval.pattern_analysis_by_qid.keys())
+    qids_to_remove = current_qids - qids_showing_unfaithfulness
+    
+    if qids_to_remove:
+        for qid in qids_to_remove:
+            if qid in pattern_eval.pattern_analysis_by_qid:
+                del pattern_eval.pattern_analysis_by_qid[qid]
+        logging.info(f"Removed {len(qids_to_remove)} obsolete question pairs from evaluation")
+    
+    # Save the updated pattern evaluation
+    saved_path = pattern_eval.save()
+    logging.info(f"Saved updated evaluation to {saved_path} with {len(pattern_eval.pattern_analysis_by_qid)} question pairs")
+    
+    # Return analysis stats
+    return analyze_patterns(pattern_eval)
+
+
+@beartype
+def get_unfaithfulness_eval_path(
+    model_id: str,
+    prop_id: str, 
+    sampling_params: SamplingParams,
+    dataset_suffix: str | None = None,
+) -> Path:
+    """Get the path to a UnfaithfulnessPatternEval file.
+    
+    Args:
+        model_id: The model ID being evaluated
+        prop_id: The property ID
+        sampling_params: Sampling parameters used for evaluation
+        dataset_suffix: Optional suffix for dataset
+        
+    Returns:
+        Path to the evaluation file
+    """
+    prop_id_with_suffix = prop_id
+    if dataset_suffix:
+        prop_id_with_suffix = f"{prop_id}_{dataset_suffix}"
+    
+    eval_dir = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id / prop_id_with_suffix
+    return eval_dir / f"{model_id}.yaml"
+
+
+@beartype
+def load_existing_unfaithfulness_eval(
+    eval_path: Path,
+) -> UnfaithfulnessPatternEval | None:
+    """Load an existing UnfaithfulnessPatternEval.
+    
+    Args:
+        eval_path: Path to the evaluation file
+        
+    Returns:
+        Loaded evaluation, or None if loading failed
+    """
+    if not eval_path.exists():
+        return None
+        
+    try:
+        existing_pattern_eval = UnfaithfulnessPatternEval.load(eval_path)
+        logging.info(f"Loaded existing evaluation from {eval_path}")
+        return existing_pattern_eval
+    except Exception as e:
+        logging.warning(f"Failed to load existing evaluation from {eval_path}: {e}")
+        return None
+
+
+@beartype
+def load_qids_showing_unfaithfulness(
+    model_id: str,
+    prop_id: str,
+    dataset_suffix: str | None = None,
+    fallback_qids: set[str] | None = None,
+    existing_eval_qids: set[str] | None = None,
+) -> set[str]:
+    """Load the faithfulness YAML file and extract the question IDs showing unfaithfulness.
+    
+    Args:
+        model_id: The model ID being evaluated
+        prop_id: The property ID
+        dataset_suffix: Optional suffix for dataset
+        fallback_qids: Optional set of question IDs to use if faithfulness file can't be loaded
+        existing_eval_qids: Optional set of question IDs from existing evaluation
+        
+    Returns:
+        Set of question IDs showing unfaithfulness
+    """
+    # Find the corresponding faithfulness YAML file
+    faithfulness_path = DATA_DIR / "faithfulness" / model_id / f"{prop_id}.yaml"
+    if dataset_suffix:
+        faithfulness_path = DATA_DIR / "faithfulness" / model_id / f"{prop_id}_{dataset_suffix}.yaml"
+    
+    # Try to load the faithfulness data
+    qids_showing_unfaithfulness = set()
+    
+    if faithfulness_path.exists():
+        try:
+            with open(faithfulness_path, "r") as f:
+                faithfulness_data = yaml.safe_load(f)
+            qids_showing_unfaithfulness = set(faithfulness_data.keys())
+            logging.info(f"Loaded {len(qids_showing_unfaithfulness)} question IDs from {faithfulness_path}")
+            return qids_showing_unfaithfulness
+        except Exception as e:
+            logging.warning(f"Failed to load faithfulness data from {faithfulness_path}: {e}")
+    else:
+        logging.warning(f"Faithfulness file {faithfulness_path} not found")
+    
+    # If we get here, we couldn't load the faithfulness file
+    # Use fallback strategies
+    
+    # If we have fallback question IDs (e.g., from a batch), use those
+    if fallback_qids:
+        qids_showing_unfaithfulness = set(fallback_qids)
+        logging.info(f"Using {len(qids_showing_unfaithfulness)} fallback question IDs")
+    
+    # If we have existing evaluation question IDs, include those
+    if existing_eval_qids:
+        if qids_showing_unfaithfulness:
+            # Combine with any IDs we already have
+            qids_showing_unfaithfulness = qids_showing_unfaithfulness.union(existing_eval_qids)
+            logging.info(f"Combined with existing evaluation IDs, now have {len(qids_showing_unfaithfulness)} question IDs")
+        else:
+            # Use existing IDs if we don't have any other IDs
+            qids_showing_unfaithfulness = set(existing_eval_qids)
+            logging.info(f"Using {len(qids_showing_unfaithfulness)} question IDs from existing evaluation")
+    
+    # If we still don't have any IDs, log a warning
+    if not qids_showing_unfaithfulness:
+        logging.warning("Could not determine any question IDs showing unfaithfulness")
+    
+    return qids_showing_unfaithfulness
+
+
+@beartype
 def process_faithfulness_files(
     model_id: str,
     evaluator_model_id: str,
@@ -620,12 +816,32 @@ def process_faithfulness_files(
             with open(yaml_file, "r") as f:
                 data = yaml.safe_load(f)
             
-            # Collect all questions for this file
+            # Get the evaluation path and load existing evaluation
+            eval_path = get_unfaithfulness_eval_path(
+                model_id=model_id,
+                prop_id=file_prop_id,
+                sampling_params=sampling_params,
+                dataset_suffix=dataset_suffix,
+            )
+            existing_pattern_eval = load_existing_unfaithfulness_eval(eval_path)
+            
+            # Get question IDs showing unfaithfulness
+            qids_showing_unfaithfulness = set(data.keys())
+            
+            # If existing evaluation exists, determine new questions to evaluate
+            qids_to_add = qids_showing_unfaithfulness
+            if existing_pattern_eval:
+                existing_qids = set(existing_pattern_eval.pattern_analysis_by_qid.keys())
+                qids_to_add = qids_showing_unfaithfulness - existing_qids
+            
+            logging.info(f"Found {len(qids_to_add)} new question pairs to evaluate")
+            
+            # Collect questions to process
             prompt_by_qid = {}
             metadata_by_qid = {}
             
-            # In test mode, only process the first 5 questions
-            qids_to_process = list(data.keys())[:5] if test else data.keys()
+            # In test mode, only process a limited number of questions
+            qids_to_process = list(qids_to_add)[:5] if test else list(qids_to_add)
             
             for qid in qids_to_process:
                 qdata = data[qid]
@@ -666,22 +882,53 @@ def process_faithfulness_files(
                 continue
 
             if not prompt_by_qid:
-                logging.warning(f"No valid questions found in {yaml_file}")
+                if existing_pattern_eval:
+                    # Only need to update the existing pattern eval to handle any removals
+                    logging.info(f"No new questions to process, checking if any need to be removed")
+                    analysis = update_unfaithfulness_eval(
+                        new_analysis=None,
+                        existing_pattern_eval=existing_pattern_eval,
+                        qids_showing_unfaithfulness=qids_showing_unfaithfulness,
+                        model_id=model_id,
+                        evaluator_model_id=evaluator_model_id,
+                        sampling_params=sampling_params,
+                        prop_id=file_prop_id,
+                        dataset_suffix=dataset_suffix,
+                    )
+                    if analysis:
+                        pattern_analyses.append(analysis)
+                else:
+                    logging.warning(f"No questions to process in {yaml_file}")
                 continue
 
-            # Submit batch for all questions in this file
-            unfaithfulness_analysis = submit_batch(
+            # Submit batch for the questions to add
+            new_analysis = None
+            if prompt_by_qid:
+                new_analysis = submit_batch(
+                    model_id=model_id,
+                    prompt_by_qid=prompt_by_qid,
+                    metadata_by_qid=metadata_by_qid,
+                    evaluator_model_id=evaluator_model_id,
+                    sampling_params=sampling_params,
+                    prop_id=file_prop_id,
+                    dataset_suffix=dataset_suffix,
+                    api=api,
+                )
+            
+            # Update the pattern evaluation with new analyses
+            analysis = update_unfaithfulness_eval(
+                new_analysis=new_analysis,
+                existing_pattern_eval=existing_pattern_eval,
+                qids_showing_unfaithfulness=qids_showing_unfaithfulness,
                 model_id=model_id,
-                prompt_by_qid=prompt_by_qid,
-                metadata_by_qid=metadata_by_qid,
                 evaluator_model_id=evaluator_model_id,
                 sampling_params=sampling_params,
                 prop_id=file_prop_id,
                 dataset_suffix=dataset_suffix,
-                api=api,
             )
-            if unfaithfulness_analysis:
-                pattern_analyses.append(unfaithfulness_analysis)
+            
+            if analysis:
+                pattern_analyses.append(analysis)
 
         except Exception as e:
             logging.error(f"Error processing {yaml_file}: {e}")
@@ -843,23 +1090,46 @@ def process(
             # Process the batch
             analysis_by_qid = process_batch(batch_info)
             
-            # Create and save evaluation object
-            pattern_eval = UnfaithfulnessPatternEval(
-                pattern_analysis_by_qid=analysis_by_qid,
-                model_id=batch_info.metadata["model_id"],
-                evaluator_model_id=batch_info.evaluator_model_id or "",
+            # Get model and property info from batch metadata
+            model_id = batch_info.metadata["model_id"]
+            prop_id = batch_info.metadata["prop_id"]
+            dataset_suffix = batch_info.metadata.get("dataset_suffix")
+            
+            # Get the evaluation path and load existing evaluation
+            eval_path = get_unfaithfulness_eval_path(
+                model_id=model_id,
+                prop_id=prop_id,
                 sampling_params=sampling_params,
-                prop_id=batch_info.metadata["prop_id"],
-                dataset_suffix=batch_info.metadata.get("dataset_suffix"),
+                dataset_suffix=dataset_suffix,
+            )
+            existing_pattern_eval = load_existing_unfaithfulness_eval(eval_path)
+            
+            # Get existing evaluation question IDs if available
+            existing_eval_qids = set() if existing_pattern_eval is None else set(existing_pattern_eval.pattern_analysis_by_qid.keys())
+            
+            # Get question IDs showing unfaithfulness from faithfulness file or fallbacks
+            qids_showing_unfaithfulness = load_qids_showing_unfaithfulness(
+                model_id=model_id,
+                prop_id=prop_id,
+                dataset_suffix=dataset_suffix,
+                fallback_qids=set(analysis_by_qid.keys()) if analysis_by_qid else None,
+                existing_eval_qids=existing_eval_qids if existing_eval_qids else None,
             )
             
-            # Save results
-            saved_path = pattern_eval.save()
-            logging.info(f"Results saved to {saved_path}")
+            # Update the pattern evaluation with new analyses
+            analysis = update_unfaithfulness_eval(
+                new_analysis=analysis_by_qid,
+                existing_pattern_eval=existing_pattern_eval,
+                qids_showing_unfaithfulness=qids_showing_unfaithfulness,
+                model_id=model_id,
+                evaluator_model_id=batch_info.evaluator_model_id or "",
+                sampling_params=sampling_params,
+                prop_id=prop_id,
+                dataset_suffix=dataset_suffix,
+            )
             
-            # Analyze patterns and collect for aggregation
-            analysis = analyze_patterns(pattern_eval)
-            pattern_analyses.append(analysis)
+            if analysis:
+                pattern_analyses.append(analysis)
 
         except Exception as e:
             logging.error(f"Error processing {batch_path}: {e}")
