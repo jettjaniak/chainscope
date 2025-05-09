@@ -1,6 +1,7 @@
 from functools import partial
 
 import torch
+from jaxtyping import Float
 from tqdm.auto import tqdm
 from transformers import PreTrainedModel, PreTrainedTokenizerBase
 
