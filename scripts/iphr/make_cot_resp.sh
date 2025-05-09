@@ -29,19 +29,31 @@ run() {
 
   for model in "${models[@]}"; do
     echo "▶ Processing model ${model}  (api=${api})"
+    
+    # Collect all matching dataset IDs
+    dataset_ids=()
     while IFS= read -r -d '' file; do
       dataset_id="${file#${QUESTIONS_DIR}/*/}"
       dataset_id="${dataset_id%.yaml}"
       [[ ${dataset_id} == *${PREFIX}* && ${dataset_id} == *${SUFFIX} ]] || continue
-
-      echo "   • dataset ${dataset_id}"
-      ./scripts/iphr/gen_cots.py submit \
-          -d "${dataset_id}" \
-          -m "${model}" \
-          "${COMMON_ARGS[@]}" \
-          --api "${api}" \
-          ${extra}
+      dataset_ids+=("${dataset_id}")
     done < <(find "${QUESTIONS_DIR}" -type f -name '*.yaml' -print0)
+
+    if [ ${#dataset_ids[@]} -eq 0 ]; then
+      echo "No matching datasets found"
+      continue
+    fi
+
+    # Join dataset IDs with commas
+    dataset_ids_str=$(IFS=,; echo "${dataset_ids[*]}")
+    echo "   • datasets: ${dataset_ids_str}"
+
+    ./scripts/iphr/gen_cots.py submit \
+        -d "${dataset_ids_str}" \
+        -m "${model}" \
+        "${COMMON_ARGS[@]}" \
+        --api "${api}" \
+        ${extra}
   done
 }
 

@@ -31,7 +31,7 @@ def cli():
 
 @cli.command()
 @click.option("-n", "--n-responses", type=int, required=True)
-@click.option("-d", "--dataset-id", type=str, required=True)
+@click.option("-d", "--dataset-ids", type=str, required=True, help="Comma-separated list of dataset IDs")
 @click.option("-m", "--model-id", type=str, required=True)
 @click.option("-i", "--instr-id", type=str, required=True)
 @click.option("-t", "--temperature", type=float, default=0.7)
@@ -61,7 +61,7 @@ def cli():
 )
 def submit(
     n_responses: int,
-    dataset_id: str,
+    dataset_ids: str,
     model_id: str,
     instr_id: str,
     temperature: float,
@@ -78,141 +78,146 @@ def submit(
 
     model_id = MODELS_MAP.get(model_id, model_id)
 
-    if dataset_id.startswith("wm-"):
-        assert instr_id == "instr-wm"
-
     sampling_params = SamplingParams(
         temperature=temperature,
         top_p=top_p,
         max_new_tokens=max_new_tokens,
     )
 
-    ds_params = DatasetParams.from_id(dataset_id)
+    # Process all datasets
+    dataset_id_list = [ds.strip() for ds in dataset_ids.split(",")]
+    
+    for dataset_id in dataset_id_list:
+        if dataset_id.startswith("wm-"):
+            assert instr_id == "instr-wm"
 
-    # Check that we have data for unfaithful pairs if requested
-    faithfulness_data = None
-    if unfaithful_only:
-        faithfulness_dir = DATA_DIR / "faithfulness" / model_id.split("/")[-1]
-        if not faithfulness_dir.exists():
-            logging.warning(f"No faithfulness data found for model {model_id}")
-            return
+        ds_params = DatasetParams.from_id(dataset_id)
 
-        if ds_params.suffix is None:
-            faithfulness_file_name = f"{ds_params.prop_id}.yaml"
-        else:
-            faithfulness_file_name = f"{ds_params.prop_id}_{ds_params.suffix}.yaml"
-        faithfulness_path = faithfulness_dir / faithfulness_file_name
-        if not faithfulness_path.exists():
-            logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}")
-            return
-
-        with open(faithfulness_path, "r") as f:
-            faithfulness_data = yaml.safe_load(f)
-        if faithfulness_data is None:
-            logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}")
-            return
-
-    # Try to load existing responses
-    existing_responses = None
-    response_path = ds_params.cot_responses_path(
-        instr_id,
-        model_id,
-        sampling_params,
-    )
-    if response_path.exists():
-        existing_responses = CotResponses.load(response_path)
-        logging.warning(f"Loaded existing responses from {response_path}")
-    else:
-        logging.warning(
-            f"No existing responses found at {response_path}, starting fresh"
-        )
+        # Check that we have data for unfaithful pairs if requested
+        faithfulness_data = None
         if unfaithful_only:
-            raise ValueError(f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}")
+            faithfulness_dir = DATA_DIR / "faithfulness" / model_id.split("/")[-1]
+            if not faithfulness_dir.exists():
+                logging.warning(f"No faithfulness data found for model {model_id}")
+                continue
 
-    instructions = Instructions.load(instr_id)
-    question_dataset = QsDataset.load(dataset_id)
-    batch_of_cot_prompts = create_batch_of_cot_prompts(
-        question_dataset=question_dataset,
-        instructions=instructions,
-        question_type="yes-no",
-        n_responses=n_responses,
-        existing_responses=existing_responses,
-    )
-    if test:
-        batch_of_cot_prompts = batch_of_cot_prompts[:10]
+            if ds_params.suffix is None:
+                faithfulness_file_name = f"{ds_params.prop_id}.yaml"
+            else:
+                faithfulness_file_name = f"{ds_params.prop_id}_{ds_params.suffix}.yaml"
+            faithfulness_path = faithfulness_dir / faithfulness_file_name
+            if not faithfulness_path.exists():
+                logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}")
+                continue
 
-    if not batch_of_cot_prompts:
-        logging.info("No prompts to process")
-        return
+            with open(faithfulness_path, "r") as f:
+                faithfulness_data = yaml.safe_load(f)
+            if faithfulness_data is None:
+                logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}")
+                continue
 
-    # Filter for unfaithful pairs if requested
-    if faithfulness_data is not None:
-        # Collect all unfaithful question IDs
-        unfaithful_qids = set()
-        logging.info(f"Filtering to {len(faithfulness_data)} unfaithful pairs")
-        for qid, qdata in faithfulness_data.items():
-            assert "metadata" in qdata and "reversed_q_id" in qdata["metadata"]
-            unfaithful_qids.add(qid)
-            unfaithful_qids.add(qdata["metadata"]["reversed_q_id"])
-        logging.info(f"Found {len(unfaithful_qids)} question IDs after filtering by faithfulness")
-
-        # Filter prompts to only include unfaithful pairs
-        batch_of_cot_prompts = [
-            (q_resp_id, prompt)
-            for q_resp_id, prompt in batch_of_cot_prompts
-            if q_resp_id.qid in unfaithful_qids
-        ]
-
-    logging.info(f"Number of prompts to process: {len(batch_of_cot_prompts)}")
-
-    if api in ["ant-batch", "oai-batch"]:
-        # Submit batch using appropriate API
-        prompt_by_qrid = {
-            q_resp_id: prompt for q_resp_id, prompt in batch_of_cot_prompts
-        }
-        if api == "ant-batch":
-            batch_info = submit_anthropic_batch(
-                prompt_by_qrid=prompt_by_qrid,
-                instr_id=instr_id,
-                ds_params=ds_params,
-                evaluated_model_id=model_id,
-                evaluated_sampling_params=sampling_params,
-            )
-        else:  # oai-batch
-            batch_info = submit_openai_batch(
-                prompt_by_qrid=prompt_by_qrid,
-                instr_id=instr_id,
-                ds_params=ds_params,
-                evaluated_model_id=model_id,
-                evaluated_sampling_params=sampling_params,
-            )
-        logging.warning(
-            f"Submitted batch {batch_info.batch_id}\nBatch info saved to {batch_info.save()}"
+        # Try to load existing responses
+        existing_responses = None
+        response_path = ds_params.cot_responses_path(
+            instr_id,
+            model_id,
+            sampling_params,
         )
-    else:
-        # Process in realtime using specified API
-        results = asyncio.run(
-            get_responses_async(
-                prompts=batch_of_cot_prompts,
-                model_id=model_id,
-                sampling_params=sampling_params,
-                api=api,
-                max_retries=max_retries,
+        if response_path.exists():
+            existing_responses = CotResponses.load(response_path)
+            logging.warning(f"Loaded existing responses from {response_path}")
+        else:
+            logging.warning(
+                f"No existing responses found at {response_path}, starting fresh"
             )
+            if unfaithful_only:
+                logging.warning(f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}")
+                continue
+
+        instructions = Instructions.load(instr_id)
+        question_dataset = QsDataset.load(dataset_id)
+        batch_of_cot_prompts = create_batch_of_cot_prompts(
+            question_dataset=question_dataset,
+            instructions=instructions,
+            question_type="yes-no",
+            n_responses=n_responses,
+            existing_responses=existing_responses,
         )
-        if results:
-            # Create and save CotResponses
-            cot_responses = create_cot_responses(
-                responses_by_qid=existing_responses.responses_by_qid
-                if existing_responses
-                else None,
-                new_responses=results,
-                model_id=model_id,
-                instr_id=instr_id,
-                ds_params=ds_params,
-                sampling_params=sampling_params,
+        if test:
+            batch_of_cot_prompts = batch_of_cot_prompts[:10]
+
+        if not batch_of_cot_prompts:
+            logging.info(f"No prompts to process for dataset {dataset_id}")
+            continue
+
+        # Filter for unfaithful pairs if requested
+        if faithfulness_data is not None:
+            # Collect all unfaithful question IDs
+            unfaithful_qids = set()
+            logging.info(f"Filtering to {len(faithfulness_data)} unfaithful pairs")
+            for qid, qdata in faithfulness_data.items():
+                assert "metadata" in qdata and "reversed_q_id" in qdata["metadata"]
+                unfaithful_qids.add(qid)
+                unfaithful_qids.add(qdata["metadata"]["reversed_q_id"])
+            logging.info(f"Found {len(unfaithful_qids)} question IDs after filtering by faithfulness")
+
+            # Filter prompts to only include unfaithful pairs
+            batch_of_cot_prompts = [
+                (q_resp_id, prompt)
+                for q_resp_id, prompt in batch_of_cot_prompts
+                if q_resp_id.qid in unfaithful_qids
+            ]
+
+        logging.info(f"Number of prompts to process for dataset {dataset_id}: {len(batch_of_cot_prompts)}")
+
+        if api in ["ant-batch", "oai-batch"]:
+            # Submit batch using appropriate API
+            prompt_by_qrid = {
+                q_resp_id: prompt for q_resp_id, prompt in batch_of_cot_prompts
+            }
+            if api == "ant-batch":
+                batch_info = submit_anthropic_batch(
+                    prompt_by_qrid=prompt_by_qrid,
+                    instr_id=instr_id,
+                    ds_params=ds_params,
+                    evaluated_model_id=model_id,
+                    evaluated_sampling_params=sampling_params,
+                )
+            else:  # oai-batch
+                batch_info = submit_openai_batch(
+                    prompt_by_qrid=prompt_by_qrid,
+                    instr_id=instr_id,
+                    ds_params=ds_params,
+                    evaluated_model_id=model_id,
+                    evaluated_sampling_params=sampling_params,
+                )
+            logging.warning(
+                f"Submitted batch {batch_info.batch_id}\nBatch info saved to {batch_info.save()}"
             )
-            cot_responses.save()
+        else:
+            # Process in realtime using specified API
+            results = asyncio.run(
+                get_responses_async(
+                    prompts=batch_of_cot_prompts,
+                    model_id=model_id,
+                    sampling_params=sampling_params,
+                    api=api,
+                    max_retries=max_retries,
+                )
+            )
+            if results:
+                # Create and save CotResponses
+                cot_responses = create_cot_responses(
+                    responses_by_qid=existing_responses.responses_by_qid
+                    if existing_responses
+                    else None,
+                    new_responses=results,
+                    model_id=model_id,
+                    instr_id=instr_id,
+                    ds_params=ds_params,
+                    sampling_params=sampling_params,
+                )
+                cot_responses.save()
 
 
 @cli.command()

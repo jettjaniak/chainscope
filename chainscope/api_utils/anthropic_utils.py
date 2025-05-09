@@ -363,6 +363,7 @@ class ANBatchProcessor(BatchProcessor[BatchItem, BatchResult]):
             "claude-3-haiku",
             "claude-3-opus",
             "claude-3.5-sonnet",
+            "claude-3.6-sonnet",
             "claude-3.5-haiku",
             "claude-3.7-sonnet",
         ]
