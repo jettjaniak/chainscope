@@ -50,7 +50,7 @@ run() {
 }
 
 # -------- configuration blocks --------
-run ant-batch "meta-llama__Llama-3.1-70B" "qwen__qwq-32b" "openai__gpt-4o-mini" "google__gemini-2.5-flash-preview" "anthropic__claude-3.5-haiku" "anthropic__claude-3.6-sonnet" "anthropic__claude-3.7-sonnet" "anthropic__claude-3.7-sonnet_1k" "openai__gpt-4o-2024-08-06" "openai__chatgpt-4o-latest" "deepseek__deepseek-chat" "deepseek__deepseek-r1" "google__gemini-pro-1.5" "meta-llama__Llama-3.3-70B-Instruct" # "anthropic__claude-3.7-sonnet_64k"
+run ant-batch "google__gemini-2.5-flash-preview" "meta-llama__Llama-3.1-70B" "qwen__qwq-32b" "openai__gpt-4o-mini" "google__gemini-2.5-flash-preview" "anthropic__claude-3.5-haiku" "anthropic__claude-3.6-sonnet" "anthropic__claude-3.7-sonnet" "anthropic__claude-3.7-sonnet_1k" "openai__gpt-4o-2024-08-06" "openai__chatgpt-4o-latest" "deepseek__deepseek-chat" "deepseek__deepseek-r1" "google__gemini-pro-1.5" "meta-llama__Llama-3.3-70B-Instruct" # "anthropic__claude-3.7-sonnet_64k"
 
 # Process batches once there are no more pending batches
 wait_for_batches "ant-batch"
