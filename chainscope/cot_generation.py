@@ -71,7 +71,6 @@ def get_local_responses_vllm(
         model=model_id,
         dtype="bfloat16",
         tensor_parallel_size=t.cuda.device_count(),
-        use_tqdm=True,
     )
 
     instr_prefix = "Here is a question with a clear YES or NO answer"
