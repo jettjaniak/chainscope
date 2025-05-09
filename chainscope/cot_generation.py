@@ -1,3 +1,4 @@
+import logging
 import random
 from uuid import uuid4
 
@@ -84,6 +85,7 @@ def get_local_responses_vllm(
     fsp_size: int,
     fsp_seed: int,
     qid_to_dataset: dict[str, str],
+    batch_size: int = 1024,
 ) -> list[tuple[QuestionResponseId, str]]:
     assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
     if model_id_for_fsp is not None:
@@ -147,13 +149,21 @@ def get_local_responses_vllm(
         prompt_texts.append(input_str)
         q_resp_ids.append(q_resp_id)
 
-    # Generate responses using vLLM
-    outputs = llm.generate(prompt_texts, vllm_params, use_tqdm=True)
+    # Generate responses using vLLM in batches
+    logging.info(
+        f"Generating {len(prompt_texts)} responses with batch size {batch_size}"
+    )
+    all_outputs = []
+    for i in tqdm(range(0, len(prompt_texts), batch_size), desc="Processing batches"):
+        batch_prompts = prompt_texts[i : i + batch_size]
+        batch_outputs = llm.generate(batch_prompts, vllm_params, use_tqdm=True)
+        all_outputs.extend(batch_outputs)
+    logging.info(f"Generated {len(all_outputs)} responses")
 
     # Format responses
     responses: list[tuple[QuestionResponseId, str]] = []
     for q_resp_id, output in tqdm(
-        zip(q_resp_ids, outputs), desc="Processing responses", total=len(q_resp_ids)
+        zip(q_resp_ids, all_outputs), desc="Processing responses", total=len(q_resp_ids)
     ):
         generated_text = output.outputs[0].text
 
