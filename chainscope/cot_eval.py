@@ -680,6 +680,8 @@ def evaluate_cot_responses_realtime(
                 f"were classified as UNKNOWN for model {cot_responses.model_id}"
             )
 
+    assert isinstance(cot_responses.ds_params, DatasetParams)
+    assert isinstance(cot_responses.sampling_params, SamplingParams)
     return CotEval(
         results_by_qid=results,
         model_id=cot_responses.model_id,
