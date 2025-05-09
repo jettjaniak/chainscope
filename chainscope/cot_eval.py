@@ -126,7 +126,7 @@ def evaluate_cot_responses_with_batch(
     cot_responses: CotResponses,
     evaluator_model_id: str,
     existing_eval: CotEval | None = None,
-) -> AnthropicBatchInfo:
+) -> AnthropicBatchInfo | None:
     """Submit CoT responses for evaluation using Anthropic's batch API.
 
     Args:
@@ -144,7 +144,7 @@ def evaluate_cot_responses_with_batch(
             raise ValueError("No responses to evaluate")
         else:
             logging.warning("All responses already evaluated")
-            exit(0)
+            return None
 
     # Create prompt mapping
     prompt_by_qrid = {q_resp_id: prompt for q_resp_id, prompt in batch_of_prompts}

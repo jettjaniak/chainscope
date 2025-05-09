@@ -122,9 +122,10 @@ def submit(
                 evaluator_model_id=llm_model_id,
                 existing_eval=existing_eval,
             )
-            logging.warning(
-                f"Submitted batch {batch_info.batch_id}\nBatch info saved to {batch_info.save()}"
-            )
+            if batch_info is not None:
+                logging.warning(
+                    f"Submitted batch {batch_info.batch_id}\nBatch info saved to {batch_info.save()}"
+                )
         else:
             # Process in realtime using specified API
             cot_eval = evaluate_cot_responses_realtime(
