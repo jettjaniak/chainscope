@@ -26,18 +26,31 @@ run() {
 
   for model in "${models[@]}"; do
     echo "▶ Processing model ${model}  (api=${api})"
+    
+    # Collect all matching response files
+    response_files=()
     while IFS= read -r -d '' file; do
-      echo "   • processing ${file}"
-      ./scripts/iphr/eval_cots.py submit \
-          "${file}" \
-          -m "${EVAL_MODEL}" \
-          --api "${api}"
+      response_files+=("${file}")
     done < <(find "${RESPONSES_DIR}" -type f -wholename "*/${PREFIX}*${SUFFIX}/${model}.yaml" -print0)
+    
+    if [ ${#response_files[@]} -eq 0 ]; then
+      echo "No matching response files found for model ${model}"
+      continue
+    fi
+    
+    # Join response files with commas
+    response_files_str=$(IFS=,; echo "${response_files[*]}")
+    echo "   • found ${#response_files[@]} response files"
+    
+    ./scripts/iphr/eval_cots.py submit \
+        --responses-paths "${response_files_str}" \
+        -m "${EVAL_MODEL}" \
+        --api "${api}"
   done
 }
 
 # -------- configuration blocks --------
-run ant-batch "anthropic__claude-3.5-haiku" # "anthropic__claude-3.6-sonnet" "anthropic__claude-3.7-sonnet" "anthropic__claude-3.7-sonnet_1k" "anthropic__claude-3.7-sonnet_64k" "openai__gpt-4o-2024-08-06" "openai__chatgpt-4o-latest" "deepseek__deepseek-chat" "deepseek__deepseek-r1" "google__gemini-pro-1.5" "meta-llama__Llama-3.1-70B-Instruct"
+run ant-batch "anthropic__claude-3.5-haiku" "anthropic__claude-3.6-sonnet" "anthropic__claude-3.7-sonnet" "anthropic__claude-3.7-sonnet_1k" "anthropic__claude-3.7-sonnet_64k" "openai__gpt-4o-2024-08-06" "openai__chatgpt-4o-latest" "deepseek__deepseek-chat" "deepseek__deepseek-r1" "google__gemini-pro-1.5" "meta-llama__Llama-3.1-70B-Instruct"
 
 # Process batches once there are no more pending batches
 wait_for_batches "ant-batch"
