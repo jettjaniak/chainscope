@@ -85,7 +85,7 @@ def get_local_responses_vllm(
     fsp_size: int,
     fsp_seed: int,
     qid_to_dataset: dict[str, str],
-    batch_size: int = 1024,
+    batch_size: int = 4096,
 ) -> list[tuple[QuestionResponseId, str]]:
     assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
     if model_id_for_fsp is not None:
