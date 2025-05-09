@@ -141,10 +141,10 @@ def evaluate_cot_responses_with_batch(
     batch_of_prompts = create_batch_of_evaluation_prompts(cot_responses, existing_eval)
     if not batch_of_prompts:
         if existing_eval is None:
-            raise ValueError("No responses to evaluate")
+            logging.warning("No responses to evaluate")
         else:
-            logging.warning("All responses already evaluated")
-            return None
+            logging.info("All responses already evaluated")
+        return None
 
     # Create prompt mapping
     prompt_by_qrid = {q_resp_id: prompt for q_resp_id, prompt in batch_of_prompts}
