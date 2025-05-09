@@ -30,9 +30,10 @@ def abstract_hook_fn(
     resid_by_loc_by_layer: dict[int, dict[str, Float[torch.Tensor, "model"]]],
 ):
     if isinstance(output, tuple):
-        assert len(output) == 2
         output = output[0]
-    assert len(output.shape) == 3
+    assert (
+        len(output.shape) == 3
+    ), f"Expected tensor of shape (1, seq_len, d_model), got {output.shape}"
     # we're running batch size 1
     output = output[0]
 
