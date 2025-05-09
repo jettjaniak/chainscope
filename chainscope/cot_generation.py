@@ -20,9 +20,18 @@ def build_fsp_prompt(
     ds_params: DatasetParams,
     sampling_params: SamplingParams,
     fsp_seed: int,
+    instruction_cache: dict[str, Instructions],
+    cot_responses_cache: dict[str, CotResponses],
+    qs_dataset_cache: dict[str, QsDataset],
 ) -> str:
     random.seed(fsp_seed)
-    instructions = Instructions.load(instr_id)
+
+    # Get Instructions from cache or load them
+    if instr_id in instruction_cache:
+        instructions = instruction_cache[instr_id]
+    else:
+        instructions = Instructions.load(instr_id)
+        instruction_cache[instr_id] = instructions
 
     # Load CoT responses from model_id_for_fsp for this dataset
     cot_responses_path = ds_params.cot_responses_path(
@@ -30,10 +39,24 @@ def build_fsp_prompt(
         model_id=model_id_for_fsp,
         sampling_params=sampling_params,
     )
-    cot_responses = CotResponses.load(cot_responses_path)
+
+    # Convert Path to string for dictionary key
+    cot_responses_path_str = str(cot_responses_path)
+    if cot_responses_path_str in cot_responses_cache:
+        cot_responses = cot_responses_cache[cot_responses_path_str]
+    else:
+        cot_responses = CotResponses.load(cot_responses_path)
+        cot_responses_cache[cot_responses_path_str] = cot_responses
 
     qs_dataset_path = ds_params.qs_dataset_path
-    qs_dataset = QsDataset.load_from_path(qs_dataset_path)
+
+    # Convert Path to string for dictionary key
+    qs_dataset_path_str = str(qs_dataset_path)
+    if qs_dataset_path_str in qs_dataset_cache:
+        qs_dataset = qs_dataset_cache[qs_dataset_path_str]
+    else:
+        qs_dataset = QsDataset.load_from_path(qs_dataset_path)
+        qs_dataset_cache[qs_dataset_path_str] = qs_dataset
 
     cot_prompts = []
     for qid, responses in cot_responses.responses_by_qid.items():
@@ -65,6 +88,11 @@ def get_local_responses_vllm(
     assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
     if model_id_for_fsp is not None:
         assert not is_instruct_model(model_id), "Why?"
+
+    # Initialize caches
+    instruction_cache: dict[str, Instructions] = {}
+    cot_responses_cache: dict[str, CotResponses] = {}
+    qs_dataset_cache: dict[str, QsDataset] = {}
 
     # Initialize vLLM engine
     llm = LLM(
@@ -108,6 +136,9 @@ def get_local_responses_vllm(
                     ds_params=ds_params,
                     sampling_params=sampling_params,
                     fsp_seed=fsp_seed,
+                    instruction_cache=instruction_cache,
+                    cot_responses_cache=cot_responses_cache,
+                    qs_dataset_cache=qs_dataset_cache,
                 )
                 input_str = f"{fsp_prompt}\n\n{prompt}"
             else:
@@ -167,6 +198,11 @@ def get_local_responses_tl(
     if model_id_for_fsp is not None:
         assert not is_instruct_model(model_id), "Why?"
 
+    # Initialize caches
+    instruction_cache: dict[str, Instructions] = {}
+    cot_responses_cache: dict[str, CotResponses] = {}
+    qs_dataset_cache: dict[str, QsDataset] = {}
+
     # Set TransformerLens seed for reproducible local generation
     HookedTransformerConfig.set_seed_everywhere(
         None,  # type: ignore
@@ -206,6 +242,9 @@ def get_local_responses_tl(
                     ds_params=ds_params,
                     sampling_params=sampling_params,
                     fsp_seed=fsp_seed,
+                    instruction_cache=instruction_cache,
+                    cot_responses_cache=cot_responses_cache,
+                    qs_dataset_cache=qs_dataset_cache,
                 )
                 input_str = f"{fsp_prompt}\n\n{prompt}"
             else:
