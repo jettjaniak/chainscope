@@ -17,6 +17,14 @@ from chainscope.api_utils.common import get_responses_async
 from chainscope.typing import *
 
 
+@dataclass
+class PatternsDistribution:
+    total_q_pairs: int
+    total_responses: int
+    q_pairs_by_pattern: dict[str, int]
+    responses_by_pattern: dict[str, int]
+
+
 @beartype
 def sample_responses_proportionally(
     metadata: dict[str, Any],
@@ -323,7 +331,7 @@ def submit_batch(
     prop_id: str,
     dataset_suffix: str | None = None,
     api: str = "ant-batch",
-) -> dict[str, Any] | None:
+) -> tuple[UnfaithfulnessPatternEval, PatternsDistribution] | None:
     """Submit a batch of unfaithfulness pattern evaluations.
     
     Args:
@@ -372,7 +380,7 @@ def submit_batch(
         }
         batch_info.save()
         logging.info(f"Submitted batch {batch_info.batch_id} with {len(prompt_by_qid)} questions")
-        
+
         return None
     else:  # api == "ant"
         # Process synchronously using Anthropic API
@@ -405,8 +413,9 @@ def submit_batch(
             logging.info(f"Results saved to {saved_path}")
             
             # Analyze patterns
-            analysis = analyze_patterns(pattern_eval)
-            return analysis
+            analysis = analyze_distribution_of_patterns(pattern_eval)
+            
+            return pattern_eval, analysis
         
         return None
 
@@ -610,14 +619,14 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
 
 
 @beartype
-def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[str, Any]:
-    """Aggregate pattern analyses from multiple evaluations.
+def aggregate_pattern_distributions(pattern_distributions: list[PatternsDistribution]) -> PatternsDistribution:
+    """Aggregate pattern distributions from multiple evaluations.
     
     Args:
-        pattern_analyses: List of pattern analysis dictionaries from analyze_patterns()
+        pattern_distributions: List of pattern distributions from analyze_distribution_of_patterns()
         
     Returns:
-        Dictionary containing aggregated statistics:
+        PatternsDistribution containing aggregated statistics:
         - total_q_pairs: Total number of question pairs across all analyses
         - all_none_q_pairs: Total number of question pairs where all responses have no patterns
         - q_pairs_with_pattern: Total number of question pairs with at least one pattern
@@ -641,14 +650,14 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
     }
     
     # Aggregate stats from each analysis
-    for analysis in pattern_analyses:
-        total_q_pairs += analysis["total_q_pairs"]
-        total_responses += analysis["total_responses"]
+    for pattern_distribution in pattern_distributions:
+        total_q_pairs += pattern_distribution.total_q_pairs
+        total_responses += pattern_distribution.total_responses
         
         # Aggregate pattern counts
         for pattern in q_pairs_by_pattern:
-            q_pairs_by_pattern[pattern] += analysis["q_pairs_by_pattern"][pattern]
-            responses_by_pattern[pattern] += analysis["responses_by_pattern"][pattern]
+            q_pairs_by_pattern[pattern] += pattern_distribution.q_pairs_by_pattern[pattern]
+            responses_by_pattern[pattern] += pattern_distribution.responses_by_pattern[pattern]
     
     # Log aggregated results
     logging.warning("\nAggregated Pattern Analysis Results:")
@@ -665,17 +674,17 @@ def aggregate_pattern_analyses(pattern_analyses: list[dict[str, Any]]) -> dict[s
         if count > 0:
             logging.warning(f"- {pattern}: {count} ({count/total_responses:.1%})")
     
-    return {
-        "total_q_pairs": total_q_pairs,
-        "total_responses": total_responses,
-        "q_pairs_by_pattern": q_pairs_by_pattern,
-        "responses_by_pattern": responses_by_pattern,
-    }
+    return PatternsDistribution(
+        total_q_pairs=total_q_pairs,
+        total_responses=total_responses,
+        q_pairs_by_pattern=q_pairs_by_pattern,
+        responses_by_pattern=responses_by_pattern,
+    )
 
 
 @beartype
 def update_unfaithfulness_eval(
-    new_analysis: dict[str, UnfaithfulnessFullAnalysis] | None,
+    new_pattern_eval: UnfaithfulnessPatternEval | None,
     existing_pattern_eval: UnfaithfulnessPatternEval | None,
     qids_showing_unfaithfulness: set[str],
     model_id: str,
@@ -683,11 +692,11 @@ def update_unfaithfulness_eval(
     sampling_params: SamplingParams,
     prop_id: str,
     dataset_suffix: str | None = None,
-) -> dict[str, Any] | None:
+) -> PatternsDistribution | None:
     """Update an existing UnfaithfulnessPatternEval or create a new one.
     
     Args:
-        new_analysis: New analyses to add to the evaluation
+        new_pattern_eval: New pattern evaluation to add to the evaluation
         existing_pattern_eval: Existing evaluation to update
         qids_showing_unfaithfulness: Set of question IDs that should be in the final evaluation
         model_id: The model ID being evaluated
@@ -700,56 +709,39 @@ def update_unfaithfulness_eval(
         Dictionary with analysis stats, or None if no analysis was performed
     """
     # Check if we have anything to do
-    if not new_analysis and not existing_pattern_eval:
-        logging.info("No new analysis and no existing evaluation to update")
+    if not new_pattern_eval and not existing_pattern_eval:
+        logging.info("No new pattern evaluation and no existing evaluation to update")
         return None
     
-    # Create or copy the pattern evaluation object
+    pattern_eval = UnfaithfulnessPatternEval(
+        pattern_analysis_by_qid={},
+        model_id=model_id,
+        evaluator_model_id=evaluator_model_id,
+        sampling_params=sampling_params,
+        prop_id=prop_id,
+        dataset_suffix=dataset_suffix,
+    )
+    
+    # Add results from the existing evaluation if it exists
     if existing_pattern_eval:
-        # Create a copy of the existing evaluation
-        pattern_eval = UnfaithfulnessPatternEval(
-            pattern_analysis_by_qid=existing_pattern_eval.pattern_analysis_by_qid.copy(),
-            model_id=model_id,
-            evaluator_model_id=evaluator_model_id,
-            sampling_params=sampling_params,
-            prop_id=prop_id,
-            dataset_suffix=dataset_suffix,
-        )
+        for qid, analysis in existing_pattern_eval.pattern_analysis_by_qid.items():
+            if qid in qids_showing_unfaithfulness:
+                pattern_eval.pattern_analysis_by_qid[qid] = analysis
         logging.info(f"Created copy of existing evaluation with {len(pattern_eval.pattern_analysis_by_qid)} question pairs")
-    else:
-        # Create a new empty pattern evaluation
-        pattern_eval = UnfaithfulnessPatternEval(
-            pattern_analysis_by_qid={},
-            model_id=model_id,
-            evaluator_model_id=evaluator_model_id,
-            sampling_params=sampling_params,
-            prop_id=prop_id,
-            dataset_suffix=dataset_suffix,
-        )
-        logging.info("Created new empty pattern evaluation")
     
-    # Add new analyses if available
-    if new_analysis:
-        for qid, analysis in new_analysis.items():
-            pattern_eval.pattern_analysis_by_qid[qid] = analysis
-        logging.info(f"Added {len(new_analysis)} new question pairs to the evaluation")
-    
-    # Remove question pairs that should not be in the evaluation
-    current_qids = set(pattern_eval.pattern_analysis_by_qid.keys())
-    qids_to_remove = current_qids - qids_showing_unfaithfulness
-    
-    if qids_to_remove:
-        for qid in qids_to_remove:
-            if qid in pattern_eval.pattern_analysis_by_qid:
-                del pattern_eval.pattern_analysis_by_qid[qid]
-        logging.info(f"Removed {len(qids_to_remove)} obsolete question pairs from evaluation")
+    # Add results from the new evaluation if available
+    if new_pattern_eval:
+        for qid, analysis in new_pattern_eval.pattern_analysis_by_qid.items():
+            if qid in qids_showing_unfaithfulness:
+                pattern_eval.pattern_analysis_by_qid[qid] = analysis
+        logging.info(f"Added {len(new_pattern_eval.pattern_analysis_by_qid)} new question pairs to the evaluation")
     
     # Save the updated pattern evaluation
     saved_path = pattern_eval.save()
     logging.info(f"Saved updated evaluation to {saved_path} with {len(pattern_eval.pattern_analysis_by_qid)} question pairs")
     
     # Return analysis stats
-    return analyze_patterns(pattern_eval)
+    return analyze_distribution_of_patterns(pattern_eval)
 
 
 @beartype
@@ -906,8 +898,8 @@ def process_faithfulness_files(
         yaml_files = yaml_files[:1]
         logging.info("Test mode: Processing only the first YAML file")
 
-    # Collect pattern analyses for aggregation
-    pattern_analyses = []
+    # Collect pattern distributions for aggregation
+    pattern_distributions = []
 
     # Process each file
     for yaml_file in tqdm(yaml_files, desc=f"Processing faithfulness files for {model_id}"):
@@ -951,20 +943,16 @@ def process_faithfulness_files(
                 if "metadata" not in qdata:
                     logging.warning(f"No metadata found for {qid}, skipping")
                     continue
-                
-                metadata = qdata["metadata"]
-                q1_str = metadata["q_str"]
-                q1_all_responses = metadata["q1_all_responses"]
-                q1_answer = metadata["answer"]
-                q2_str = metadata["reversed_q_str"]
-                q2_all_responses = metadata["q2_all_responses"]
-                q2_answer = "NO" if q1_answer == "YES" else "YES"
-                is_oversampled = metadata["is_oversampled"]
 
                 # Sample responses proportionally
+                metadata = qdata["metadata"]
                 q1_sampled, q2_sampled = sample_responses_proportionally(metadata)
                 
                 # Build prompt for this question
+                q1_str = metadata["q_str"]
+                q1_answer = metadata["answer"]
+                q2_str = metadata["reversed_q_str"]
+                q2_answer = "NO" if q1_answer == "YES" else "YES"
                 prompt, q1_response_mapping, q2_response_mapping = build_unfaithfulness_prompt(
                     q1_str=q1_str,
                     q1_all_responses=q1_sampled,
@@ -992,8 +980,8 @@ def process_faithfulness_files(
                 if existing_pattern_eval:
                     # Only need to update the existing pattern eval to handle any removals
                     logging.info(f"No new questions to process, checking if any need to be removed")
-                    analysis = update_unfaithfulness_eval(
-                        new_analysis=None,
+                    pattern_distribution = update_unfaithfulness_eval(
+                        new_pattern_eval=None,
                         existing_pattern_eval=existing_pattern_eval,
                         qids_showing_unfaithfulness=qids_showing_unfaithfulness,
                         model_id=model_id,
@@ -1002,16 +990,15 @@ def process_faithfulness_files(
                         prop_id=file_prop_id,
                         dataset_suffix=dataset_suffix,
                     )
-                    if analysis:
-                        pattern_analyses.append(analysis)
+                    if pattern_distribution:
+                        pattern_distributions.append(pattern_distribution)
                 else:
                     logging.warning(f"No questions to process in {yaml_file}")
                 continue
 
             # Submit batch for the questions to add
-            new_analysis = None
             if prompt_by_qid:
-                new_analysis = submit_batch(
+                batch_submission_result = submit_batch(
                     model_id=model_id,
                     prompt_by_qid=prompt_by_qid,
                     metadata_by_qid=metadata_by_qid,
@@ -1021,29 +1008,31 @@ def process_faithfulness_files(
                     dataset_suffix=dataset_suffix,
                     api=api,
                 )
-            
-            # Update the pattern evaluation with new analyses
-            analysis = update_unfaithfulness_eval(
-                new_analysis=new_analysis,
-                existing_pattern_eval=existing_pattern_eval,
-                qids_showing_unfaithfulness=qids_showing_unfaithfulness,
-                model_id=model_id,
-                evaluator_model_id=evaluator_model_id,
-                sampling_params=sampling_params,
-                prop_id=file_prop_id,
-                dataset_suffix=dataset_suffix,
-            )
-            
-            if analysis:
-                pattern_analyses.append(analysis)
+                if batch_submission_result:
+                    pattern_eval, _ = batch_submission_result
+
+                # Update the pattern evaluation with new analyses
+                pattern_distribution = update_unfaithfulness_eval(
+                    new_pattern_eval=pattern_eval,
+                    existing_pattern_eval=existing_pattern_eval,
+                    qids_showing_unfaithfulness=qids_showing_unfaithfulness,
+                    model_id=model_id,
+                    evaluator_model_id=evaluator_model_id,
+                    sampling_params=sampling_params,
+                    prop_id=file_prop_id,
+                    dataset_suffix=dataset_suffix,
+                )
+                
+                if pattern_distribution:
+                    pattern_distributions.append(pattern_distribution)
 
         except Exception as e:
             logging.error(f"Error processing {yaml_file}: {e}")
             traceback.print_exc()
 
     # Aggregate and log results if we have any analyses
-    if pattern_analyses:
-        aggregate_pattern_analyses(pattern_analyses)
+    if pattern_distributions:
+        aggregate_pattern_distributions(pattern_distributions)
 
 
 @click.group()
@@ -1178,8 +1167,8 @@ def process(
     batch_files = list(DATA_DIR.glob("anthropic_batches/**/unfaithfulness_pattern_eval*.yaml"))
     logging.info(f"Found {len(batch_files)} batch files to process")
 
-    # Collect pattern analyses for aggregation
-    pattern_analyses = []
+    # Collect pattern distributions for aggregation
+    pattern_distributions = []
 
     # Process each batch file
     for batch_path in tqdm(batch_files, desc="Processing batches"):
@@ -1195,7 +1184,7 @@ def process(
             )
 
             # Process the batch
-            analysis_by_qid = process_batch(batch_info)
+            pattern_eval = process_batch(batch_info)
             
             # Get model and property info from batch metadata
             model_id = batch_info.metadata["model_id"]
@@ -1219,13 +1208,13 @@ def process(
                 model_id=model_id,
                 prop_id=prop_id,
                 dataset_suffix=dataset_suffix,
-                fallback_qids=set(analysis_by_qid.keys()) if analysis_by_qid else None,
+                fallback_qids=set(pattern_eval.pattern_analysis_by_qid.keys()) if pattern_eval else None,
                 existing_eval_qids=existing_eval_qids if existing_eval_qids else None,
             )
             
             # Update the pattern evaluation with new analyses
-            analysis = update_unfaithfulness_eval(
-                new_analysis=analysis_by_qid,
+            pattern_distribution = update_unfaithfulness_eval(
+                new_pattern_eval=pattern_eval,
                 existing_pattern_eval=existing_pattern_eval,
                 qids_showing_unfaithfulness=qids_showing_unfaithfulness,
                 model_id=model_id,
@@ -1235,23 +1224,23 @@ def process(
                 dataset_suffix=dataset_suffix,
             )
             
-            if analysis:
-                pattern_analyses.append(analysis)
+            if pattern_distribution:
+                pattern_distributions.append(pattern_distribution)
 
         except Exception as e:
             logging.error(f"Error processing {batch_path}: {e}")
             traceback.print_exc()
 
     # Aggregate and log results if we have any analyses
-    if pattern_analyses:
-        aggregate_pattern_analyses(pattern_analyses)
+    if pattern_distributions:
+        aggregate_pattern_distributions(pattern_distributions)
 
 
 @beartype
 def process_batch(
     batch_info: AnthropicBatchInfo,
-) -> dict[str, UnfaithfulnessFullAnalysis]:
-    """Process a batch of responses and extract the pattern analysis."""
+) -> UnfaithfulnessPatternEval:
+    """Process a batch of responses and extract the pattern evaluation."""
     # Process the batch
     results = process_anthropic_batch_results(batch_info)
     
@@ -1259,18 +1248,37 @@ def process_batch(
     metadata_by_qid = batch_info.metadata["metadata_by_qid"]
     
     # Process responses
-    return _process_responses(results, metadata_by_qid)
+    analysis_by_qid = _process_responses(results, metadata_by_qid)
 
+    # Build the pattern evaluation
+    sampling_params = SamplingParams(
+        temperature=batch_info.metadata["sampling_params"]["temperature"],
+        top_p=batch_info.metadata["sampling_params"]["top_p"],
+        max_new_tokens=batch_info.metadata["sampling_params"]["max_new_tokens"],
+    )
+    model_id = batch_info.metadata["model_id"]
+    prop_id = batch_info.metadata["prop_id"]
+    dataset_suffix = batch_info.metadata.get("dataset_suffix", None)
+    evaluator_model_id = batch_info.evaluator_model_id or ""
+    pattern_eval = UnfaithfulnessPatternEval(
+        pattern_analysis_by_qid=analysis_by_qid,
+        model_id=model_id,
+        evaluator_model_id=evaluator_model_id,
+        sampling_params=sampling_params,
+        prop_id=prop_id,
+        dataset_suffix=dataset_suffix,
+    )
+    return pattern_eval
 
 @beartype
-def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
+def analyze_distribution_of_patterns(pattern_eval: UnfaithfulnessPatternEval) -> PatternsDistribution:
     """Analyze the distribution of unfaithfulness patterns.
     
     Args:
         pattern_eval: The UnfaithfulnessPatternEval object to analyze
         
     Returns:
-        Dictionary containing:
+        PatternsDistribution containing:
         - total_q_pairs: Total number of question pairs
         - all_none_q_pairs: Number of question pairs where all responses have no patterns
         - q_pairs_with_pattern: Number of question pairs with at least one pattern
@@ -1335,12 +1343,12 @@ def analyze_patterns(pattern_eval: UnfaithfulnessPatternEval) -> dict[str, Any]:
         for pattern in q_patterns:
             q_pairs_by_pattern[pattern] += 1
 
-    return {
-        "total_q_pairs": total_q_pairs,
-        "total_responses": total_responses,
-        "q_pairs_by_pattern": q_pairs_by_pattern,
-        "responses_by_pattern": responses_by_pattern,
-    }
+    return PatternsDistribution(
+        total_q_pairs=total_q_pairs,
+        total_responses=total_responses,
+        q_pairs_by_pattern=q_pairs_by_pattern,
+        responses_by_pattern=responses_by_pattern,
+    )
 
 
 @cli.command()
@@ -1417,8 +1425,8 @@ def analysis(
     prop_dirs = [d for d in model_dir.iterdir() if d.is_dir()]
     logging.info(f"Found {len(prop_dirs)} property directories")
 
-    # Collect pattern analyses for aggregation
-    pattern_analyses = []
+    # Collect pattern distributions for aggregation
+    pattern_distributions = []
 
     # Process each prop directory
     for prop_dir in tqdm(prop_dirs, desc="Processing property directories"):
@@ -1445,19 +1453,19 @@ def analysis(
             pattern_eval = UnfaithfulnessPatternEval.load(model_file)
             
             # Analyze patterns and collect for aggregation
-            analysis = analyze_patterns(pattern_eval)
-            pattern_analyses.append(analysis)
+            pattern_distribution = analyze_distribution_of_patterns(pattern_eval)
+            pattern_distributions.append(pattern_distribution)
 
         except Exception as e:
             logging.error(f"Error processing {model_file}: {e}")
             traceback.print_exc()
 
     # Aggregate and log results if we have any analyses
-    if pattern_analyses:
-        logging.warning("Aggregating pattern analyses for %s (dataset suffix: %s)", model, dataset_suffix)
-        aggregate_pattern_analyses(pattern_analyses)
+    if pattern_distributions:
+        logging.warning("Aggregating pattern distributions for %s (dataset suffix: %s)", model, dataset_suffix)
+        aggregate_pattern_distributions(pattern_distributions)
     else:
-        logging.error("No pattern analyses found to aggregate")
+        logging.error("No pattern distributions found to aggregate")
 
 
 if __name__ == "__main__":
