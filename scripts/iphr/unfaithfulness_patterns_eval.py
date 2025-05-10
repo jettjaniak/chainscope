@@ -6,7 +6,6 @@ import random
 import traceback
 
 import click
-import yaml
 from beartype import beartype
 from tqdm import tqdm
 
@@ -27,7 +26,7 @@ class PatternsDistribution:
 
 @beartype
 def sample_responses_proportionally(
-    metadata: dict[str, Any],
+    question_data: UnfaithfulnessPairsDatasetQuestion,
     max_responses_per_question: int = 10,
 ) -> tuple[dict[str, str], dict[str, str]]:
     """Sample responses proportionally based on p_correct values.
@@ -36,7 +35,7 @@ def sample_responses_proportionally(
     of correct/incorrect answers according to the p_correct value.
     
     Args:
-        metadata: Metadata for the question pair containing responses and p_correct values
+        question_data: The question data containing responses and metadata
         max_responses_per_question: Maximum number of responses to include per question
         
     Returns:
@@ -44,22 +43,19 @@ def sample_responses_proportionally(
         - Dictionary of sampled responses for q1
         - Dictionary of sampled responses for q2
     """
+    assert question_data.metadata is not None, "Question data must have metadata"
+    
     # Extract responses and accuracy info from metadata
-    q1_all_responses = metadata["q1_all_responses"]
-    q2_all_responses = metadata["q2_all_responses"]
+    q1_all_responses = question_data.metadata.q1_all_responses
+    q2_all_responses = question_data.metadata.q2_all_responses
 
-    if "is_oversampled" in metadata:
-        is_oversampled = metadata["is_oversampled"]
-    else:
-        is_oversampled = len(q1_all_responses) <= max_responses_per_question and len(q2_all_responses) <= max_responses_per_question
-
-    if not is_oversampled:
+    if not question_data.metadata.is_oversampled:
         # Sampling is not needed
         return q1_all_responses, q2_all_responses
     
     def sample_for_question(responses: dict[str, str], 
-                            correct_responses: dict[str, str],
-                            incorrect_responses: dict[str, str],
+                            correct_responses: dict[str, UnfaithfulnessPairsDatasetResponse],
+                            incorrect_responses: dict[str, UnfaithfulnessPairsDatasetResponse],
                             p_correct: float) -> dict[str, str]:
         """Helper function to sample responses for a single question."""
         # Calculate counts based on p_correct
@@ -81,13 +77,13 @@ def sample_responses_proportionally(
             correct_sample = random.sample(list(correct_responses.items()), 
                                          min(num_correct, len(correct_responses)))
             for rid, resp in correct_sample:
-                sampled[rid] = resp
+                sampled[rid] = resp.response
                 
         if num_incorrect > 0 and incorrect_responses:
             incorrect_sample = random.sample(list(incorrect_responses.items()), 
                                            min(num_incorrect, len(incorrect_responses)))
             for rid, resp in incorrect_sample:
-                sampled[rid] = resp
+                sampled[rid] = resp.response
         
         # If we couldn't sample enough, get from the original responses
         if not sampled and responses:
@@ -97,14 +93,12 @@ def sample_responses_proportionally(
         return sampled
     
     # Sample q1 responses
-    q1_p_correct = metadata["p_correct"]
+    q1_p_correct = question_data.metadata.p_correct
     q1_correct_responses = {
-        rid: resp for rid, resp in q1_all_responses.items() 
-        if rid in metadata.get("faithful_responses", {})
+        rid: resp for rid, resp in question_data.faithful_responses.items()
     }
     q1_incorrect_responses = {
-        rid: resp for rid, resp in q1_all_responses.items() 
-        if rid in metadata.get("unfaithful_responses", {})
+        rid: resp for rid, resp in question_data.unfaithful_responses.items()
     }
     
     q1_sampled = sample_for_question(
@@ -112,9 +106,9 @@ def sample_responses_proportionally(
     )
     
     # Sample q2 responses
-    q2_p_correct = metadata["reversed_q_p_correct"]
-    q2_correct_responses = metadata.get("reversed_q_correct_responses", {})
-    q2_incorrect_responses = metadata.get("reversed_q_incorrect_responses", {})
+    q2_p_correct = question_data.metadata.reversed_q_p_correct
+    q2_correct_responses = question_data.metadata.reversed_q_correct_responses
+    q2_incorrect_responses = question_data.metadata.reversed_q_incorrect_responses
     
     q2_sampled = sample_for_question(
         q2_all_responses, q2_correct_responses, q2_incorrect_responses, q2_p_correct
@@ -815,7 +809,7 @@ def load_qids_showing_unfaithfulness(
     fallback_qids: set[str] | None = None,
     existing_eval_qids: set[str] | None = None,
 ) -> set[str]:
-    """Load the faithfulness YAML file and extract the question IDs showing unfaithfulness.
+    """Load the faithfulness dataset and extract the question IDs showing unfaithfulness.
     
     Args:
         model_id: The model ID being evaluated
@@ -827,25 +821,22 @@ def load_qids_showing_unfaithfulness(
     Returns:
         Set of question IDs showing unfaithfulness
     """
-    # Find the corresponding faithfulness YAML file
-    faithfulness_path = DATA_DIR / "faithfulness" / model_id / f"{prop_id}.yaml"
-    if dataset_suffix:
-        faithfulness_path = DATA_DIR / "faithfulness" / model_id / f"{prop_id}_{dataset_suffix}.yaml"
-    
-    # Try to load the faithfulness data
+    # Try to load the faithfulness data using UnfaithfulnessPairsDataset
     qids_showing_unfaithfulness = set()
     
-    if faithfulness_path.exists():
-        try:
-            with open(faithfulness_path, "r") as f:
-                faithfulness_data = yaml.safe_load(f)
-            qids_showing_unfaithfulness = set(faithfulness_data.keys())
-            logging.info(f"Loaded {len(qids_showing_unfaithfulness)} question IDs from {faithfulness_path}")
-            return qids_showing_unfaithfulness
-        except Exception as e:
-            logging.warning(f"Failed to load faithfulness data from {faithfulness_path}: {e}")
-    else:
-        logging.warning(f"Faithfulness file {faithfulness_path} not found")
+    try:
+        # Use the UnfaithfulnessPairsDataset.load() class method
+        faithfulness_dataset = UnfaithfulnessPairsDataset.load(
+            model_id=model_id, 
+            prop_id=prop_id, 
+            dataset_suffix=dataset_suffix
+        )
+        
+        qids_showing_unfaithfulness = set(faithfulness_dataset.questions_by_qid.keys())
+        logging.info(f"Loaded {len(qids_showing_unfaithfulness)} question IDs from faithfulness dataset")
+        return qids_showing_unfaithfulness
+    except Exception as e:
+        logging.warning(f"Failed to load faithfulness dataset for model {model_id}, prop_id {prop_id}, suffix {dataset_suffix}: {e}")
     
     # If we get here, we couldn't load the faithfulness file
     # Use fallback strategies
@@ -885,7 +876,7 @@ def process_faithfulness_files(
     no_dataset_suffix: bool = False,
     api: str = "ant-batch",
 ) -> None:
-    """Process all faithfulness YAML files for a given model."""
+    """Process all faithfulness files for a given model."""
     # Find all faithfulness YAML files for this model
     model_dir = DATA_DIR / "faithfulness" / model_id
     if not model_dir.exists():
@@ -919,17 +910,29 @@ def process_faithfulness_files(
         try:
             logging.info(f"Processing {yaml_file}")
             file_prop_id = yaml_file.stem.split("_")[0]
+            file_dataset_suffix = None
+            if "_" in yaml_file.stem:
+                file_dataset_suffix = yaml_file.stem.split("_", 1)[1]
             
-            # Load the faithfulness data
-            with open(yaml_file, "r") as f:
-                data = yaml.safe_load(f)
+            # Load the faithfulness data using UnfaithfulnessPairsDataset
+            try:
+                faithfulness_dataset = UnfaithfulnessPairsDataset.load(
+                    model_id=model_id,
+                    prop_id=file_prop_id,
+                    dataset_suffix=file_dataset_suffix
+                )
+                data = faithfulness_dataset.questions_by_qid
+                logging.info(f"Loaded {len(data)} questions from faithfulness dataset")
+            except Exception as e:
+                logging.error(f"Failed to load faithfulness dataset: {e}")
+                continue
             
             # Get the evaluation path and load existing evaluation
             eval_path = get_unfaithfulness_eval_path(
                 model_id=model_id,
                 prop_id=file_prop_id,
                 sampling_params=sampling_params,
-                dataset_suffix=dataset_suffix,
+                dataset_suffix=file_dataset_suffix,
             )
             existing_pattern_eval = load_existing_unfaithfulness_eval(eval_path)
             
@@ -952,35 +955,30 @@ def process_faithfulness_files(
             qids_to_process = list(qids_to_add)[:5] if test else list(qids_to_add)
             
             for qid in qids_to_process:
-                qdata = data[qid]
-                if "metadata" not in qdata:
+                question_data = data[qid]
+                if question_data.metadata is None:
                     logging.warning(f"No metadata found for {qid}, skipping")
                     continue
 
                 # Sample responses proportionally
-                metadata = qdata["metadata"]
-                q1_sampled, q2_sampled = sample_responses_proportionally(metadata)
+                q1_sampled, q2_sampled = sample_responses_proportionally(question_data)
                 
                 # Build prompt for this question
-                q1_str = metadata["q_str"]
-                q1_answer = metadata["answer"]
-                q2_str = metadata["reversed_q_str"]
-                q2_answer = "NO" if q1_answer == "YES" else "YES"
                 prompt, q1_response_mapping, q2_response_mapping = build_unfaithfulness_prompt(
-                    q1_str=q1_str,
+                    q1_str=question_data.metadata.q_str,
                     q1_all_responses=q1_sampled,
-                    q1_answer=q1_answer,
-                    q2_str=q2_str,
+                    q1_answer=question_data.metadata.answer,
+                    q2_str=question_data.metadata.reversed_q_str,
                     q2_all_responses=q2_sampled,
-                    q2_answer=q2_answer,
+                    q2_answer="NO" if question_data.metadata.answer == "YES" else "YES",
                 )
                 
                 prompt_by_qid[qid] = prompt
                 metadata_by_qid[qid] = {
-                    "q1_str": q1_str,
-                    "q1_answer": q1_answer,
-                    "q2_str": q2_str,
-                    "q2_answer": q2_answer,
+                    "q1_str": question_data.metadata.q_str,
+                    "q1_answer": question_data.metadata.answer,
+                    "q2_str": question_data.metadata.reversed_q_str,
+                    "q2_answer": "NO" if question_data.metadata.answer == "YES" else "YES",
                     "q1_response_mapping": q1_response_mapping,
                     "q2_response_mapping": q2_response_mapping,
                 }
@@ -1001,7 +999,7 @@ def process_faithfulness_files(
                         evaluator_model_id=evaluator_model_id,
                         sampling_params=sampling_params,
                         prop_id=file_prop_id,
-                        dataset_suffix=dataset_suffix,
+                        dataset_suffix=file_dataset_suffix,
                     )
                     if pattern_distribution:
                         pattern_distributions.append(pattern_distribution)
@@ -1018,7 +1016,7 @@ def process_faithfulness_files(
                     evaluator_model_id=evaluator_model_id,
                     sampling_params=sampling_params,
                     prop_id=file_prop_id,
-                    dataset_suffix=dataset_suffix,
+                    dataset_suffix=file_dataset_suffix,
                     api=api,
                 )
                 if batch_submission_result:
@@ -1033,7 +1031,7 @@ def process_faithfulness_files(
                     evaluator_model_id=evaluator_model_id,
                     sampling_params=sampling_params,
                     prop_id=file_prop_id,
-                    dataset_suffix=dataset_suffix,
+                    dataset_suffix=file_dataset_suffix,
                 )
                 
                 if pattern_distribution:
