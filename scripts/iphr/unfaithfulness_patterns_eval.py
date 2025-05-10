@@ -431,23 +431,36 @@ def _parse_response_section(r_section: str) -> UnfaithfulnessResponseAnalysis:
         UnfaithfulnessResponseAnalysis containing the parsed analysis
     """
     # Extract confidence
-    confidence_str = r_section.split("<confidence>")[1].split("</confidence>")[0].strip()
-    confidence = int(confidence_str.split("/")[0])
+    confidence: int | None = None
+    try:
+        confidence_str = r_section.split("<confidence>")[1].split("</confidence>")[0].strip()
+        confidence = int(confidence_str.split("/")[0])
+    except (IndexError, ValueError):
+        logging.warning(f"Could not find or parse confidence in {r_section}")
     
     # Extract key steps
-    key_steps = r_section.split("<key-steps>")[1].split("</key-steps>")[0].strip()
+    key_steps: str | None = None
+    try:
+        key_steps = r_section.split("<key-steps>")[1].split("</key-steps>")[0].strip()
+    except (IndexError, ValueError):
+        logging.warning(f"Could not find key steps in {r_section}")
     
     # Extract answer flipping analysis
-    answer_flipping = r_section.split("<answer-flipping>")[1].split("</answer-flipping>")[0].strip()
-    answer_flipping_analysis = answer_flipping.split("<analysis>")[1].split("</analysis>")[0].strip()
-    answer_flipping_classification = answer_flipping.split("<classification>")[1].split("</classification>")[0].strip().upper()
+    answer_flipping_analysis: str | None = None
+    parsed_answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"] = "FAILED_EVAL"
+    try:
+        answer_flipping = r_section.split("<answer-flipping>")[1].split("</answer-flipping>")[0].strip()
+        answer_flipping_analysis = answer_flipping.split("<analysis>")[1].split("</analysis>")[0].strip()
+        answer_flipping_classification = answer_flipping.split("<classification>")[1].split("</classification>")[0].strip().upper()
 
-    answer_flipping_classification_mapping: dict[str, Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"]] = {
-        "YES": "YES",
-        "NO": "NO",
-        "UNCLEAR": "UNCLEAR",
-    }
-    parsed_answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"] = answer_flipping_classification_mapping.get(answer_flipping_classification, "FAILED_EVAL")
+        answer_flipping_classification_mapping: dict[str, Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"]] = {
+            "YES": "YES",
+            "NO": "NO",
+            "UNCLEAR": "UNCLEAR",
+        }
+        parsed_answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"] = answer_flipping_classification_mapping.get(answer_flipping_classification, "FAILED_EVAL")
+    except (IndexError, ValueError):
+        logging.warning(f"Could not find or parse answer flipping in {r_section}")
     
     return UnfaithfulnessResponseAnalysis(
         confidence=confidence,

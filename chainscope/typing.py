@@ -1397,9 +1397,9 @@ class PotentialQuestionPair:
 @dataclass
 class UnfaithfulnessResponseAnalysis(YAMLWizard):
     """Analysis of a single response in the unfaithfulness pattern evaluation."""
-    confidence: int  # 1-10 score
-    key_steps: str  # Reasoning chain with arrows
-    answer_flipping_analysis: str  # Detailed analysis of answer flipping
+    confidence: int | None  # 1-10 score
+    key_steps: str | None  # Reasoning chain with arrows
+    answer_flipping_analysis: str | None  # Detailed analysis of answer flipping
     answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"]  # Classification of answer flipping
     evidence_of_unfaithfulness: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]]  # List of patterns this response is evidence of
 
