@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import random
 import traceback
 
 import click
@@ -14,6 +15,108 @@ from chainscope.api_utils.anthropic_utils import \
 from chainscope.api_utils.anthropic_utils import submit_anthropic_batch
 from chainscope.api_utils.common import get_responses_async
 from chainscope.typing import *
+
+
+@beartype
+def sample_responses_proportionally(
+    metadata: dict[str, Any],
+    max_responses_per_question: int = 10,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Sample responses proportionally based on p_correct values.
+    
+    For oversampled questions, this function samples responses to match the distribution
+    of correct/incorrect answers according to the p_correct value.
+    
+    Args:
+        metadata: Metadata for the question pair containing responses and p_correct values
+        max_responses_per_question: Maximum number of responses to include per question
+        
+    Returns:
+        Tuple containing:
+        - Dictionary of sampled responses for q1
+        - Dictionary of sampled responses for q2
+    """
+    # Extract responses and accuracy info from metadata
+    q1_all_responses = metadata["q1_all_responses"]
+    q2_all_responses = metadata["q2_all_responses"]
+
+    if "is_oversampled" in metadata:
+        is_oversampled = metadata["is_oversampled"]
+    else:
+        is_oversampled = len(q1_all_responses) <= max_responses_per_question and len(q2_all_responses) <= max_responses_per_question
+
+    if not is_oversampled:
+        # Sampling is not needed
+        return q1_all_responses, q2_all_responses
+    
+    def sample_for_question(responses: dict[str, str], 
+                            correct_responses: dict[str, str],
+                            incorrect_responses: dict[str, str],
+                            p_correct: float) -> dict[str, str]:
+        """Helper function to sample responses for a single question."""
+        # Calculate counts based on p_correct
+        num_correct = min(round(p_correct * max_responses_per_question), len(correct_responses))
+        num_incorrect = min(round((1 - p_correct) * max_responses_per_question), len(incorrect_responses))
+        
+        # Adjust if total is greater than max_responses_per_question
+        if num_correct + num_incorrect > max_responses_per_question:
+            # Maintain proportions but scale down to max_responses_per_question
+            total = num_correct + num_incorrect
+            scale = max_responses_per_question / total
+            num_correct = round(num_correct * scale)
+            num_incorrect = max_responses_per_question - num_correct
+        
+        sampled = {}
+        
+        # Sample responses if available
+        if num_correct > 0 and correct_responses:
+            correct_sample = random.sample(list(correct_responses.items()), 
+                                         min(num_correct, len(correct_responses)))
+            for rid, resp in correct_sample:
+                sampled[rid] = resp
+                
+        if num_incorrect > 0 and incorrect_responses:
+            incorrect_sample = random.sample(list(incorrect_responses.items()), 
+                                           min(num_incorrect, len(incorrect_responses)))
+            for rid, resp in incorrect_sample:
+                sampled[rid] = resp
+        
+        # If we couldn't sample enough, get from the original responses
+        if not sampled and responses:
+            sampled = dict(random.sample(list(responses.items()), 
+                                       min(max_responses_per_question, len(responses))))
+            
+        return sampled
+    
+    # Sample q1 responses
+    q1_p_correct = metadata["p_correct"]
+    q1_correct_responses = {
+        rid: resp for rid, resp in q1_all_responses.items() 
+        if rid in metadata.get("faithful_responses", {})
+    }
+    q1_incorrect_responses = {
+        rid: resp for rid, resp in q1_all_responses.items() 
+        if rid in metadata.get("unfaithful_responses", {})
+    }
+    
+    q1_sampled = sample_for_question(
+        q1_all_responses, q1_correct_responses, q1_incorrect_responses, q1_p_correct
+    )
+    
+    # Sample q2 responses
+    q2_p_correct = metadata["reversed_q_p_correct"]
+    q2_correct_responses = metadata.get("reversed_q_correct_responses", {})
+    q2_incorrect_responses = metadata.get("reversed_q_incorrect_responses", {})
+    
+    q2_sampled = sample_for_question(
+        q2_all_responses, q2_correct_responses, q2_incorrect_responses, q2_p_correct
+    )
+    
+    logging.info(f"Sampled responses for oversampled question pair: "
+                 f"q1: {len(q1_sampled)}/{len(q1_all_responses)} "
+                 f"q2: {len(q2_sampled)}/{len(q2_all_responses)}")
+    
+    return q1_sampled, q2_sampled
 
 
 @beartype
@@ -856,14 +959,18 @@ def process_faithfulness_files(
                 q2_str = metadata["reversed_q_str"]
                 q2_all_responses = metadata["q2_all_responses"]
                 q2_answer = "NO" if q1_answer == "YES" else "YES"
+                is_oversampled = metadata["is_oversampled"]
 
+                # Sample responses proportionally
+                q1_sampled, q2_sampled = sample_responses_proportionally(metadata)
+                
                 # Build prompt for this question
                 prompt, q1_response_mapping, q2_response_mapping = build_unfaithfulness_prompt(
                     q1_str=q1_str,
-                    q1_all_responses=q1_all_responses,
+                    q1_all_responses=q1_sampled,
                     q1_answer=q1_answer,
                     q2_str=q2_str,
-                    q2_all_responses=q2_all_responses,
+                    q2_all_responses=q2_sampled,
                     q2_answer=q2_answer,
                 )
                 
