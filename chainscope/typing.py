@@ -1481,3 +1481,113 @@ LoadMeta(
     v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
 ).bind_to(UnfaithfulnessFullAnalysis)
 DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessFullAnalysis)
+
+
+@dataclass
+class UnfaithfulnessPairsDatasetResponse(YAMLWizard):
+    """A single response in the unfaithfulness dataset."""
+    response: str
+    result: Literal["YES", "NO", "UNKNOWN"] | None
+    final_answer: Literal["REFUSED", "YES", "NO", "UNKNOWN", "FAILED_EVAL"] | None
+    equal_values: Literal["TRUE", "FALSE", "FAILED_EVAL"] | None
+    explanation_final_answer: str | None
+    explanation_equal_values: str | None
+
+
+@dataclass
+class UnfaithfulnessPairsMetadata(YAMLWizard):
+    """Metadata for a question pair in the unfaithfulness dataset."""
+    prop_id: str
+    comparison: Literal["gt", "lt"]
+    dataset_id: str
+    dataset_suffix: str | None
+    accuracy_diff: float
+    group_p_yes_mean: float
+    x_name: str
+    y_name: str
+    x_value: int | float
+    y_value: int | float
+    q_str: str
+    answer: Literal["YES", "NO"]
+    p_correct: float
+    is_oversampled: bool
+    reversed_q_id: str
+    reversed_q_str: str
+    reversed_q_p_correct: float
+    reversed_q_dataset_id: str
+    reversed_q_dataset_suffix: str | None
+    q1_all_responses: dict[str, str]
+    q2_all_responses: dict[str, str]
+    reversed_q_correct_responses: dict[str, UnfaithfulnessPairsDatasetResponse]
+    reversed_q_incorrect_responses: dict[str, UnfaithfulnessPairsDatasetResponse]
+
+
+@dataclass
+class UnfaithfulnessPairsDatasetQuestion(YAMLWizard):
+    """A question with its faithful and unfaithful responses."""
+    prompt: str
+    faithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse]
+    unfaithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse]
+    unknown_responses: dict[str, UnfaithfulnessPairsDatasetResponse]
+    metadata: UnfaithfulnessPairsMetadata | None = None
+
+
+@dataclass
+class UnfaithfulnessPairsDataset(YAMLWizard):
+    """Dataset of potentially unfaithful responses by comparing accuracies of reversed questions."""
+    questions_by_qid: dict[str, UnfaithfulnessPairsDatasetQuestion]
+    model_id: str
+    prop_id: str
+    dataset_suffix: str | None = None
+
+    @property
+    def id(self) -> str:
+        """Get the ID for this unfaithfulness dataset."""
+        if self.dataset_suffix:
+            return f"{self.prop_id}_{self.dataset_suffix}"
+        return self.prop_id
+
+    def get_path(self) -> Path:
+        """Get the path for this unfaithfulness dataset."""
+        model_file_name = self.model_id.split("/")[-1]
+        return DATA_DIR / "faithfulness" / model_file_name / f"{self.id}.yaml"
+
+    def save(self) -> Path:
+        """Save the unfaithfulness dataset to disk."""
+        path = self.get_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.to_yaml_file(path)
+        return path
+
+    @classmethod
+    def load(cls, model_id: str, prop_id: str, dataset_suffix: str | None = None) -> "UnfaithfulnessPairsDataset":
+        """Load an unfaithfulness dataset from disk."""
+        model_file_name = model_id.split("/")[-1]
+        file_id = prop_id
+        if dataset_suffix:
+            file_id = f"{prop_id}_{dataset_suffix}"
+        path = DATA_DIR / "faithfulness" / model_file_name / f"{file_id}.yaml"
+        dataset = cls.from_yaml_file(path)
+        assert isinstance(dataset, cls)
+        return dataset
+
+
+LoadMeta(
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
+).bind_to(UnfaithfulnessPairsDatasetResponse)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessPairsDatasetResponse)
+
+LoadMeta(
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
+).bind_to(UnfaithfulnessPairsMetadata)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessPairsMetadata)
+
+LoadMeta(
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
+).bind_to(UnfaithfulnessPairsDatasetQuestion)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessPairsDatasetQuestion)
+
+LoadMeta(
+    v1=False, v1_unsafe_parse_dataclass_in_union=False, key_transform="SNAKE"
+).bind_to(UnfaithfulnessPairsDataset)
+DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessPairsDataset)

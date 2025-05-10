@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
 
 
+import logging
 from collections import defaultdict
 from typing import Literal
 
 import click
-import numpy as np
 import pandas as pd
-import yaml
 from beartype import beartype
 
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP, sort_models
 
-responses_cache = {}
-eval_cache = {}
+responses_cache: dict[str, CotResponses] = {}
+eval_cache: dict[str, CotEval | OldCotEval] = {}
 
 
 @beartype
-def get_dataset_params(question: pd.Series):
+def get_dataset_params(question: pd.Series) -> DatasetParams:
     return DatasetParams.from_id(question.dataset_id)
 
 
 @beartype
-def get_sampling_params(question: pd.Series):
+def get_sampling_params(question: pd.Series) -> SamplingParams:
     return SamplingParams(
         temperature=float(question.temperature),
         top_p=float(question.top_p),
@@ -32,7 +31,7 @@ def get_sampling_params(question: pd.Series):
 
 
 @beartype
-def get_cache_key(question: pd.Series):
+def get_cache_key(question: pd.Series) -> str:
     # Load responses and evaluations
     dataset_params = get_dataset_params(question)
     sampling_params = get_sampling_params(question)
@@ -43,7 +42,7 @@ def get_cache_key(question: pd.Series):
 
 
 @beartype
-def get_cot_responses(question: pd.Series):
+def get_cot_responses(question: pd.Series) -> CotResponses:
     dataset_params = get_dataset_params(question)
     sampling_params = get_sampling_params(question)
     cache_key = get_cache_key(question)
@@ -86,25 +85,32 @@ def get_cot_eval(question: pd.Series, instr_id: str) -> CotEval | OldCotEval:
 @beartype
 def create_response_dict(
     response: str, eval_result: CotEvalResult | str
-) -> dict[str, str | None | Literal["TRUE", "FALSE", "FAILED_EVAL"]]:
+) -> UnfaithfulnessPairsDatasetResponse:
     if isinstance(eval_result, CotEvalResult):
-        return {
-            "response": response,
-            "result": eval_result.result,
-            "final_answer": eval_result.final_answer,
-            "equal_values": eval_result.equal_values,
-            "explanation_final_answer": eval_result.explanation_final_answer,
-            "explanation_equal_values": eval_result.explanation_equal_values,
-        }
+        return UnfaithfulnessPairsDatasetResponse(
+            response=response,
+            result=eval_result.result,
+            final_answer=eval_result.final_answer,
+            equal_values=eval_result.equal_values,
+            explanation_final_answer=eval_result.explanation_final_answer,
+            explanation_equal_values=eval_result.explanation_equal_values,
+        )
     else:
-        return {
-            "response": response,
-            "result": eval_result,
-            "final_answer": eval_result,
-            "equal_values": "FALSE",
-            "explanation_final_answer": None,
-            "explanation_equal_values": None,
+        result_mapping: dict[str | None, Literal["YES", "NO", "UNKNOWN"]] = {
+            "YES": "YES",
+            "NO": "NO",
+            "UNKNOWN": "UNKNOWN",
         }
+        parsed_result = result_mapping.get(eval_result, "UNKNOWN")
+        
+        return UnfaithfulnessPairsDatasetResponse(
+            response=response,
+            result=parsed_result,
+            final_answer=parsed_result,
+            equal_values="FALSE",
+            explanation_final_answer=None,
+            explanation_equal_values=None,
+        )
 
 
 @beartype
@@ -117,7 +123,7 @@ def process_single_model(
     oversampled_count: int,
     min_group_bias: float,
     include_metadata: bool,
-) -> dict[str, dict]:
+) -> dict[str, UnfaithfulnessPairsDatasetQuestion]:
     """Process data for a single model and return its unfaithful responses.
 
     Args:
@@ -130,9 +136,9 @@ def process_single_model(
         include_metadata: Whether to include metadata in the output
 
     Returns:
-        Dict of faithful and unfaithful responses for this model
+        Dict of UnfaithfulnessPairsDatasetQuestion objects indexed by question ID
     """
-    responses_by_qid = {}
+    questions_by_qid: dict[str, UnfaithfulnessPairsDatasetQuestion] = {}
     total_pairs = 0
 
     # Group by everything except x_name/y_name to find reversed pairs
@@ -207,13 +213,23 @@ def process_single_model(
             cot_eval_reversed = get_cot_eval(reversed_question, instr_id)
 
             # Get all responses for this question
-            all_q_responses = all_cot_responses.responses_by_qid[question.qid]
-            all_q_responses_reversed = all_cot_responses_reversed.responses_by_qid[reversed_question.qid]
-            faithful_responses = {}
-            unfaithful_responses = {}
-            unknown_responses = {}
+            all_q_responses: dict[str, str] = {}
+            for response_id, response in all_cot_responses.responses_by_qid[question.qid].items():
+                assert isinstance(response, str), f"Response is not a string: {response}"
+                all_q_responses[response_id] = response
+            all_q_responses_reversed: dict[str, str] = {}
+            for response_id, response in all_cot_responses_reversed.responses_by_qid[reversed_question.qid].items():
+                assert isinstance(response, str), f"Response is not a string: {response}"
+                all_q_responses_reversed[response_id] = response
+
+            faithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse] = {}
+            unfaithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse] = {}
+            unknown_responses: dict[str, UnfaithfulnessPairsDatasetResponse] = {}
+            
             # Keep only responses that have incorrect answers
             for response_id, response in all_q_responses.items():
+                assert isinstance(response, str), f"Response is not a string: {response}"
+
                 question_evals = cot_eval.results_by_qid[question.qid]
                 if response_id not in question_evals:
                     continue
@@ -238,11 +254,13 @@ def process_single_model(
                     )
 
             # Get all responses for the reversed question
-            reversed_q_correct_responses = {}
-            reversed_q_incorrect_responses = {}
+            reversed_q_correct_responses: dict[str, UnfaithfulnessPairsDatasetResponse] = {}
+            reversed_q_incorrect_responses: dict[str, UnfaithfulnessPairsDatasetResponse] = {}
             for response_id, response in all_cot_responses_reversed.responses_by_qid[
                 reversed_question.qid
             ].items():
+                assert isinstance(response, str), f"Response is not a string: {response}"
+
                 question_evals = cot_eval_reversed.results_by_qid[
                     reversed_question.qid
                 ]
@@ -268,12 +286,48 @@ def process_single_model(
 
             instruction = Instructions.load(question.instr_id).cot
             prompt = instruction.format(question=question.q_str)
-            responses_by_qid[question.qid] = {
-                "prompt": prompt,
-                "faithful_responses": faithful_responses,
-                "unfaithful_responses": unfaithful_responses,
-                "unknown_responses": unknown_responses,
-            }
+            
+            # Create metadata if needed
+            metadata = None
+            if include_metadata:
+                # Create metadata with type conversion as needed
+                answer_literal: Literal["YES", "NO"] = "YES" if question.answer == "YES" else "NO"
+                comparison_literal: Literal["gt", "lt"] = "gt" if comparison == "gt" else "lt"
+                
+                metadata = UnfaithfulnessPairsMetadata(
+                    prop_id=prop_id,
+                    comparison=comparison_literal,
+                    dataset_id=question.dataset_id,
+                    dataset_suffix=question.dataset_suffix if "dataset_suffix" in question else None,
+                    accuracy_diff=abs(float(acc_diff)),
+                    group_p_yes_mean=float(p_yes_mean),
+                    x_name=question.x_name,
+                    y_name=question.y_name,
+                    x_value=question.x_value,
+                    y_value=question.y_value,
+                    q_str=question.q_str,
+                    answer=answer_literal,
+                    p_correct=float(question.p_correct),
+                    is_oversampled=is_oversampled,
+                    reversed_q_id=reversed_question.qid,
+                    reversed_q_str=reversed_question.q_str,
+                    reversed_q_p_correct=float(reversed_question.p_correct),
+                    reversed_q_dataset_id=reversed_question.dataset_id,
+                    reversed_q_dataset_suffix=reversed_question.dataset_suffix if "dataset_suffix" in reversed_question else None,
+                    q1_all_responses=all_q_responses,
+                    q2_all_responses=all_q_responses_reversed,
+                    reversed_q_correct_responses=reversed_q_correct_responses,
+                    reversed_q_incorrect_responses=reversed_q_incorrect_responses
+                )
+
+            # Create the question object directly
+            questions_by_qid[question.qid] = UnfaithfulnessPairsDatasetQuestion(
+                prompt=prompt,
+                faithful_responses=faithful_responses,
+                unfaithful_responses=unfaithful_responses,
+                unknown_responses=unknown_responses,
+                metadata=metadata
+            )
 
             total_responses = (
                 len(faithful_responses)
@@ -284,82 +338,68 @@ def process_single_model(
                 f" ==> Collected {total_responses} responses: {len(faithful_responses)} faithful, {len(unfaithful_responses)} unfaithful, {len(unknown_responses)} unknown"
             )
 
-            if include_metadata:
-                responses_by_qid[question.qid]["metadata"] = {
-                    "prop_id": prop_id,
-                    "comparison": comparison,
-                    "dataset_id": question.dataset_id,
-                    "dataset_suffix": question.dataset_suffix if "dataset_suffix" in question else None,
-                    "accuracy_diff": abs(float(acc_diff)),
-                    "group_p_yes_mean": float(p_yes_mean),
-                    "x_name": question.x_name,
-                    "y_name": question.y_name,
-                    "x_value": question.x_value,
-                    "y_value": question.y_value,
-                    "q_str": question.q_str,
-                    "answer": question.answer,
-                    "p_correct": float(question.p_correct),
-                    "q1_all_responses": all_q_responses,
-                    "q2_all_responses": all_q_responses_reversed,
-                    "is_oversampled": is_oversampled,
-                    "reversed_q_id": reversed_question.qid,
-                    "reversed_q_str": reversed_question.q_str,
-                    "reversed_q_p_correct": float(reversed_question.p_correct),
-                    "reversed_q_correct_responses": reversed_q_correct_responses,
-                    "reversed_q_incorrect_responses": reversed_q_incorrect_responses,
-                    "reversed_q_dataset_id": reversed_question.dataset_id,
-                    "reversed_q_dataset_suffix": reversed_question.dataset_suffix if "dataset_suffix" in reversed_question else None,
-                }
-
-    n_questions = len(responses_by_qid)
+    n_questions = len(questions_by_qid)
     n_faithful = sum(
-        len(responses_by_qid[qid]["faithful_responses"]) for qid in responses_by_qid
+        len(questions_by_qid[qid].faithful_responses) for qid in questions_by_qid
     )
     n_unfaithful = sum(
-        len(responses_by_qid[qid]["unfaithful_responses"]) for qid in responses_by_qid
+        len(questions_by_qid[qid].unfaithful_responses) for qid in questions_by_qid
     )
 
     logging.warning(f"{model_id}: {n_questions} unfaithful pairs out of {total_pairs} ({n_questions / total_pairs:.2%})")
     logging.info(f"-> Found {n_faithful} faithful responses")
     logging.info(f"-> Found {n_unfaithful} unfaithful responses")
 
-    return responses_by_qid
+    return questions_by_qid
 
 
 def save_by_prop_id(
-    responses_by_qid: dict[str, dict], model_file_name: str
+    responses_by_qid: dict[str, UnfaithfulnessPairsDatasetQuestion], 
+    model_id: str
 ) -> None:
     """Save responses grouped by prop_id to separate files in a model directory."""
     # Create model directory
+    model_file_name = model_id.split("/")[-1]
     model_dir = DATA_DIR / "faithfulness" / model_file_name
     model_dir.mkdir(parents=True, exist_ok=True)
 
     # Group questions by prop_id
-    responses_by_prop = defaultdict(dict)
+    responses_by_prop_id_with_suffix: dict[str, dict[str, UnfaithfulnessPairsDatasetQuestion]] = defaultdict(dict)
 
-    for qid, qdata in responses_by_qid.items():
-        if "metadata" in qdata and "prop_id" in qdata["metadata"]:
-            prop_id = qdata["metadata"]["prop_id"]
-            dataset_suffix = qdata["metadata"]["dataset_suffix"]
+    for qid, question in responses_by_qid.items():
+        if question.metadata is not None:
+            prop_id_with_suffix = question.metadata.prop_id
+            dataset_suffix = question.metadata.dataset_suffix
             if dataset_suffix is not None:
-                prop_id = f"{prop_id}_{dataset_suffix}"
-            responses_by_prop[prop_id][qid] = qdata
+                prop_id_with_suffix = f"{prop_id_with_suffix}_{dataset_suffix}"
+            responses_by_prop_id_with_suffix[prop_id_with_suffix][qid] = question
         else:
             # Handle questions without prop_id (shouldn't happen but just in case)
-            responses_by_prop["unknown"][qid] = qdata
+            responses_by_prop_id_with_suffix["unknown"][qid] = question
 
-    # Save each prop_id to a separate file
-    for prop_id, prop_data in responses_by_prop.items():
-        output_path = model_dir / f"{prop_id}.yaml"
-        with open(output_path, "w") as f:
-            yaml.dump(prop_data, f)
+    # Save each prop_id to a separate file using the UnfaithfulnessPairsDataset class
+    for prop_id_with_suffix, prop_data in responses_by_prop_id_with_suffix.items():
+        prop_id = prop_id_with_suffix.split("_")[0]
+        dataset_suffix = None
+        if "_" in prop_id_with_suffix:
+            dataset_suffix = prop_id_with_suffix.split("_")[1]
+        
+        # Create and save the dataset
+        dataset = UnfaithfulnessPairsDataset(
+            questions_by_qid=prop_data,
+            model_id=model_id,
+            prop_id=prop_id,
+            dataset_suffix=dataset_suffix
+        )
+        
+        dataset.save()
 
         n_questions = len(prop_data)
         n_faithful = sum(
-            len(prop_data[qid]["faithful_responses"]) for qid in prop_data
+            len(question.faithful_responses) for question in prop_data.values()
         )
         n_unfaithful = sum(
-            len(prop_data[qid]["unfaithful_responses"]) for qid in prop_data
+            len(question.unfaithful_responses) for question in prop_data.values()
         )
         logging.info(
             f"  - Saved prop_id {prop_id}: {n_questions} questions, {n_faithful} faithful, {n_unfaithful} unfaithful"
@@ -485,9 +525,8 @@ def main(
     model_ids = sort_models(df["model_id"].unique().tolist())
     for model_id in model_ids:
         model_data = df[df["model_id"] == model_id]
-        model_file_name = model_id.split("/")[-1]
         
-        logging.info(f"### Processing {model_file_name} ###")
+        logging.info(f"### Processing {model_id} ###")
 
         responses = process_single_model(
             model_id=model_id,
@@ -501,7 +540,7 @@ def main(
         )
 
         # Save responses by prop_id to separate files
-        save_by_prop_id(responses, model_file_name)
+        save_by_prop_id(responses, model_id)
 
 
 if __name__ == "__main__":
