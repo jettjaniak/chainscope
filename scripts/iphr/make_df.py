@@ -122,6 +122,7 @@ def analyze_cot_eval(
                 "no_count": no_count,
                 "unknown_count": unknown_count,
                 "known_count": known_count,
+                "total_count": total_count,
             }
         )
 
