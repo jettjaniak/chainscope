@@ -924,7 +924,7 @@ def process_faithfulness_files(
                 data = faithfulness_dataset.questions_by_qid
                 logging.info(f"Loaded {len(data)} questions from faithfulness dataset")
             except Exception as e:
-                logging.error(f"Failed to load faithfulness dataset: {e}")
+                logging.error(f"Failed to load faithfulness dataset in yaml file {yaml_file}: {e}")
                 continue
             
             # Get the evaluation path and load existing evaluation
