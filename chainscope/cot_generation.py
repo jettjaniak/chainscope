@@ -466,6 +466,7 @@ def get_local_responses_tl(
     model = HookedTransformer.from_pretrained(
         model_name=model_id,
         device="cuda",
+        n_devices=2,
     )
     assert model.tokenizer is not None, "Tokenizer is not initialized"
 

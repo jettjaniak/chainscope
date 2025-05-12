@@ -96,7 +96,7 @@ def generate_local_rollouts(
     prefix: Optional[int] = None,
     preamble: str = "",
     local_gen_seed: int = 42,
-    max_new_tokens: int = 10_024,
+    max_new_tokens: int = 32768,
     temperature: float = 0.0,
     top_p: float = 1.0,
 ) -> CotResponses:
@@ -122,15 +122,19 @@ def generate_local_rollouts(
     model = HookedTransformer.from_pretrained(
         model_name=model_id,
         device="cuda:0",  # "cuda" if torch.cuda.is_available() else "cpu",
+        n_devices=2,
     )
     assert model.tokenizer is not None, "Tokenizer not initialized"
     # model = HookedTransformerWithGenerator(model)
 
     # Prepare questions
     questions = dataset.questions[:prefix] if prefix else dataset.questions
+    # Filter to _a1 for limited run.
+    questions = [q for q in questions if q.name.endswith("_a1")]
     responses_by_qid = {}
-    model = HookedTransformerWithGenerator(model)
-    model.hooked_transformer.to(model.cfg.device)
+    raw_model = model
+    model = HookedTransformerWithGenerator(raw_model)
+    #model.hooked_transformer.to(model.cfg.device)
 
     # Process each question
     for q in questions:
