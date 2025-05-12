@@ -16,15 +16,13 @@ from chainscope.utils import (MODELS_MAP, get_model_display_name,
 # filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
 # df = df[~df.prop_id.isin(filter_prop_ids)]
 
-df_path = DATA_DIR / "df-wm-non-ambiguous.pkl"
+df_path = DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl"
 df = pd.read_pickle(df_path)
 
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 
-n_pairs = 7400
-if "ambiguous" in str(df_path):
-    n_pairs = 1922
+n_pairs = 4892
 
 # %%
 
