@@ -11,6 +11,7 @@ import pandas as pd
 import torch
 import wandb
 from dacite import from_dict
+from jaxtyping import Float
 from requests.exceptions import HTTPError as RequestsHTTPError
 from torch import nn
 from torch.optim.adam import Adam
@@ -214,7 +215,7 @@ class LinearProbe(nn.Module):
 
 
 def collate_fn(
-    batch: Sequence[tuple[Float[torch.Tensor, "d_model"], float]],
+    batch: list[tuple[Float[torch.Tensor, "d_model"], float]],
 ) -> CollateFnOutput:
     resids_list = []
     labels_list = []
