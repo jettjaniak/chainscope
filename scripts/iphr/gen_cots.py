@@ -94,9 +94,10 @@ def submit(
         ds_params = DatasetParams.from_id(dataset_id)
 
         # Check that we have data for unfaithful pairs if requested
-        faithfulness_data = None
+        faithfulness_data: UnfaithfulnessPairsDataset | None = None
         if unfaithful_only:
-            faithfulness_dir = DATA_DIR / "faithfulness" / model_id.split("/")[-1]
+            model_file_name = model_id.split("/")[-1]
+            faithfulness_dir = DATA_DIR / "faithfulness" / model_file_name
             if not faithfulness_dir.exists():
                 logging.warning(f"No faithfulness data found for model {model_id}")
                 continue
@@ -110,10 +111,14 @@ def submit(
                 logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}")
                 continue
 
-            with open(faithfulness_path, "r") as f:
-                faithfulness_data = yaml.safe_load(f)
-            if faithfulness_data is None:
-                logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}")
+            try:
+                faithfulness_data = UnfaithfulnessPairsDataset.load(
+                    model_id=model_id,
+                    prop_id=ds_params.prop_id,
+                    dataset_suffix=ds_params.suffix,
+                )
+            except Exception as e:
+                logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}: {e}")
                 continue
 
         # Try to load existing responses
@@ -154,11 +159,11 @@ def submit(
         if faithfulness_data is not None:
             # Collect all unfaithful question IDs
             unfaithful_qids = set()
-            logging.info(f"Filtering to {len(faithfulness_data)} unfaithful pairs")
-            for qid, qdata in faithfulness_data.items():
-                assert "metadata" in qdata and "reversed_q_id" in qdata["metadata"]
-                unfaithful_qids.add(qid)
-                unfaithful_qids.add(qdata["metadata"]["reversed_q_id"])
+            logging.info(f"Filtering to {len(faithfulness_data.questions_by_qid)} unfaithful pairs")
+            for qid, question in faithfulness_data.questions_by_qid.items():
+                if question.metadata is not None:
+                    unfaithful_qids.add(qid)
+                    unfaithful_qids.add(question.metadata.reversed_q_id)
             logging.info(f"Found {len(unfaithful_qids)} question IDs after filtering by faithfulness")
 
             # Filter prompts to only include unfaithful pairs
@@ -301,32 +306,26 @@ def local(
     qid_to_dataset: dict[str, str] = {}  # Map question IDs to dataset IDs
 
     # Check faithfulness data if requested
-    faithfulness_data_by_dataset: dict[str, dict] = {}
+    faithfulness_data_by_dataset: dict[str, UnfaithfulnessPairsDataset] = {}
     if unfaithful_only:
-        model_name = model_id.split("/")[-1]
-        faithfulness_dir = DATA_DIR / "faithfulness" / model_name
+        model_file_name = model_id.split("/")[-1]
+        faithfulness_dir = DATA_DIR / "faithfulness" / model_file_name
         if not faithfulness_dir.exists():
             logging.warning(f"No faithfulness data found for model {model_id}")
             return
 
         for dataset_id in dataset_id_list:
             ds_params = DatasetParams.from_id(dataset_id)
-            if ds_params.suffix is None:
-                faithfulness_file_name = f"{ds_params.prop_id}.yaml"
-            else:
-                faithfulness_file_name = f"{ds_params.prop_id}_{ds_params.suffix}.yaml"
-            faithfulness_path = faithfulness_dir / faithfulness_file_name
-            if not faithfulness_path.exists():
-                logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}")
+            try:
+                faithfulness_data = UnfaithfulnessPairsDataset.load(
+                    model_id=model_id,
+                    prop_id=ds_params.prop_id,
+                    dataset_suffix=ds_params.suffix,
+                )
+                faithfulness_data_by_dataset[dataset_id] = faithfulness_data
+            except Exception as e:
+                logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}: {e}")
                 continue
-
-            with open(faithfulness_path, "r") as f:
-                data = yaml.safe_load(f)
-            if data is None:
-                logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}")
-                continue
-
-            faithfulness_data_by_dataset[dataset_id] = data
 
         if not faithfulness_data_by_dataset:
             logging.error("No faithfulness data found for any dataset")
@@ -389,10 +388,10 @@ def local(
         # Collect all unfaithful question IDs
         unfaithful_qids = set()
         for dataset_id, data in faithfulness_data_by_dataset.items():
-            for qid, qdata in data.items():
-                assert "metadata" in qdata and "reversed_q_id" in qdata["metadata"]
-                unfaithful_qids.add(qid)
-                unfaithful_qids.add(qdata["metadata"]["reversed_q_id"])
+            for qid, question in data.questions_by_qid.items():
+                if question.metadata is not None:
+                    unfaithful_qids.add(qid)
+                    unfaithful_qids.add(question.metadata.reversed_q_id)
 
         # Filter prompts to only include unfaithful pairs
         all_prompts = [
