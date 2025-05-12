@@ -103,7 +103,7 @@ run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp meta-llama/Llama-3.3-70B
 run ant-batch "$OVERSAMPLE_ARGS" C3.6S C3.7S_1K C3.7S
 run oai-batch "$OVERSAMPLE_ARGS" GPT4O
 run oai "$OVERSAMPLE_ARGS"       GPT4OL
-run or "$OVERSAMPLE_ARGS"        DSR1
+run or "$OVERSAMPLE_ARGS"        GP2.5 DSR1
 
 # # Process batches once there are no more pending batches
 wait_for_batches "ant-batch"
