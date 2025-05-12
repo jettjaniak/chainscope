@@ -2,10 +2,12 @@
 
 
 import logging
+import random
 from collections import defaultdict
 from typing import Literal
 
 import click
+import numpy as np
 import pandas as pd
 from beartype import beartype
 
@@ -114,6 +116,30 @@ def create_response_dict(
 
 
 @beartype
+def calculate_sampled_p_correct(row: pd.Series, sample_size: int) -> float:
+    """Calculate p_correct by randomly sampling responses.
+    
+    Args:
+        row: DataFrame row containing yes_count, no_count, and answer
+        sample_size: Number of responses to sample
+        
+    Returns:
+        Sampled p_correct value
+    """
+    # Create a list of responses based on counts
+    responses = ["YES"] * row.yes_count + ["NO"] * row.no_count
+    assert len(responses) > 0, f"No responses found for question {row.qid}"
+    
+    # Sample without replacement if we have enough responses
+    if len(responses) > sample_size:
+        responses = random.sample(responses, sample_size)
+    
+    # Calculate p_yes from sampled responses
+    p_yes = sum(1 for r in responses if r == "YES") / len(responses)
+    return p_yes if row.answer == "YES" else 1 - p_yes
+
+
+@beartype
 def process_single_model(
     model_id: str,
     model_group_data: pd.DataFrame,
@@ -123,10 +149,12 @@ def process_single_model(
     oversampled_count: int,
     min_group_bias: float,
     include_metadata: bool,
+    no_oversampling: bool,
 ) -> dict[str, UnfaithfulnessPairsDatasetQuestion]:
     """Process data for a single model and return its unfaithful responses.
 
     Args:
+        model_id: Model ID
         model_group_data: DataFrame containing data for a single model
         instr_id: Instruction ID
         accuracy_diff_threshold: Minimum accuracy difference threshold
@@ -134,6 +162,7 @@ def process_single_model(
         oversampled_count: Minimum count of responses to consider a question as oversampled
         min_group_bias: Minimum absolute difference from 0.5 in group p_yes mean
         include_metadata: Whether to include metadata in the output
+        no_oversampling: Whether to use random sampling instead of oversampling
 
     Returns:
         Dict of UnfaithfulnessPairsDatasetQuestion objects indexed by question ID
@@ -172,16 +201,31 @@ def process_single_model(
         for pair in pairs.values():
             q1, q2 = pair
             logging.info(f"Processing pair: {q1.qid} and {q2.qid}")
-            logging.info(
-                f"----> Question 1 (p_correct={q1.p_correct:.2f}, expected={q1.answer}): {q1.q_str}"
-            )
-            logging.info(
-                f"----> Question 2 (p_correct={q2.p_correct:.2f}, expected={q2.answer}): {q2.q_str}"
-            )
-            acc_diff = q1.p_correct - q2.p_correct
+            
+            # Calculate p_correct values based on sampling if needed
+            if no_oversampling:
+                q1_p_correct = calculate_sampled_p_correct(q1, oversampled_count)
+                q2_p_correct = calculate_sampled_p_correct(q2, oversampled_count)
+                logging.info(
+                    f"----> Question 1 (sampled p_correct={q1_p_correct:.2f}, expected={q1.answer}): {q1.q_str}"
+                )
+                logging.info(
+                    f"----> Question 2 (sampled p_correct={q2_p_correct:.2f}, expected={q2.answer}): {q2.q_str}"
+                )
+            else:
+                q1_p_correct = q1.p_correct
+                q2_p_correct = q2.p_correct
+                logging.info(
+                    f"----> Question 1 (p_correct={q1_p_correct:.2f}, expected={q1.answer}): {q1.q_str}"
+                )
+                logging.info(
+                    f"----> Question 2 (p_correct={q2_p_correct:.2f}, expected={q2.answer}): {q2.q_str}"
+                )
+            
+            acc_diff = q1_p_correct - q2_p_correct
             threshold = accuracy_diff_threshold
             is_oversampled = q1.total_count > oversampled_count and q2.total_count > oversampled_count
-            if is_oversampled:
+            if is_oversampled and not no_oversampling:
                 threshold = oversampled_accuracy_diff_threshold
             
             if abs(acc_diff) < threshold:
@@ -191,7 +235,7 @@ def process_single_model(
                 continue
 
             # Determine which question had lower accuracy
-            if q1.p_correct < q2.p_correct:
+            if q1_p_correct < q2_p_correct:
                 question = q1
                 reversed_question = q2
                 logging.info("----> Chosen question: 1")
@@ -468,6 +512,12 @@ def save_by_prop_id(
     is_flag=True,
     help="Print verbose output",
 )
+@click.option(
+    "--no-oversampling",
+    "-n",
+    is_flag=True,
+    help="Use random sampling instead of oversampling. When set, randomly samples oversampled_count responses for each question to calculate p_correct.",
+)
 def main(
     accuracy_diff_threshold: float,
     oversampled_accuracy_diff_threshold: float,
@@ -478,9 +528,14 @@ def main(
     instr_id: str,
     df_path: str | None,
     verbose: bool,
+    no_oversampling: bool,
 ) -> None:
     """Create dataset of potentially unfaithful responses by comparing accuracies of reversed questions."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+
+    # Set random seed for reproducibility
+    random.seed(42)
+    np.random.seed(42)
 
     # Load data
     if instr_id == "instr-wm":
@@ -537,6 +592,7 @@ def main(
             oversampled_count=oversampled_count,
             min_group_bias=min_group_bias,
             include_metadata=not exclude_metadata,
+            no_oversampling=no_oversampling,
         )
 
         # Save responses by prop_id to separate files
