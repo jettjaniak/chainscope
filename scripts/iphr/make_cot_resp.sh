@@ -105,6 +105,10 @@ run oai-batch "$OVERSAMPLE_ARGS" GPT4O
 run oai "$OVERSAMPLE_ARGS"       GPT4OL
 run or "$OVERSAMPLE_ARGS"        GP2.5 DSR1
 
+# Oversample the CoT responses for main fig
+run or "$OVERSAMPLE_ARGS --qid 12710e0d6df3c7e0f6dea6df753b6ce8a21d13e186e431e5e68b7798a55c44b0" GF2.5
+run or "$OVERSAMPLE_ARGS --qid 7b304c575165c30ae445390c8e94eed9c4eea54e603c43c2ef1deea39810de6e" GF2.5
+
 # Process batches once there are no more pending batches
 wait_for_batches "ant-batch"
 find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;

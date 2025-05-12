@@ -59,6 +59,11 @@ def cli():
     is_flag=True,
     help="Only generate CoTs for unfaithful pairs identified in faithfulness YAMLs",
 )
+@click.option(
+    "--qid",
+    type=str,
+    help="Only generate CoTs for a specific question ID",
+)
 def submit(
     n_responses: int,
     dataset_ids: str,
@@ -72,6 +77,7 @@ def submit(
     test: bool,
     verbose: bool,
     unfaithful_only: bool,
+    qid: str | None,
 ):
     """Submit CoT generation requests in realtime or using batch APIs."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -154,6 +160,18 @@ def submit(
         if not batch_of_cot_prompts:
             logging.info(f"No prompts to process for dataset {dataset_id}")
             continue
+
+        # Filter for specific qid if requested
+        if qid is not None:
+            batch_of_cot_prompts = [
+                (q_resp_id, prompt)
+                for q_resp_id, prompt in batch_of_cot_prompts
+                if q_resp_id.qid == qid
+            ]
+            if not batch_of_cot_prompts:
+                logging.warning(f"No prompts found for qid {qid} in dataset {dataset_id}")
+                continue
+            logging.info(f"Filtered to prompts for qid {qid}")
 
         # Filter for unfaithful pairs if requested
         if faithfulness_data is not None:
