@@ -27,7 +27,7 @@ class PatternsDistribution:
 @beartype
 def sample_responses_proportionally(
     question_data: UnfaithfulnessPairsDatasetQuestion,
-    max_responses_per_question: int = 10,
+    max_responses_per_question: int,
 ) -> tuple[dict[str, str], dict[str, str]]:
     """Sample responses proportionally based on p_correct values.
     
@@ -431,6 +431,7 @@ def _parse_response_section(r_section: str) -> UnfaithfulnessResponseAnalysis:
         confidence = int(confidence_str.split("/")[0])
     except Exception:
         logging.warning(f"Could not find or parse confidence in {r_section}")
+        logging.warning(traceback.format_exc())
     
     # Extract key steps
     key_steps: str | None = None
@@ -455,6 +456,7 @@ def _parse_response_section(r_section: str) -> UnfaithfulnessResponseAnalysis:
         parsed_answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"] = answer_flipping_classification_mapping.get(answer_flipping_classification, "FAILED_EVAL")
     except Exception:
         logging.warning(f"Could not find or parse answer flipping in {r_section}")
+        logging.warning(traceback.format_exc())
     
     return UnfaithfulnessResponseAnalysis(
         confidence=confidence,
@@ -482,6 +484,7 @@ def _parse_question_responses(section: str) -> dict[str, UnfaithfulnessResponseA
             responses[str(i)] = _parse_response_section(r_section)
         except Exception:
             logging.warning(f"Could not find r{i} section in {section}")
+            logging.warning(traceback.format_exc())
     return responses
 
 
@@ -511,6 +514,7 @@ def _parse_evidence_of_unfaithfulness(section: str, responses: dict[str, Unfaith
                 responses[str(i)].evidence_of_unfaithfulness = ["none"]
         except Exception:
             logging.warning(f"Could not find r{i} section in {section}")
+            logging.warning(traceback.format_exc())
 
 
 @beartype
@@ -533,7 +537,7 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
             first_impressions = response.split("<first-impressions>")[1].split("</first-impressions>")[0].strip()
         except Exception:
             logging.warning("Could not find first-impressions section")
-        
+            logging.warning(traceback.format_exc())
         # Extract basic evaluation
         q1_responses = {}
         q2_responses = {}
@@ -553,8 +557,10 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
                 q2_responses = _parse_question_responses(q2_section)
             except Exception:
                 logging.warning("Could not find Q2 section in basic-eval")
+                logging.warning(traceback.format_exc())
         except Exception:
             logging.warning("Could not find basic-eval section")
+            logging.warning(traceback.format_exc())
         
         # Extract summary
         summary = None
@@ -562,7 +568,8 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
             summary = response.split("<summary>")[1].split("</summary>")[0].strip()
         except Exception:
             logging.warning("Could not find summary section")
-        
+            logging.warning(traceback.format_exc())
+
         # Extract unfaithfulness analysis
         unfaithfulness_analysis = None
         categorization_for_pair: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]] | None = None
@@ -573,7 +580,8 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
                 unfaithfulness_analysis = unfaithfulness_eval.split("<analysis>")[1].split("</analysis>")[0].strip()
             except Exception:
                 logging.warning("Could not find unfaithfulness analysis section")
-            
+                logging.warning(traceback.format_exc())
+
             try:
                 raw_categorization_for_pair_str = unfaithfulness_eval.split("<categorization-for-pair>")[1].split("</categorization-for-pair>")[0].strip().lower()
                 categorization_for_pair_strs = [p.strip() for p in raw_categorization_for_pair_str.split(",")]
@@ -587,14 +595,17 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
                 categorization_for_pair = [categorization_for_pair_mapping.get(p, "none") for p in categorization_for_pair_strs]
             except Exception:
                 logging.warning("Could not find categorization-for-pair section")
+                logging.warning(traceback.format_exc())
             
             # Extract evidence of unfaithfulness
             try:
                 evidence_of_unfaithfulness = unfaithfulness_eval.split("<evidence-of-unfaithfulness>")[1].split("</evidence-of-unfaithfulness>")[0].strip()
             except Exception:
                 logging.warning("Could not find evidence-of-unfaithfulness section")
+                logging.warning(traceback.format_exc())
         except Exception:
             logging.warning("Could not find unfaithfulness-eval section")
+            logging.warning(traceback.format_exc())
         
         # Parse Q1 categorization if available
         if evidence_of_unfaithfulness and q1_responses:
@@ -603,7 +614,8 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
                 _parse_evidence_of_unfaithfulness(q1_cat, q1_responses)
             except Exception:
                 logging.warning("Could not find Q1 categorization section")
-        
+                logging.warning(traceback.format_exc())
+
         # Parse Q2 categorization if available
         if evidence_of_unfaithfulness and q2_responses:
             try:
@@ -611,7 +623,8 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
                 _parse_evidence_of_unfaithfulness(q2_cat, q2_responses)
             except Exception:
                 logging.warning("Could not find Q2 categorization section")
-        
+                logging.warning(traceback.format_exc())
+
         return UnfaithfulnessFullAnalysis(
             first_impressions=first_impressions,
             q1_analysis=UnfaithfulnessQuestionAnalysis(responses=q1_responses) if q1_responses else None,
@@ -869,6 +882,7 @@ def process_faithfulness_files(
     model_id: str,
     evaluator_model_id: str,
     sampling_params: SamplingParams,
+    max_responses_per_question: int = 10,
     dry_run: bool = False,
     test: bool = False,
     prop_id: str | None = None,
@@ -961,7 +975,12 @@ def process_faithfulness_files(
                     continue
 
                 # Sample responses proportionally
-                q1_sampled, q2_sampled = sample_responses_proportionally(question_data)
+                q1_sampled, q2_sampled = sample_responses_proportionally(
+                    question_data=question_data,
+                    max_responses_per_question=max_responses_per_question,
+                )
+                assert len(q1_sampled) <= max_responses_per_question
+                assert len(q2_sampled) <= max_responses_per_question
                 
                 # Build prompt for this question
                 prompt, q1_response_mapping, q2_response_mapping = build_unfaithfulness_prompt(
@@ -1081,6 +1100,11 @@ def cli() -> None:
     help="Max tokens for evaluation",
 )
 @click.option(
+    "--max-responses-per-question",
+    default=10,
+    help="Maximum number of responses to sample per question",
+)
+@click.option(
     "--api",
     type=click.Choice(["ant-batch", "ant"]),
     default="ant-batch",
@@ -1128,6 +1152,7 @@ def submit(
     temperature: float,
     top_p: float,
     max_tokens: int,
+    max_responses_per_question: int,
     api: str,
     dry_run: bool,
     test: bool,
@@ -1152,6 +1177,7 @@ def submit(
         model_id=model.split("/")[-1],
         evaluator_model_id=evaluator_model_id,
         sampling_params=sampling_params,
+        max_responses_per_question=max_responses_per_question,
         dry_run=dry_run,
         test=test,
         prop_id=prop_id,

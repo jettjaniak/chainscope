@@ -15,23 +15,141 @@ from chainscope.typing import *
 # %%
 
 # Data from the pattern analysis
-data = {
-    'model': [
-        'Llama-3.1-70B', 'Llama-3.3-70B-Instruct', 'chatgpt-4o-latest',
-        'claude-3.5-haiku', 'claude-3.6-sonnet', 'claude-3.7-sonnet',
-        'claude-3.7-sonnet_1k', 'deepseek-chat', 'deepseek-r1',
-        'gemini-2.5-flash-preview', 'gemini-pro-1.5', 'gpt-4o-2024-08-06',
-        'gpt-4o-mini', 'qwq-32b'
-    ],
-    'total_unfaithful_pairs': [159, 102, 15, 363, 12, 63, 2, 60, 13, 106, 320, 13, 660, 220],
-    'fact-manipulation': [69.2, 80.4, 100.0, 64.7, 91.7, 14.3, 100.0, 73.3, 100.0, 35.8, 75.3, 84.6, 48.0, 99.5],
-    'argument-switching': [46.5, 40.2, 6.7, 44.9, 0.0, 11.1, 0.0, 21.7, 7.7, 73.6, 27.5, 15.4, 76.4, 14.5],
-    'answer-flipping': [58.5, 69.6, 20.0, 71.3, 33.3, 95.2, 0.0, 38.3, 15.4, 62.3, 46.6, 61.5, 76.4, 36.4],
-    'other': [8.8, 8.8, 0.0, 14.0, 8.3, 52.4, 0.0, 11.7, 0.0, 3.8, 14.1, 7.7, 7.1, 0.0]
+data = [
+    {
+        'model': 'Llama-3.1-70B',
+        'total_unfaithful_pairs': 159,
+        'fact-manipulation': 69.2,
+        'argument-switching': 46.5,
+        'answer-flipping': 58.5,
+        'other': 8.8
+    },
+    {
+        'model': 'Llama-3.3-70B-Instruct',
+        'total_unfaithful_pairs': 102,
+        'fact-manipulation': 80.4,
+        'argument-switching': 40.2,
+        'answer-flipping': 69.6,
+        'other': 8.8
+    },
+    {
+        'model': 'chatgpt-4o-latest',
+        'total_unfaithful_pairs': 15,
+        'fact-manipulation': 100.0,
+        'argument-switching': 6.7,
+        'answer-flipping': 20.0,
+        'other': 0.0
+    },
+    {
+        'model': 'claude-3.5-haiku',
+        'total_unfaithful_pairs': 363,
+        'fact-manipulation': 64.7,
+        'argument-switching': 44.9,
+        'answer-flipping': 71.3,
+        'other': 14.0
+    },
+    {
+        'model': 'claude-3.6-sonnet',
+        'total_unfaithful_pairs': 12,
+        'fact-manipulation': 91.7,
+        'argument-switching': 0.0,
+        'answer-flipping': 33.3,
+        'other': 8.3
+    },
+    {
+        'model': 'claude-3.7-sonnet',
+        'total_unfaithful_pairs': 63,
+        'fact-manipulation': 14.3,
+        'argument-switching': 11.1,
+        'answer-flipping': 95.2,
+        'other': 52.4
+    },
+    {
+        'model': 'claude-3.7-sonnet_1k',
+        'total_unfaithful_pairs': 2,
+        'fact-manipulation': 100.0,
+        'argument-switching': 0.0,
+        'answer-flipping': 0.0,
+        'other': 0.0
+    },
+    {
+        'model': 'deepseek-chat',
+        'total_unfaithful_pairs': 60,
+        'fact-manipulation': 73.3,
+        'argument-switching': 21.7,
+        'answer-flipping': 38.3,
+        'other': 11.7
+    },
+    {
+        'model': 'deepseek-r1',
+        'total_unfaithful_pairs': 13,
+        'fact-manipulation': 100.0,
+        'argument-switching': 7.7,
+        'answer-flipping': 15.4,
+        'other': 0.0
+    },
+    {
+        'model': 'gemini-2.5-pro-preview',
+        'total_unfaithful_pairs': 7,
+        'fact-manipulation': 100.0,
+        'argument-switching': 0.0,
+        'answer-flipping': 0.0,
+        'other': 0.0
+    },
+    {
+        'model': 'gemini-2.5-flash-preview',
+        'total_unfaithful_pairs': 106,
+        'fact-manipulation': 35.8,
+        'argument-switching': 73.6,
+        'answer-flipping': 62.3,
+        'other': 3.8
+    },
+    {
+        'model': 'gemini-pro-1.5',
+        'total_unfaithful_pairs': 320,
+        'fact-manipulation': 75.3,
+        'argument-switching': 27.5,
+        'answer-flipping': 46.6,
+        'other': 14.1
+    },
+    {
+        'model': 'gpt-4o-2024-08-06',
+        'total_unfaithful_pairs': 13,
+        'fact-manipulation': 84.6,
+        'argument-switching': 15.4,
+        'answer-flipping': 61.5,
+        'other': 7.7
+    },
+    {
+        'model': 'gpt-4o-mini',
+        'total_unfaithful_pairs': 660,
+        'fact-manipulation': 48.0,
+        'argument-switching': 76.4,
+        'answer-flipping': 76.4,
+        'other': 7.1
+    },
+    {
+        'model': 'qwq-32b',
+        'total_unfaithful_pairs': 220,
+        'fact-manipulation': 99.5,
+        'argument-switching': 14.5,
+        'answer-flipping': 36.4,
+        'other': 0.0
+    }
+]
+
+# Compute flattened data from the data list
+flattened_data = {
+    'model': [entry['model'] for entry in data],
+    'total_unfaithful_pairs': [entry['total_unfaithful_pairs'] for entry in data],
+    'fact-manipulation': [entry['fact-manipulation'] for entry in data],
+    'argument-switching': [entry['argument-switching'] for entry in data],
+    'answer-flipping': [entry['answer-flipping'] for entry in data],
+    'other': [entry['other'] for entry in data]
 }
 
 # Create DataFrame
-df = pd.DataFrame(data)
+df = pd.DataFrame(flattened_data)
 
 # Set up the plot
 plt.figure(figsize=(15, 8))
