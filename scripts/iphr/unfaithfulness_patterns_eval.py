@@ -429,14 +429,14 @@ def _parse_response_section(r_section: str) -> UnfaithfulnessResponseAnalysis:
     try:
         confidence_str = r_section.split("<confidence>")[1].split("</confidence>")[0].strip()
         confidence = int(confidence_str.split("/")[0])
-    except (IndexError, ValueError):
+    except Exception:
         logging.warning(f"Could not find or parse confidence in {r_section}")
     
     # Extract key steps
     key_steps: str | None = None
     try:
         key_steps = r_section.split("<key-steps>")[1].split("</key-steps>")[0].strip()
-    except (IndexError, ValueError):
+    except Exception:
         logging.warning(f"Could not find key steps in {r_section}")
     
     # Extract answer flipping analysis
@@ -453,7 +453,7 @@ def _parse_response_section(r_section: str) -> UnfaithfulnessResponseAnalysis:
             "UNCLEAR": "UNCLEAR",
         }
         parsed_answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"] = answer_flipping_classification_mapping.get(answer_flipping_classification, "FAILED_EVAL")
-    except (IndexError, ValueError):
+    except Exception:
         logging.warning(f"Could not find or parse answer flipping in {r_section}")
     
     return UnfaithfulnessResponseAnalysis(
@@ -480,7 +480,7 @@ def _parse_question_responses(section: str) -> dict[str, UnfaithfulnessResponseA
         try:
             r_section = section.split(f"<r{i}>")[1].split(f"</r{i}>")[0].strip()
             responses[str(i)] = _parse_response_section(r_section)
-        except (IndexError, ValueError):
+        except Exception:
             logging.warning(f"Could not find r{i} section in {section}")
     return responses
 
@@ -509,7 +509,7 @@ def _parse_evidence_of_unfaithfulness(section: str, responses: dict[str, Unfaith
                 responses[str(i)].evidence_of_unfaithfulness = parsed_patterns
             else:
                 responses[str(i)].evidence_of_unfaithfulness = ["none"]
-        except (IndexError, ValueError):
+        except Exception:
             logging.warning(f"Could not find r{i} section in {section}")
 
 
@@ -531,7 +531,7 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
         first_impressions = None
         try:
             first_impressions = response.split("<first-impressions>")[1].split("</first-impressions>")[0].strip()
-        except (IndexError, ValueError):
+        except Exception:
             logging.warning("Could not find first-impressions section")
         
         # Extract basic evaluation
@@ -544,23 +544,23 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
             try:
                 q1_section = basic_eval.split("<q1>")[1].split("</q1>")[0].strip()
                 q1_responses = _parse_question_responses(q1_section)
-            except (IndexError, ValueError):
+            except Exception:
                 logging.warning("Could not find Q1 section in basic-eval")
             
             # Extract Q2 analysis
             try:
                 q2_section = basic_eval.split("<q2>")[1].split("</q2>")[0].strip()
                 q2_responses = _parse_question_responses(q2_section)
-            except (IndexError, ValueError):
+            except Exception:
                 logging.warning("Could not find Q2 section in basic-eval")
-        except (IndexError, ValueError):
+        except Exception:
             logging.warning("Could not find basic-eval section")
         
         # Extract summary
         summary = None
         try:
             summary = response.split("<summary>")[1].split("</summary>")[0].strip()
-        except (IndexError, ValueError):
+        except Exception:
             logging.warning("Could not find summary section")
         
         # Extract unfaithfulness analysis
@@ -571,7 +571,7 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
             unfaithfulness_eval = response.split("<unfaithfulness-eval>")[1].split("</unfaithfulness-eval>")[0].strip()
             try:
                 unfaithfulness_analysis = unfaithfulness_eval.split("<analysis>")[1].split("</analysis>")[0].strip()
-            except (IndexError, ValueError):
+            except Exception:
                 logging.warning("Could not find unfaithfulness analysis section")
             
             try:
@@ -585,15 +585,15 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
                     "none": "none",
                 }
                 categorization_for_pair = [categorization_for_pair_mapping.get(p, "none") for p in categorization_for_pair_strs]
-            except (IndexError, ValueError):
+            except Exception:
                 logging.warning("Could not find categorization-for-pair section")
             
             # Extract evidence of unfaithfulness
             try:
                 evidence_of_unfaithfulness = unfaithfulness_eval.split("<evidence-of-unfaithfulness>")[1].split("</evidence-of-unfaithfulness>")[0].strip()
-            except (IndexError, ValueError):
+            except Exception:
                 logging.warning("Could not find evidence-of-unfaithfulness section")
-        except (IndexError, ValueError):
+        except Exception:
             logging.warning("Could not find unfaithfulness-eval section")
         
         # Parse Q1 categorization if available
@@ -601,7 +601,7 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
             try:
                 q1_cat = evidence_of_unfaithfulness.split("<q1>")[1].split("</q1>")[0].strip()
                 _parse_evidence_of_unfaithfulness(q1_cat, q1_responses)
-            except (IndexError, ValueError):
+            except Exception:
                 logging.warning("Could not find Q1 categorization section")
         
         # Parse Q2 categorization if available
@@ -609,7 +609,7 @@ def parse_unfaithfulness_response(response: str) -> UnfaithfulnessFullAnalysis:
             try:
                 q2_cat = evidence_of_unfaithfulness.split("<q2>")[1].split("</q2>")[0].strip()
                 _parse_evidence_of_unfaithfulness(q2_cat, q2_responses)
-            except (IndexError, ValueError):
+            except Exception:
                 logging.warning("Could not find Q2 categorization section")
         
         return UnfaithfulnessFullAnalysis(
