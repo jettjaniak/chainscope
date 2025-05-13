@@ -849,15 +849,16 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
             model_name = "DeepSeek V3"
         elif "gemini" in model_id.lower():
             model_name = "Gemini "
-            if "pro" in model_id.lower():
-                model_name = model_name + "Pro"
-            elif "flash" in model_id.lower():
-                model_name = model_name + "Flash"
             
             if "1.5" in model_id.lower():
                 model_name = model_name + " 1.5"
             elif "2.5" in model_id.lower():
                 model_name = model_name + " 2.5"
+
+            if "pro" in model_id.lower():
+                model_name = model_name + "Pro"
+            elif "flash" in model_id.lower():
+                model_name = model_name + "Flash"
             
         elif "llama-3.3-70b-instruct" in model_id.lower():
             model_name = "Llama 3.3 70B It"
