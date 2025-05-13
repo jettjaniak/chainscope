@@ -186,7 +186,7 @@ def get_budget_tokens(model_id: str) -> int:
     elif budget_part == "32k":
         return 32000
     elif budget_part == "64k":
-        return 64000
+        return 64000 - 1
     else:
         try:
             if "k" in budget_part:
