@@ -834,6 +834,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         model_name = model_id.split("/")[-1]
         if "claude" in model_id.lower():
             if "sonnet" in model_id.lower():
+                model_id = model_id.replace("3.6", "3.5")
                 model_name = "Sonnet " + model_id.split("-")[1]
                 if "_" in model_id:
                     model_name = model_name + f" ({model_id.split('_')[1]})"
@@ -856,9 +857,9 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
                 model_name = model_name + " 2.5"
 
             if "pro" in model_id.lower():
-                model_name = model_name + "Pro"
+                model_name = model_name + " Pro"
             elif "flash" in model_id.lower():
-                model_name = model_name + "Flash"
+                model_name = model_name + " Flash"
             
         elif "llama-3.3-70b-instruct" in model_id.lower():
             model_name = "Llama 3.3 70B It"
