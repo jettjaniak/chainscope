@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from chainscope.typing import DATA_DIR
+
 # %%
 
 # Data from the pattern analysis
@@ -260,7 +262,8 @@ plt.tight_layout()
 plt.show()
 
 # Save the plot
-plt.savefig('unfaithful_patterns_distribution.pdf', bbox_inches='tight', dpi=300)
+output_dir = DATA_DIR / ".." / ".." / "plots" / "all_models"
+plt.savefig(output_dir / "unfaithful_patterns_distribution.pdf", bbox_inches='tight', dpi=300)
 plt.close()
 
 # %%
