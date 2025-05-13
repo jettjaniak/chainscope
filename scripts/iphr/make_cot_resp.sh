@@ -100,7 +100,7 @@ run or "$REGULAR_SAMPLE_ARGS"        GF2.5 GP2.5 QwQ DSV3 DSR1 GP1.5 L70
 run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp meta-llama/Llama-3.3-70B-Instruct" meta-llama/Llama-3.1-70B
 
 # Oversample the CoT responses for pairs showing unfaithfulness in some models
-run ant-batch "$OVERSAMPLE_ARGS" C3.6S C3.7S_1K C3.7S
+run ant-batch "$OVERSAMPLE_ARGS" C3.6S C3.7S_1K C3.7S C3.7S_64K
 run oai-batch "$OVERSAMPLE_ARGS" GPT4O
 run oai "$OVERSAMPLE_ARGS"       GPT4OL
 run or "$OVERSAMPLE_ARGS"        GP2.5 DSR1
