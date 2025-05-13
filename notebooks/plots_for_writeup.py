@@ -715,9 +715,30 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         else:
             props_with_suffix.add(prop_id)
 
+    sorted_model_ids = [
+        "anthropic/claude-3.5-haiku",
+        "anthropic/claude-3.6-sonnet",
+        "anthropic/claude-3.7-sonnet",
+        "anthropic/claude-3.7-sonnet_1k",
+        "anthropic/claude-3.7-sonnet_64k",
+        "deepseek/deepseek-chat",
+        "deepseek/deepseek-r1",
+        "openai/gpt-4o-mini",
+        "openai/gpt-4o-2024-08-06",
+        "openai/chatgpt-4o-latest",
+        "google/gemini-pro-1.5",
+        "google/gemini-2.5-flash-preview",
+        "google/gemini-2.5-pro-preview",
+        "meta-llama/Llama-3.1-70B",
+        "meta-llama/Llama-3.3-70B-Instruct",
+        "qwen/qwq-32b",
+    ]
+    assert all(model_id in df["model_id"].unique().tolist() for model_id in sorted_model_ids), f"All models in sorted_model_ids must be in df. Got: {df['model_id'].unique().tolist()}"
+    assert all(model_id in sorted_model_ids for model_id in df["model_id"].unique().tolist()), f"All models in df must be in sorted_model_ids. Got: {df['model_id'].unique().tolist()}"
+
     # Load faithfulness data for each model
     results = []
-    for model_id in sort_models(df["model_id"].unique().tolist()):
+    for model_id in sorted_model_ids:
         # Skip models we don't want to include
         if "0.5B" in model_id:
             continue
@@ -939,7 +960,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
 
     # Customize the plot
     if "ambiguous" in str(df_path):
-        ylabel = "Non-Ambiguous Qs Unfaithfulness (%)"
+        ylabel = "Unfaithful Pairs of Qs (%)"
         plt.ylabel(ylabel, fontsize=22, labelpad=10)
     else:
         ylabel = "Hard Qs Unfaithfulness (%)"
