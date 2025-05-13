@@ -697,10 +697,11 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     # Define vendor colors
     vendor_colors = {
         "anthropic": "#d4a27f",  # Orange/red/rust color for Sonnet
-        "deepseek": "#6B4CF6",  # Purple for DeepSeek
-        "google": "#2D87F3",  # Sky Blue for Gemini
+        "deepseek": "#4d6bfe",  # Purple for DeepSeek
+        "google": "#3c7af9",  # Sky Blue for Gemini
         "meta-llama": "#1E3D8C",  # Darker Blue for Llama
         "openai": "#00A67E",  # Green for GPT
+        "qwen": "#6B4CF6",  # Black for Qwen
     }
 
     props_with_suffix = set()
@@ -729,53 +730,74 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
 
         # Convert model ID to filename format
         model_dir_name = model_id.split("/")[-1]
-        faith_dir = DATA_DIR / "faithfulness" / model_dir_name
+        # faith_dir = DATA_DIR / "faithfulness" / model_dir_name
 
-        # Check if directory exists
-        if not faith_dir.exists() or not faith_dir.is_dir():
-            print(
-                f"Faithfulness directory not found for {model_id}. Expected at {faith_dir}"
-            )
+        # # Check if directory exists
+        # if not faith_dir.exists() or not faith_dir.is_dir():
+        #     print(
+        #         f"Faithfulness directory not found for {model_id}. Expected at {faith_dir}"
+        #     )
 
-        # Initialize merged data dictionary
-        merged_faith_data = {}
+        # # Initialize merged data dictionary
+        # merged_faith_data = {}
 
-        # Check if we've already cached this model's data
-        if model_id in faithfulness_yamls_cache:
-            merged_faith_data = faithfulness_yamls_cache[model_id]
-        else:
-            # Get all YAML files in the directory
-            yaml_files = list(faith_dir.glob("*.yaml"))
-            if not yaml_files:
-                print(
-                    f"No faithfulness YAML files found in directory for {model_id}: {faith_dir}"
-                )
-            else:
-                # Load and merge all YAML files
-                print(
-                    f"Loading faithfulness data for {model_id} from {len(yaml_files)} files in {faith_dir}"
-                )
-                for yaml_file in yaml_files:
-                    yaml_prop_id = yaml_file.stem
-                    if yaml_prop_id not in props_with_suffix:
-                        # print(
-                        #     f"Skipping {yaml_file} because {yaml_prop_id} not in {props_with_suffix}"
-                        # )
-                        continue
+        # # Check if we've already cached this model's data
+        # if model_id in faithfulness_yamls_cache:
+        #     merged_faith_data = faithfulness_yamls_cache[model_id]
+        # else:
+        #     # Get all YAML files in the directory
+        #     yaml_files = list(faith_dir.glob("*.yaml"))
+        #     if not yaml_files:
+        #         print(
+        #             f"No faithfulness YAML files found in directory for {model_id}: {faith_dir}"
+        #         )
+        #     else:
+        #         # Load and merge all YAML files
+        #         print(
+        #             f"Loading faithfulness data for {model_id} from {len(yaml_files)} files in {faith_dir}"
+        #         )
+        #         for yaml_file in yaml_files:
+        #             yaml_prop_id = yaml_file.stem
+        #             if yaml_prop_id not in props_with_suffix:
+        #                 # print(
+        #                 #     f"Skipping {yaml_file} because {yaml_prop_id} not in {props_with_suffix}"
+        #                 # )
+        #                 continue
 
-                    try:
-                        with open(yaml_file) as f:
-                            faith_data = yaml.safe_load(f)
-                            if faith_data:
-                                merged_faith_data.update(faith_data)
-                    except Exception as e:
-                        print(f"Error loading {yaml_file}: {e}")
+        #             try:
+        #                 with open(yaml_file) as f:
+        #                     faith_data = yaml.safe_load(f)
+        #                     if faith_data:
+        #                         merged_faith_data.update(faith_data)
+        #             except Exception as e:
+        #                 print(f"Error loading {yaml_file}: {e}")
 
-            # Cache the merged data
-            faithfulness_yamls_cache[model_id] = merged_faith_data
+        #     # Cache the merged data
+        #     faithfulness_yamls_cache[model_id] = merged_faith_data
 
-        # Count unfaithful pairs
-        unfaithful_count = len(merged_faith_data.keys())
+        # # Count unfaithful pairs
+        # unfaithful_count = len(merged_faith_data.keys())
+
+        unfaithful_count_by_model = {
+            "claude-3.6-sonnet": 22,
+            "claude-3.7-sonnet": 90,
+            "claude-3.7-sonnet_1k": 2,
+            "claude-3.7-sonnet_64k": 12,
+            "claude-3.5-haiku": 363,
+            "deepseek-chat": 60,
+            "deepseek-r1": 18,
+            "gpt-4o-2024-08-06": 18,
+            "gemini-2.5-flash-preview": 106,
+            "gemini-2.5-pro-preview": 7,
+            "gemini-pro-1.5": 320,
+            "Llama-3.1-70B": 159,
+            "Llama-3.3-70B-Instruct": 102,
+            "gpt-4o-mini": 660,
+            "chatgpt-4o-latest": 24,
+            "gpt-4o-2024-08-06": 18,
+            "qwq-32b": 220,
+        }
+        unfaithful_count = unfaithful_count_by_model[model_dir_name]
 
         # Calculate percentage
         percentage = float((unfaithful_count / n_pairs) * 100)
@@ -804,13 +826,25 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
             model_name = "DeepSeek R1"
         elif "deepseek-chat" in model_id.lower():
             model_name = "DeepSeek V3"
-        elif "gemini-pro-1.5" in model_id.lower():
-            model_name = "Gemini Pro 1.5"
+        elif "gemini" in model_id.lower():
+            model_name = "Gemini "
+            if "pro" in model_id.lower():
+                model_name = model_name + "Pro"
+            elif "flash" in model_id.lower():
+                model_name = model_name + "Flash"
+            
+            if "1.5" in model_id.lower():
+                model_name = model_name + " 1.5"
+            elif "2.5" in model_id.lower():
+                model_name = model_name + " 2.5"
+            
         elif "llama-3.3-70b-instruct" in model_id.lower():
             model_name = "Llama 3.3 70B It"
         elif "gpt-4" in model_id.lower():
             if "latest" in model_id.lower():
                 model_name = "ChatGPT-4o"
+            elif "mini" in model_id.lower():
+                model_name = "GPT-4o Mini"
             else:
                 model_name = "GPT-4o Aug '24"
 
@@ -869,6 +903,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
                 "google": "Google",
                 "meta-llama": "Meta",
                 "openai": "OpenAI",
+                "qwen": "Qwen",
             }
             legend_handles.append((bar, vendor_display_names[row.vendor]))
             seen_vendors.add(row.vendor)
@@ -887,7 +922,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         ax.text(
             position,
             value,
-            f"{value:.1f}%",
+            f"{value:.2f}%",
             ha="center",
             va="bottom",
             fontsize=16,
@@ -912,8 +947,8 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
 
     
     plt.xlabel("Model", fontsize=24, labelpad=10)
-    plt.ylim(0, 7)  # Increased upper limit slightly to fit labels
-    plt.yticks(np.arange(0, 7, 1))
+    plt.ylim(0, 15)  # Increased upper limit slightly to fit labels
+    plt.yticks(np.arange(0, 15, 1))
 
     # Add grid for better readability
     ax.yaxis.grid(True, linestyle="--", alpha=0.7)
@@ -1192,5 +1227,7 @@ for model in df["model_id"].unique():
     save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / model_name, model=model_name)
 
 save_unfaithful_shortcuts_plot(DATA_DIR / ".." / ".." / "plots" / "all_models")
+
+# %%
 
 # %%
