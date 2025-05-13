@@ -895,7 +895,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     plt.style.use("seaborn-v0_8-white")
 
     # Create figure
-    fig, ax = plt.subplots(figsize=(12, 7))
+    fig, ax = plt.subplots(figsize=(12, 6))
 
     # Create empty lists to store legend handles
     legend_handles = []
@@ -957,7 +957,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         add_labels(x_positions[i], row.percentage)
 
     # Set xticks at the bar positions
-    plt.xticks(x_positions, [r["xtick"] for r in results], rotation=45, ha="right")
+    plt.xticks(x_positions, [r["xtick"] for r in results], rotation=45, ha="right", fontsize=16)
 
     # Add small ticks at the center of bars
     ax.tick_params(axis="x", which="major", length=4, width=2)
@@ -973,7 +973,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     
     plt.xlabel("Model", fontsize=24, labelpad=10)
     plt.ylim(0, 15)  # Increased upper limit slightly to fit labels
-    plt.yticks(np.arange(0, 15, 1))
+    plt.yticks(np.arange(1, 15, 1), fontsize=16)
 
     # Add grid for better readability
     ax.yaxis.grid(True, linestyle="--", alpha=0.7)
@@ -1252,7 +1252,5 @@ for model in df["model_id"].unique():
     save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / model_name, model=model_name)
 
 save_unfaithful_shortcuts_plot(DATA_DIR / ".." / ".." / "plots" / "all_models")
-
-# %%
 
 # %%

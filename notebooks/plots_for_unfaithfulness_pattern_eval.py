@@ -156,13 +156,13 @@ flattened_data = {
 df = pd.DataFrame(flattened_data)
 
 # Set up the plot
-plt.figure(figsize=(16, 8))
+plt.figure(figsize=(16, 6))
 sns.set_style("whitegrid")
 
 # Create x positions with increased spacing between model groups
 group_spacing = 1.5  # Increase this value to add more space between model groups
 x = np.arange(len(df['model'])) * group_spacing
-width = 0.2  # Keep width the same
+width = 0.3  # Keep width the same
 
 # Plot bars
 plt.bar(x - 1.5*width, df['fact-manipulation'], width, label='Fact Manipulation', color='#2ecc71')
@@ -182,7 +182,7 @@ for i, (model, total) in enumerate(zip(df['model'], df['total_unfaithful_pairs']
     
     # Create card-like background
     card_height = 6  # Height of the card in percentage points
-    card_width = 3 * width  # Width of the card (reduced from 2.5)
+    card_width = 2 * width  # Width of the card (reduced from 2.5)
     card_x = x[i] - card_width/2
     card_y = max_height + 2  # Position above the highest bar with some padding
     
@@ -245,25 +245,25 @@ MODEL_DISPLAY_NAMES = {
 }
 
 # Customize the plot
-plt.xlabel('Model', fontsize=16)
-plt.ylabel('Frequency of Patterns in Unfaithful Question Pairs (%)', fontsize=16)
-plt.title('Distribution of Unfaithful Patterns Across Models', fontsize=16)
+plt.xlabel('Model', fontsize=24)
+plt.ylabel('Frequency of Patterns\nin Unfaithful Pairs (%)', fontsize=20)
+# plt.title('Distribution of Unfaithful Patterns Across Models', fontsize=16)
 # Use display names for x-axis labels
 xtick_labels = [MODEL_DISPLAY_NAMES.get(m, m) for m in df['model'].tolist()]
 plt.xticks(x, xtick_labels, rotation=45, ha='right', fontsize=16)
-plt.ylim(0, 150)
-plt.yticks(np.arange(0, 110, 10), fontsize=16)
-plt.legend(loc='upper right', fontsize=16, frameon=True)
+plt.yticks(fontsize=16)
+plt.legend(bbox_to_anchor=(1, 1), loc='upper left', fontsize=14, frameon=True)
 plt.grid(True, axis='y', linestyle='--', alpha=0.7)
 plt.grid(False, axis='x')
 
 # Adjust layout to prevent label cutoff
 plt.tight_layout()
-plt.show()
 
 # Save the plot
 output_dir = DATA_DIR / ".." / ".." / "plots" / "all_models"
 plt.savefig(output_dir / "unfaithful_patterns_distribution.pdf", bbox_inches='tight', dpi=300)
+
+plt.show()
 plt.close()
 
 # %%
