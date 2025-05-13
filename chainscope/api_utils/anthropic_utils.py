@@ -171,7 +171,7 @@ def is_anthropic_thinking_model(model_id: str) -> bool:
     return "claude-3.7-sonnet" in model_id and "_" in model_id
 
 
-def get_budget_tokens(model_id: str) -> int:
+def get_budget_tokens(model_id: str, max_new_tokens: int) -> int:
     """Get the budget tokens for a given model ID."""
     if "_" not in model_id:
         raise ValueError(
@@ -180,24 +180,28 @@ def get_budget_tokens(model_id: str) -> int:
 
     budget_part = model_id.split("_")[-1]
     if budget_part == "1k":
-        return 1024
+        budget_tokens = 1024
     elif budget_part == "10k":
-        return 10000
+        budget_tokens = 10000
     elif budget_part == "32k":
-        return 32000
+        budget_tokens = 32000
     elif budget_part == "64k":
-        return 64000 - 1
+        budget_tokens = 64000 - 1
     else:
         try:
             if "k" in budget_part:
-                return int(budget_part.replace("k", "")) * 1000
+                budget_tokens = int(budget_part.replace("k", "")) * 1000
             else:
-                return int(budget_part)
+                budget_tokens = int(budget_part)
         except ValueError:
             raise ValueError(
                 f"Invalid budget tokens for model {model_id}. "
                 f"Expected an integer, with optional `k` suffix, got `{budget_part}`"
             )
+        
+    # it needs to sum at most 64000 with max_new_tokens
+    return min(budget_tokens, 64000 - max_new_tokens)
+
 
 
 async def generate_an_response_async(
@@ -230,7 +234,7 @@ async def generate_an_response_async(
     logging.info(f"Running prompt:\n{prompt}")
 
     is_thinking_model = is_anthropic_thinking_model(model_id)
-    thinking_budget_tokens = get_budget_tokens(model_id) if is_thinking_model else None
+    thinking_budget_tokens = get_budget_tokens(model_id, max_new_tokens) if is_thinking_model else None
 
     model_id = model_id.split("/")[-1].split("_")[0]
     model_id = ANTHROPIC_MODEL_ALIASES[model_id]
@@ -445,15 +449,15 @@ def submit_anthropic_batch(
     """
     # For evaluation, evaluator_model_id is the one making API calls
     api_model_id = evaluator_model_id or evaluated_model_id
+    api_sampling_params = evaluator_sampling_params or evaluated_sampling_params
 
     is_thinking_model = is_anthropic_thinking_model(api_model_id)
     thinking_budget_tokens = (
-        get_budget_tokens(api_model_id) if is_thinking_model else None
+        get_budget_tokens(api_model_id, api_sampling_params.max_new_tokens) if is_thinking_model else None
     )
 
     api_model_id = api_model_id.split("/")[-1].split("_")[0]
     api_model_id = ANTHROPIC_MODEL_ALIASES[api_model_id]
-    api_sampling_params = evaluator_sampling_params or evaluated_sampling_params
 
     # Create custom ID mapping and format requests
     custom_id_map = {}
