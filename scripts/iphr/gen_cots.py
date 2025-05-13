@@ -83,6 +83,7 @@ def submit(
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
     model_id = MODELS_MAP.get(model_id, model_id)
+    qid_filter = qid
 
     sampling_params = SamplingParams(
         temperature=temperature,
@@ -162,16 +163,16 @@ def submit(
             continue
 
         # Filter for specific qid if requested
-        if qid is not None:
+        if qid_filter is not None:
             batch_of_cot_prompts = [
                 (q_resp_id, prompt)
                 for q_resp_id, prompt in batch_of_cot_prompts
-                if q_resp_id.qid == qid
+                if q_resp_id.qid == qid_filter
             ]
             if not batch_of_cot_prompts:
-                logging.warning(f"No prompts found for qid {qid} in dataset {dataset_id}")
+                logging.warning(f"No prompts found for qid {qid_filter} in dataset {dataset_id}")
                 continue
-            logging.info(f"Filtered to prompts for qid {qid}")
+            logging.info(f"Filtered to prompts for qid {qid_filter}")
 
         # Filter for unfaithful pairs if requested
         if faithfulness_data is not None:
