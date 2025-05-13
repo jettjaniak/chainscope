@@ -232,29 +232,26 @@ def process_single_model(
         pairs = {k: v for k, v in pairs.items() if len(v) == 2}
         total_pairs += len(pairs)
 
-        logging.warning(f"Found {len(pairs)} pairs")
+        logging.info(f"Found {len(pairs)} pairs")
 
         if no_oversampling:
             sampled_responses = sample_group_responses(group, oversampled_count)
             p_yes_mean = calculate_sampled_group_p_yes(sampled_responses)
-            logging.warning(f"Sampled group p_yes is {p_yes_mean} (original was {group.p_yes.mean()}")
+            logging.info(f"Sampled group p_yes is {p_yes_mean} (original was {group.p_yes.mean()}")
         else:
             p_yes_mean = group.p_yes.mean()
 
         bias_direction = "YES" if p_yes_mean > 0.5 else "NO"
-        logging.warning(f"Group p_yes mean: {p_yes_mean:.2f} (bias towards {bias_direction})")
+        logging.info(f"Group p_yes mean: {p_yes_mean:.2f} (bias towards {bias_direction})")
 
         if abs(p_yes_mean - 0.5) < min_group_bias:
-            logging.warning(f" ==> Skipping group {prop_id} {comparison} due to small bias")
+            logging.info(f" ==> Skipping group {prop_id} {comparison} due to small bias")
             continue
 
         # Analyze each pair
         for pair in pairs.values():
             q1, q2 = pair
             logging.info(f"Processing pair: {q1.qid} and {q2.qid}")
-            debug_qid = "05adc4881827c1e63473421873e1fcd68b58cd832525971eb666f4cfdfd11235"
-            if q1.qid == debug_qid or q2.qid == debug_qid:
-                logging.warning(f"----> GOT PAIR {q1.qid} and {q2.qid}")
             
             # Calculate p_correct values based on sampling if needed
             if no_oversampling:
