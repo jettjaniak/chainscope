@@ -34,7 +34,7 @@ data = [
     },
     {
         'model': 'chatgpt-4o-latest',
-        'total_unfaithful_pairs': 15,
+        'total_unfaithful_pairs': 24,
         'fact-manipulation': 100.0,
         'argument-switching': 6.7,
         'answer-flipping': 20.0,
@@ -50,7 +50,7 @@ data = [
     },
     {
         'model': 'claude-3.6-sonnet',
-        'total_unfaithful_pairs': 12,
+        'total_unfaithful_pairs': 22,
         'fact-manipulation': 91.7,
         'argument-switching': 0.0,
         'answer-flipping': 33.3,
@@ -58,7 +58,7 @@ data = [
     },
     {
         'model': 'claude-3.7-sonnet',
-        'total_unfaithful_pairs': 63,
+        'total_unfaithful_pairs': 90,
         'fact-manipulation': 14.3,
         'argument-switching': 11.1,
         'answer-flipping': 95.2,
@@ -73,6 +73,14 @@ data = [
         'other': 0.0
     },
     {
+        'model': 'claude-3.7-sonnet_64k',
+        'total_unfaithful_pairs': 12,
+        'fact-manipulation': 77.8,
+        'argument-switching': 22.2,
+        'answer-flipping': 66.7,
+        'other': 11.1
+    },
+    {
         'model': 'deepseek-chat',
         'total_unfaithful_pairs': 60,
         'fact-manipulation': 73.3,
@@ -82,7 +90,7 @@ data = [
     },
     {
         'model': 'deepseek-r1',
-        'total_unfaithful_pairs': 13,
+        'total_unfaithful_pairs': 18,
         'fact-manipulation': 100.0,
         'argument-switching': 7.7,
         'answer-flipping': 15.4,
@@ -114,7 +122,7 @@ data = [
     },
     {
         'model': 'gpt-4o-2024-08-06',
-        'total_unfaithful_pairs': 13,
+        'total_unfaithful_pairs': 18,
         'fact-manipulation': 84.6,
         'argument-switching': 15.4,
         'answer-flipping': 61.5,
@@ -220,11 +228,33 @@ for i in range(len(x) - 1):
 last_separator = x[-1] + (x[-1] - x[-2])/2
 plt.axvline(last_separator, color='#404040', linestyle='--', alpha=0.7)
 
+# Mapping from internal model names to display names (as in the provided figure)
+MODEL_DISPLAY_NAMES = {
+    'claude-3.5-haiku': 'Haiku 3.5',
+    'claude-3.6-sonnet': 'Sonnet 3.5 v2',
+    'claude-3.7-sonnet': 'Sonnet 3.7',
+    'claude-3.7-sonnet_1k': 'Sonnet 3.7 (1k)',
+    'claude-3.7-sonnet_64k': 'Sonnet 3.7 (64k)',
+    'deepseek-chat': 'DeepSeek V3',
+    'deepseek-r1': 'DeepSeek R1',
+    'gpt-4o-mini': 'GPT-4o Mini',
+    'gpt-4o-2024-08-06': "GPT-4o Aug '24",
+    'chatgpt-4o-latest': 'ChatGPT-4o',
+    'gemini-pro-1.5': 'Gemini 1.5 Pro',
+    'gemini-2.5-flash-preview': 'Gemini 2.5 Flash',
+    'gemini-2.5-pro-preview': 'Gemini 2.5 Pro',
+    'Llama-3.1-70B': 'Llama-3.1-70B',
+    'Llama-3.3-70B-Instruct': 'Llama 3.3 70B It',
+    'qwq-32b': 'qwq-32b',
+}
+
 # Customize the plot
 plt.xlabel('Model')
 plt.ylabel('Percentage of Question Pairs (%)')
 plt.title('Distribution of Unfaithful Patterns Across Models')
-plt.xticks(x, df['model'].tolist(), rotation=45, ha='right')
+# Use display names for x-axis labels
+xtick_labels = [MODEL_DISPLAY_NAMES.get(m, m) for m in df['model'].tolist()]
+plt.xticks(x, xtick_labels, rotation=45, ha='right')
 plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.grid(True, axis='y', linestyle='--', alpha=0.7)
 plt.grid(False, axis='x')
