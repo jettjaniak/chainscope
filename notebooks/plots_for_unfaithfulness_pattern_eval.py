@@ -1,45 +1,15 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
-
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import yaml
-from matplotlib.colors import to_rgb
-
-from chainscope.typing import *
 
 # %%
 
 # Data from the pattern analysis
 data = [
-    {
-        'model': 'Llama-3.1-70B',
-        'total_unfaithful_pairs': 159,
-        'fact-manipulation': 69.2,
-        'argument-switching': 46.5,
-        'answer-flipping': 58.5,
-        'other': 8.8
-    },
-    {
-        'model': 'Llama-3.3-70B-Instruct',
-        'total_unfaithful_pairs': 102,
-        'fact-manipulation': 80.4,
-        'argument-switching': 40.2,
-        'answer-flipping': 69.6,
-        'other': 8.8
-    },
-    {
-        'model': 'chatgpt-4o-latest',
-        'total_unfaithful_pairs': 24,
-        'fact-manipulation': 100.0,
-        'argument-switching': 6.7,
-        'answer-flipping': 20.0,
-        'other': 0.0
-    },
     {
         'model': 'claude-3.5-haiku',
         'total_unfaithful_pairs': 363,
@@ -97,28 +67,12 @@ data = [
         'other': 0.0
     },
     {
-        'model': 'gemini-2.5-pro-preview',
-        'total_unfaithful_pairs': 7,
-        'fact-manipulation': 100.0,
-        'argument-switching': 0.0,
-        'answer-flipping': 0.0,
-        'other': 0.0
-    },
-    {
-        'model': 'gemini-2.5-flash-preview',
-        'total_unfaithful_pairs': 106,
-        'fact-manipulation': 35.8,
-        'argument-switching': 73.6,
-        'answer-flipping': 62.3,
-        'other': 3.8
-    },
-    {
-        'model': 'gemini-pro-1.5',
-        'total_unfaithful_pairs': 320,
-        'fact-manipulation': 75.3,
-        'argument-switching': 27.5,
-        'answer-flipping': 46.6,
-        'other': 14.1
+        'model': 'gpt-4o-mini',
+        'total_unfaithful_pairs': 660,
+        'fact-manipulation': 48.0,
+        'argument-switching': 76.4,
+        'answer-flipping': 76.4,
+        'other': 7.1
     },
     {
         'model': 'gpt-4o-2024-08-06',
@@ -129,12 +83,52 @@ data = [
         'other': 7.7
     },
     {
-        'model': 'gpt-4o-mini',
-        'total_unfaithful_pairs': 660,
-        'fact-manipulation': 48.0,
-        'argument-switching': 76.4,
-        'answer-flipping': 76.4,
-        'other': 7.1
+        'model': 'chatgpt-4o-latest',
+        'total_unfaithful_pairs': 24,
+        'fact-manipulation': 100.0,
+        'argument-switching': 6.7,
+        'answer-flipping': 20.0,
+        'other': 0.0
+    },
+    {
+        'model': 'gemini-pro-1.5',
+        'total_unfaithful_pairs': 320,
+        'fact-manipulation': 75.3,
+        'argument-switching': 27.5,
+        'answer-flipping': 46.6,
+        'other': 14.1
+    },
+    {
+        'model': 'gemini-2.5-flash-preview',
+        'total_unfaithful_pairs': 106,
+        'fact-manipulation': 35.8,
+        'argument-switching': 73.6,
+        'answer-flipping': 62.3,
+        'other': 3.8
+    },
+    {
+        'model': 'gemini-2.5-pro-preview',
+        'total_unfaithful_pairs': 7,
+        'fact-manipulation': 100.0,
+        'argument-switching': 0.0,
+        'answer-flipping': 0.0,
+        'other': 0.0
+    },
+    {
+        'model': 'Llama-3.1-70B',
+        'total_unfaithful_pairs': 159,
+        'fact-manipulation': 69.2,
+        'argument-switching': 46.5,
+        'answer-flipping': 58.5,
+        'other': 8.8
+    },
+    {
+        'model': 'Llama-3.3-70B-Instruct',
+        'total_unfaithful_pairs': 102,
+        'fact-manipulation': 80.4,
+        'argument-switching': 40.2,
+        'answer-flipping': 69.6,
+        'other': 8.8
     },
     {
         'model': 'qwq-32b',
@@ -186,7 +180,7 @@ for i, (model, total) in enumerate(zip(df['model'], df['total_unfaithful_pairs']
     
     # Create card-like background
     card_height = 4  # Height of the card in percentage points
-    card_width = 0.5 * width  # Width of the card (reduced from 2.5)
+    card_width = 2 * width  # Width of the card (reduced from 2.5)
     card_x = x[i] - card_width/2
     card_y = max_height + 2  # Position above the highest bar with some padding
     
@@ -245,7 +239,7 @@ MODEL_DISPLAY_NAMES = {
     'gemini-2.5-pro-preview': 'Gemini 2.5 Pro',
     'Llama-3.1-70B': 'Llama-3.1-70B',
     'Llama-3.3-70B-Instruct': 'Llama 3.3 70B It',
-    'qwq-32b': 'qwq-32b',
+    'qwq-32b': 'QwQ 32B',
 }
 
 # Customize the plot
