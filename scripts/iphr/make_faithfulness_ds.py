@@ -116,27 +116,73 @@ def create_response_dict(
 
 
 @beartype
-def calculate_sampled_p_correct(row: pd.Series, sample_size: int) -> float:
-    """Calculate p_correct by randomly sampling responses.
+def calculate_sampled_p_correct(row: pd.Series, sampled_responses: dict[str, list[str]]) -> float:
+    """Calculate p_correct using pre-sampled responses.
     
     Args:
-        row: DataFrame row containing yes_count, no_count, and answer
-        sample_size: Number of responses to sample
+        row: DataFrame row containing answer
+        sampled_responses: Dict mapping question IDs to their sampled responses
         
     Returns:
         Sampled p_correct value
     """
-    # Create a list of responses based on counts
-    responses = ["YES"] * row.yes_count + ["NO"] * row.no_count
+    responses = sampled_responses[row.qid]
     assert len(responses) > 0, f"No responses found for question {row.qid}"
-    
-    # Sample without replacement if we have enough responses
-    if len(responses) > sample_size:
-        responses = random.sample(responses, sample_size)
     
     # Calculate p_yes from sampled responses
     p_yes = sum(1 for r in responses if r == "YES") / len(responses)
     return p_yes if row.answer == "YES" else 1 - p_yes
+
+
+@beartype
+def calculate_sampled_group_p_yes(sampled_responses: dict[str, list[str]]) -> float:
+    """Calculate group p_yes mean using pre-sampled responses.
+    
+    Args:
+        sampled_responses: Dict mapping question IDs to their sampled responses
+        
+    Returns:
+        Mean p_yes across all sampled responses in the group
+    """
+    all_responses: list[str] = []
+    for responses in sampled_responses.values():
+        all_responses.extend(responses)
+    
+    assert len(all_responses) > 0, "No responses found in group"
+    yes_count = sum(1 for r in all_responses if r == "YES")
+    no_count = sum(1 for r in all_responses if r == "NO")
+    unknown_count = sum(1 for r in all_responses if r == "UNKNOWN")
+    known_count = yes_count + no_count
+    n_yes = yes_count + 0.5 * unknown_count
+    p_yes = n_yes / known_count
+    return p_yes
+
+
+@beartype
+def sample_group_responses(group: pd.DataFrame, sample_size: int) -> dict[str, list[str]]:
+    """Sample responses for each question in a group.
+    
+    Args:
+        group: DataFrame containing questions with yes_count and no_count
+        sample_size: Number of responses to sample per question
+        
+    Returns:
+        Dict mapping question IDs to their sampled responses
+    """
+    sampled_responses: dict[str, list[str]] = {}
+    
+    for _, row in group.iterrows():
+        # Create a list of responses based on counts
+        responses = ["YES"] * row.yes_count + ["NO"] * row.no_count + ["UNKNOWN"] * row.unknown_count
+        assert len(responses) > 0, f"No responses found for question {row.qid}"
+        
+        # Sample without replacement if we have enough responses
+        if len(responses) > sample_size:
+            responses = random.sample(responses, sample_size)
+        
+        sampled_responses[row.qid] = responses
+    
+    return sampled_responses
 
 
 @beartype
@@ -186,30 +232,38 @@ def process_single_model(
         pairs = {k: v for k, v in pairs.items() if len(v) == 2}
         total_pairs += len(pairs)
 
-        logging.info(f"Found {len(pairs)} pairs")
+        logging.warning(f"Found {len(pairs)} pairs")
 
-        p_yes_mean = group.p_yes.mean()
+        if no_oversampling:
+            sampled_responses = sample_group_responses(group, oversampled_count)
+            p_yes_mean = calculate_sampled_group_p_yes(sampled_responses)
+            logging.warning(f"Sampled group p_yes is {p_yes_mean} (original was {group.p_yes.mean()}")
+        else:
+            p_yes_mean = group.p_yes.mean()
 
         bias_direction = "YES" if p_yes_mean > 0.5 else "NO"
-        logging.info(f"Group p_yes mean: {p_yes_mean:.2f} (bias towards {bias_direction})")
+        logging.warning(f"Group p_yes mean: {p_yes_mean:.2f} (bias towards {bias_direction})")
 
         if abs(p_yes_mean - 0.5) < min_group_bias:
-            logging.info(" ==> Skipping group due to small bias")
+            logging.warning(f" ==> Skipping group {prop_id} {comparison} due to small bias")
             continue
 
         # Analyze each pair
         for pair in pairs.values():
             q1, q2 = pair
             logging.info(f"Processing pair: {q1.qid} and {q2.qid}")
+            debug_qid = "05adc4881827c1e63473421873e1fcd68b58cd832525971eb666f4cfdfd11235"
+            if q1.qid == debug_qid or q2.qid == debug_qid:
+                logging.warning(f"----> GOT PAIR {q1.qid} and {q2.qid}")
             
             # Calculate p_correct values based on sampling if needed
             if no_oversampling:
-                q1_p_correct = calculate_sampled_p_correct(q1, oversampled_count)
-                q2_p_correct = calculate_sampled_p_correct(q2, oversampled_count)
-                logging.info(
+                q1_p_correct = calculate_sampled_p_correct(q1, sampled_responses)
+                q2_p_correct = calculate_sampled_p_correct(q2, sampled_responses)
+                logging.warning(
                     f"----> Question 1 (sampled p_correct={q1_p_correct:.2f}, expected={q1.answer}): {q1.q_str}"
                 )
-                logging.info(
+                logging.warning(
                     f"----> Question 2 (sampled p_correct={q2_p_correct:.2f}, expected={q2.answer}): {q2.q_str}"
                 )
             else:
@@ -534,8 +588,8 @@ def main(
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
     # Set random seed for reproducibility
-    random.seed(42)
-    np.random.seed(42)
+    random.seed(43)
+    np.random.seed(43)
 
     # Load data
     if instr_id == "instr-wm":
