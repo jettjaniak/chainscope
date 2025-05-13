@@ -154,7 +154,7 @@ flattened_data = {
 df = pd.DataFrame(flattened_data)
 
 # Set up the plot
-plt.figure(figsize=(15, 8))
+plt.figure(figsize=(16, 8))
 sns.set_style("whitegrid")
 
 # Create x positions with increased spacing between model groups
@@ -179,8 +179,8 @@ for i, (model, total) in enumerate(zip(df['model'], df['total_unfaithful_pairs']
     )
     
     # Create card-like background
-    card_height = 4  # Height of the card in percentage points
-    card_width = 2 * width  # Width of the card (reduced from 2.5)
+    card_height = 6  # Height of the card in percentage points
+    card_width = 3 * width  # Width of the card (reduced from 2.5)
     card_x = x[i] - card_width/2
     card_y = max_height + 2  # Position above the highest bar with some padding
     
@@ -204,7 +204,7 @@ for i, (model, total) in enumerate(zip(df['model'], df['total_unfaithful_pairs']
         f'n={total}',
         ha='center',
         va='center',
-        fontsize=9,
+        fontsize=14,
         zorder=4
     )
 
@@ -243,13 +243,15 @@ MODEL_DISPLAY_NAMES = {
 }
 
 # Customize the plot
-plt.xlabel('Model')
-plt.ylabel('Percentage of Question Pairs (%)')
-plt.title('Distribution of Unfaithful Patterns Across Models')
+plt.xlabel('Model', fontsize=16)
+plt.ylabel('Frequency of Patterns in Unfaithful Question Pairs (%)', fontsize=16)
+plt.title('Distribution of Unfaithful Patterns Across Models', fontsize=16)
 # Use display names for x-axis labels
 xtick_labels = [MODEL_DISPLAY_NAMES.get(m, m) for m in df['model'].tolist()]
-plt.xticks(x, xtick_labels, rotation=45, ha='right')
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.xticks(x, xtick_labels, rotation=45, ha='right', fontsize=16)
+plt.ylim(0, 150)
+plt.yticks(np.arange(0, 110, 10), fontsize=16)
+plt.legend(loc='upper right', fontsize=16, frameon=True)
 plt.grid(True, axis='y', linestyle='--', alpha=0.7)
 plt.grid(False, axis='x')
 
@@ -258,7 +260,7 @@ plt.tight_layout()
 plt.show()
 
 # Save the plot
-plt.savefig('unfaithful_patterns_distribution.png', bbox_inches='tight', dpi=300)
+plt.savefig('unfaithful_patterns_distribution.pdf', bbox_inches='tight', dpi=300)
 plt.close()
 
 # %%

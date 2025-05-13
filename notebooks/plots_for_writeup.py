@@ -1246,12 +1246,12 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
 # Save plots for all models
 save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / "all_models")
 
-# for model in df["model_id"].unique():
-#     model_name = model.split("/")[-1]
-#     # Save plots for a specific model
-#     save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / model_name, model=model_name)
+for model in df["model_id"].unique():
+    model_name = model.split("/")[-1]
+    # Save plots for a specific model
+    save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / model_name, model=model_name)
 
-# save_unfaithful_shortcuts_plot(DATA_DIR / ".." / ".." / "plots" / "all_models")
+save_unfaithful_shortcuts_plot(DATA_DIR / ".." / ".." / "plots" / "all_models")
 
 # %%
 
