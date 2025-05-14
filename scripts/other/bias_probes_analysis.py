@@ -432,7 +432,7 @@ def create_seed_comparison_boxplot(
                             "data_config.layer": layer,
                             "data_config.train_val_seed": seed,
                         },
-                        n_runs=37,
+                        n_runs=10,
                     )
 
                     # Calculate FVU for this seed and layer
