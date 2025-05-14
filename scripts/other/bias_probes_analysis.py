@@ -107,6 +107,10 @@ def compute_fvu_and_get_results(runs: list[Any]) -> tuple[float, dict[str, dict]
             if key.startswith("test_loss/"):
                 template = key.replace("test_loss/", "")
                 prop_id, comparison = template.split("_")
+                if prop_id == "wm-world-populated-population":
+                    # Skip this prop_id which is not longer in the dataset
+                    continue
+
                 template_bias = float(
                     df[(df["prop_id"] == prop_id) & (df["comparison"] == comparison)][
                         "p_yes"

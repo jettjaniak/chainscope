@@ -58,6 +58,11 @@ class DataConfig:
         for dataset_dir in resids_dir.iterdir():
             if not dataset_dir.is_dir() or not dataset_dir.name.startswith("wm-"):
                 continue
+
+            if dataset_dir.name.startswith("wm-world-populated-population"):
+                # Skip this prop_id which is not longer in the dataset
+                continue
+
             model_dir = dataset_dir / self.model_name
             if not model_dir.exists():
                 raise ValueError(f"Model directory not found: {model_dir}")
