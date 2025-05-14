@@ -107,39 +107,36 @@ refused_resolved_in_1k_count = 0
 # Load faithfulness data for 64k
 model_id = "anthropic/claude-3.7-sonnet_64k"
 model_dir_name = model_id.split("/")[-1]
-faith_dir = DATA_DIR / "faithfulness" / model_dir_name
 
 # Check if we've already cached this model's data
 if model_id in faithfulness_yamls_cache:
-    merged_faith_data = faithfulness_yamls_cache[model_id]
+    prop_id_to_dataset = faithfulness_yamls_cache[model_id]
 else:
-    # Get all YAML files in the directory
-    yaml_files = list(faith_dir.glob(f"*{dataset_suffix}.yaml"))
-    if not yaml_files:
-        print(
-            f"No faithfulness YAML files found in directory for {model_id}: {faith_dir}"
-        )
-        merged_faith_data = {}
-    else:
-        # Load and merge all YAML files
-        print(
-            f"Loading faithfulness data for {model_id} from {len(yaml_files)} files in {faith_dir}"
-        )
-        merged_faith_data = {}
-        for yaml_file in tqdm(yaml_files, desc="Loading faithfulness data"):
-            try:
-                with open(yaml_file) as f:
-                    faith_data = yaml.safe_load(f)
-                    if faith_data:
-                        merged_faith_data.update(faith_data)
-            except Exception as e:
-                print(f"Error loading {yaml_file}: {e}")
+    # Get all unique prop_ids from the data
+    prop_ids = df["prop_id"].unique()
+    
+    # Load each prop_id dataset
+    print(
+        f"Loading faithfulness data for {model_id} with suffix {dataset_suffix}"
+    )
+    prop_id_to_dataset = {}
+    for prop_id in tqdm(prop_ids, desc="Loading faithfulness datasets"):
+        try:
+            # Load the dataset with the specific suffix
+            unfaithfulness_dataset = UnfaithfulnessPairsDataset.load(
+                model_id=model_id,
+                prop_id=prop_id,
+                dataset_suffix=dataset_suffix
+            )
+            prop_id_to_dataset[prop_id] = unfaithfulness_dataset
+        except Exception as e:
+            print(f"Error loading dataset for prop_id {prop_id}: {e}")
+    
+    # Cache the loaded datasets
+    faithfulness_yamls_cache[model_id] = prop_id_to_dataset
 
-        # Cache the merged data
-        faithfulness_yamls_cache[model_id] = merged_faith_data
-
-# Count unfaithful pairs
-unfaithful_64k_total = len(merged_faith_data.keys())
+# Count total unfaithful pairs across all prop_ids
+unfaithful_64k_total = sum(len(dataset.questions_by_qid) for dataset in prop_id_to_dataset.values())
 
 # %%
 # Process each question pair
@@ -195,11 +192,16 @@ for qid in tqdm(qids, desc="Processing questions"):
         refused_resolved_in_1k_count += 1
 
     # For unfaithful pairs in 64k, check unknown and refused status
-    if qid in merged_faith_data:
-        unfaithful_64k_unknown_1k += unknowns_1k > 0
-        unfaithful_64k_unknown_64k += unknowns_64k > 0
-        unfaithful_64k_refused_1k += refused_1k > 0
-        unfaithful_64k_refused_64k += refused_64k > 0
+    # Iterate through all props to find if this qid is in any of them
+    is_unfaithful = False
+    for prop_id, dataset in prop_id_to_dataset.items():
+        if qid in dataset.questions_by_qid:
+            is_unfaithful = True
+            unfaithful_64k_unknown_1k += unknowns_1k > 0
+            unfaithful_64k_unknown_64k += unknowns_64k > 0
+            unfaithful_64k_refused_1k += refused_1k > 0
+            unfaithful_64k_refused_64k += refused_64k > 0
+            break
 
 # %%
 print("\n## Unknown answers statistics:")
