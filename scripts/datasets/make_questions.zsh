@@ -9,7 +9,7 @@ for file in d/properties/*.yaml; do
         continue
     fi
 
-    if [[ $prop_id == *-popu || $prop_id == *dens ]]; then
+    if [[ $prop_id == *-popu || $prop_id == *-population || $prop_id == *dens ]]; then
         # Population and density properties vary over time and might lead to ambiguous qs
         echo "Skipping dataset $prop_id"
         continue
