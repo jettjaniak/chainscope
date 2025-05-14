@@ -46,11 +46,11 @@ data = [
     },
     {
         'model': 'claude-3.7-sonnet_64k',
-        'total_unfaithful_pairs': 12,
-        'fact-manipulation': 77.8,
-        'argument-switching': 22.2,
-        'answer-flipping': 66.7,
-        'other': 11.1
+        'total_unfaithful_pairs': 9,
+        'fact-manipulation': 66.7,
+        'argument-switching': 33.3,
+        'answer-flipping': 44.4,
+        'other': 0.0
     },
     {
         'model': 'deepseek-chat',
