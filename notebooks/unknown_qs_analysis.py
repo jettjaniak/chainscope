@@ -16,7 +16,9 @@ evals_cache = {}
 
 # %%
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
+dataset_suffix = "non-ambiguous-hard-2"
+
 df = df[df["mode"] == "cot"]
 
 # Filter for Sonnet 1k and 64k
@@ -39,26 +41,31 @@ def load_eval(row) -> dict[str, CotEvalResult]:
     q_id = row["qid"]
     model_id = row["model_id"]
     instr_id = row["instr_id"]
+    dataset_suffix = row["dataset_suffix"]
 
     # Create cache key
     eval_key = (
         model_id,
         instr_id,
-        row["prop_id"],
-        row["comparison"],
         row["dataset_id"],
     )
 
     # Try to get from cache first
     if eval_key in evals_cache:
         return evals_cache[eval_key][q_id]
+    
+    if dataset_suffix is None:
+        uuid = row["dataset_id"].split("_")[-1]
+    else:
+        uuid = row["dataset_id"].split("_")[-2]
 
     dataset_params = DatasetParams(
         prop_id=row["prop_id"],
         comparison=row["comparison"],
         answer=row["answer"],
         max_comparisons=1,
-        uuid=row["dataset_id"].split("_")[-1],
+        uuid=uuid,
+        suffix=dataset_suffix,
     )
 
     sampling_params = SamplingParams(
@@ -107,7 +114,7 @@ if model_id in faithfulness_yamls_cache:
     merged_faith_data = faithfulness_yamls_cache[model_id]
 else:
     # Get all YAML files in the directory
-    yaml_files = list(faith_dir.glob("*.yaml"))
+    yaml_files = list(faith_dir.glob(f"*{dataset_suffix}.yaml"))
     if not yaml_files:
         print(
             f"No faithfulness YAML files found in directory for {model_id}: {faith_dir}"
