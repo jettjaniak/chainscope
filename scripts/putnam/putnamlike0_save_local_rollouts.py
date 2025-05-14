@@ -250,7 +250,7 @@ def generate_local_rollouts(
 @click.option(
     "--max_new_tokens",
     type=int,
-    default=10024,
+    default=32768,
     help="Maximum number of new tokens to generate",
 )
 @click.option(
