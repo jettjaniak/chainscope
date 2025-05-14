@@ -8,7 +8,7 @@ from chainscope.utils import get_model_display_name
 
 # %%
 
-df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 # df = df[df.unknown_rate < 0.5]
