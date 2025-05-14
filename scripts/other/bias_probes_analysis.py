@@ -90,7 +90,7 @@ def compute_fvu_and_get_results(runs: list[Any]) -> tuple[float, dict[str, dict]
     """Compute FVU using test losses and collect results using wandb summary predictions."""
     # Get template biases from dataframe
     data_config = runs[0].config["data_config"]
-    df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+    df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
     model_ids = [
         mid for mid in df.model_id.unique() if mid.endswith(data_config["model_name"])
     ]
@@ -594,11 +594,12 @@ def main(
                                     "data_config.layer": current_layer,
                                     "data_config.train_val_seed": 0,
                                 },
-                                n_runs=37,
+                                n_runs=10,
                             )
-                        except ValueError:
+                        except Exception as e:
+                            print(f"Error fetching runs for layer {current_layer}: {e}")
                             continue
-                        assert len(runs) == 37
+                        assert len(runs) == 10
 
                         fvu, results = compute_fvu_and_get_results(runs)
                         save_results_to_cache(cache_path, fvu, results)
