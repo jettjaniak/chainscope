@@ -46,7 +46,7 @@ data = [
     },
     {
         'model': 'claude-3.7-sonnet_64k',
-        'total_unfaithful_pairs': 9,
+        'total_unfaithful_pairs': 12,
         'fact-manipulation': 66.7,
         'argument-switching': 33.3,
         'answer-flipping': 44.4,
