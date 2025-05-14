@@ -113,6 +113,11 @@ def compute_fvu_and_get_results(runs: list[Any]) -> tuple[float, dict[str, dict]
                     ].mean()
                 )
 
+                # check that template_bias is not nan
+                if np.isnan(template_bias):
+                    print(f"Template bias is nan for {template}")
+                    continue
+
                 # Get mean and std predictions from wandb metrics
                 mean_pred = run.summary[f"test_prediction_mean/{template}"]
                 std_pred = run.summary[f"test_prediction_std/{template}"]
@@ -290,13 +295,16 @@ def create_combined_fvu_line_plot(
     plt.figure(figsize=(9, 7), dpi=300)
 
     # Find global min and max FVU across all locations
-    all_fvus = [
-        fvu
-        for fvu_by_layer in fvu_by_loc_layer.values()
-        for fvu in fvu_by_layer.values()
-    ]
+    all_fvus = []
+    for loc, fvu_by_layer in fvu_by_loc_layer.items():
+        loc_fvus = [fvu for fvu in fvu_by_layer.values()]
+        all_fvus.extend(loc_fvus)
+        print(f"{loc=} min={min(loc_fvus):.2%} max={max(loc_fvus):.2%} avg={np.mean(loc_fvus):.2%}")
+    
     max_fvu = max(all_fvus)
+    print(f"{max_fvu=}")
     min_fvu = min(all_fvus)
+    print(f"{min_fvu=}")
     min_tick = (min_fvu // 0.1) * 0.1  # Round down to nearest 10%
 
     # Only use custom scale if min_fvu < 1.0 (100%)

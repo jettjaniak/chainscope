@@ -149,7 +149,7 @@ class DataConfig:
 
 def load_resids_and_df(data_config: DataConfig, resids_dir: Path):
     resid_by_qid_by_template = data_config.load_resids_by_qid_by_template(resids_dir)
-    df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+    df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
     model_ids = [
         mid for mid in df.model_id.unique() if mid.endswith(data_config.model_name)
     ]
