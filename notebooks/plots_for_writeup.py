@@ -1076,32 +1076,33 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     data = [
         {
             "model": "Claude",
-            "thinking": 8.8,
-            "non_thinking": 27.5,
-            "thinking_n": "(n=10)",
-            "non_thinking_n": "(n=19)",
+            "thinking_n": 5,
+            "non_thinking_n": 13,
             "vendor": "anthropic",
-            "accuracy": {"thinking": 114, "non_thinking": 69},
+            "thinking_total_correct": 114,
+            "non_thinking_total_correct": 69,
         },
         {
             "model": "DeepSeek",
-            "thinking": 1.2,
-            "non_thinking": 3.7,
-            "thinking_n": "(n=2)",
-            "non_thinking_n": "(n=3)",
+            "thinking_n": 2,
+            "non_thinking_n": 3,
             "vendor": "deepseek",
-            "accuracy": {"thinking": 172, "non_thinking": 81},
+            "thinking_total_correct": 172,
+            "non_thinking_total_correct": 81,
         },
         {
             "model": "Qwen",
-            "thinking": 2.4,
-            "non_thinking": 9.6,
-            "thinking_n": "(n=1)",
-            "non_thinking_n": "(n=11)",
+            "thinking_n": 1,
+            "non_thinking_n": 10,
             "vendor": "qwen",
-            "accuracy": {"thinking": 41, "non_thinking": 115},
+            "thinking_total_correct": 41,
+            "non_thinking_total_correct": 115,
         },
     ]
+
+    for row in data:
+        row["thinking_shortcut_rate"] = row["thinking_n"] / row["thinking_total_correct"] * 100
+        row["non_thinking_shortcut_rate"] = row["non_thinking_n"] / row["non_thinking_total_correct"] * 100
 
     # Define vendor colors
     vendor_colors = {
@@ -1138,7 +1139,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     # Create bars with solid fill for thinking
     thinking_bars = ax.bar(
         x - width / 2 - separator,
-        plot_data["thinking"],
+        plot_data["thinking_shortcut_rate"],
         width,
         label="Thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
@@ -1151,7 +1152,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     hatch_pattern = "xx"
     non_thinking_bars = ax.bar(
         x + width / 2 + separator,
-        plot_data["non_thinking"],
+        plot_data["non_thinking_shortcut_rate"],
         width,
         label="Non-thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
@@ -1163,7 +1164,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     # Draw hatch
     ax.bar(
         x + width / 2 + separator,
-        plot_data["non_thinking"],
+        plot_data["non_thinking_shortcut_rate"],
         width,
         label="Non-thinking",
         color="none",
@@ -1176,7 +1177,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     # Draw edge
     ax.bar(
         x + width / 2 + separator,
-        plot_data["non_thinking"],
+        plot_data["non_thinking_shortcut_rate"],
         width,
         label="Non-thinking",
         color="none",
@@ -1193,7 +1194,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
             ax.text(
                 rect.get_x() + rect.get_width() / 2.0,
                 height,
-                f"{height}%\n{ns[idx]}",
+                f"{height:.1f}%\n(n={ns[idx]})",
                 ha="center",
                 va="bottom",
                 fontsize=16,
@@ -1205,7 +1206,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     # Customize the plot
     ax.set_ylabel("Unfaithfulness Rate (%)", fontsize=20, labelpad=10)
     plt.xlabel("Model", fontsize=24, labelpad=10)
-    plt.ylim(0, 40)  # Increased upper limit slightly to fit labels
+    plt.ylim(0, 28)  # Increased upper limit slightly to fit labels
     ax.set_xticks(x)
     ax.set_xticklabels(plot_data["model"], rotation=0)
 
