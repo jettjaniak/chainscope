@@ -101,7 +101,7 @@ def save_probability_distributions(
         ax.axhline(y=0, color="red", linestyle="--", alpha=0.5)
 
     plt.tight_layout()
-    plt.savefig(save_dir / f"prob_dist_{mode}_{model}.png")
+    plt.savefig(save_dir / f"prob_dist_{mode}_{model}.pdf")
     plt.close()
 
 
@@ -164,7 +164,7 @@ def save_accuracy_histograms(df: pd.DataFrame, save_dir: Path) -> None:
         plt.xticks(rotation=45, ha="right")
 
         plt.tight_layout()
-        plt.savefig(save_dir / f"accuracy_histogram_{mode}.png", bbox_inches="tight")
+        plt.savefig(save_dir / f"accuracy_histogram_{mode}.pdf", bbox_inches="tight")
         plt.close()
 
 
@@ -204,7 +204,7 @@ def save_yes_no_histograms(
     ax.set_xlabel("Probability of Correct Answer")
 
     plt.tight_layout()
-    plt.savefig(save_dir / f"yes_no_hist_{mode}_{model}.png")
+    plt.savefig(save_dir / f"yes_no_hist_{mode}_{model}.pdf")
     plt.close()
 
 
@@ -283,7 +283,7 @@ def save_model_biases(
 
     ax.axvline(0.5, color="gray", linestyle="--", alpha=0.5)
     plt.tight_layout()
-    plt.savefig(save_dir / f"model_biases_{biases}.png")
+    plt.savefig(save_dir / f"model_biases_{biases}.pdf")
     plt.close()
 
 
@@ -343,7 +343,7 @@ def save_yes_vs_no_bias_plot(df: pd.DataFrame, save_dir: Path) -> None:
         ax.set_xticklabels(mode_df["Model"], rotation=45, ha="right")
 
         plt.tight_layout()
-        plt.savefig(save_dir / f"yes_vs_no_bias_{mode}.png")
+        plt.savefig(save_dir / f"yes_vs_no_bias_{mode}.pdf")
         plt.close()
 
 
@@ -431,7 +431,7 @@ def save_yes_proportion_plot(df: pd.DataFrame, save_dir: Path) -> None:
         ax.set_xlabel("Frequency of YES")
         ax.set_xlim(0, 1)
         plt.tight_layout()
-        plt.savefig(save_dir / f"yes_proportion_{mode}.png", bbox_inches="tight")
+        plt.savefig(save_dir / f"yes_proportion_{mode}.pdf", bbox_inches="tight")
         plt.close()
 
 
@@ -508,7 +508,7 @@ def save_dual_diverging_barplots(df: pd.DataFrame, save_dir: Path) -> None:
         ax.set_axisbelow(True)
 
     plt.tight_layout()
-    plt.savefig(save_dir / f"dual_diverging_{model_name}.png", dpi=300)
+    plt.savefig(save_dir / f"dual_diverging_{model_name}.pdf", dpi=300)
     plt.close()
 
 
@@ -599,7 +599,7 @@ def save_answer_flipping_pie_charts(df: pd.DataFrame, save_dir: Path) -> None:
 
         plt.tight_layout()
         plt.savefig(
-            save_dir / f"answer_flipping_pie_{display_name}.png",
+            save_dir / f"answer_flipping_pie_{display_name}.pdf",
             dpi=300,
             bbox_inches="tight",
         )
@@ -685,7 +685,7 @@ def save_answer_flipping_all_models(df: pd.DataFrame, save_dir: Path) -> None:
     plt.title("Percentage of Answer Flipping by Model")
 
     plt.tight_layout()
-    plt.savefig(save_dir / "answer_flipping_all_models.png")
+    plt.savefig(save_dir / "answer_flipping_all_models.pdf")
     plt.close()
 
 
