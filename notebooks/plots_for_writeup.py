@@ -1243,6 +1243,142 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     plt.show()
     plt.close()
 
+# %%
+
+def save_oversampling_plot(df: pd.DataFrame, save_dir: Path) -> None:
+    # Data for unfaithfulness retention percentages
+    models = [
+        "Sonnet 3.5 v2",
+        "Sonnet 3.7",
+        "Sonnet 3.7 1k",
+        "Sonnet 3.7 64k",
+        "DeepSeek R1",
+        "ChatGPT-4o",
+        "GPT-4o Aug '24",
+        "Gemini 2.5 Pro"
+    ]
+
+    # Define model to vendor mapping
+    model_vendors = {
+        "ChatGPT-4o": "openai",
+        "GPT-4o Aug '24": "openai",
+        "Sonnet 3.5 v2": "anthropic",
+        "Sonnet 3.7": "anthropic",
+        "Sonnet 3.7 1k": "anthropic",
+        "Sonnet 3.7 64k": "anthropic",
+        "DeepSeek R1": "deepseek",
+        "Gemini 2.5 Pro": "google"
+    }
+
+    # Define vendor colors (from plots_for_writeup.py)
+    vendor_colors = {
+        "anthropic": "#d4a27f",  # Orange/red/rust color for Sonnet
+        "deepseek": "#4d6bfe",  # Purple for DeepSeek
+        "google": "#3c7af9",  # Sky Blue for Gemini
+        "meta-llama": "#1E3D8C",  # Darker Blue for Llama
+        "openai": "#00A67E",  # Green for GPT
+        "qwen": "#6B4CF6",  # Black for Qwen
+    }
+
+    # Percentages of pairs of qs retained after oversampling for each model
+    retention_percentages = [
+        54.55,  # Sonnet 3.5 v2
+        70.00,  # Sonnet 3.7
+        100.00, # Sonnet 3.7 1k
+        75.00,  # Sonnet 3.7 64k
+        72.22,  # DeepSeek R1
+        68.18,  # ChatGPT-4o
+        72.22,  # GPT-4o Aug '24
+        100.00  # Gemini 2.5 Pro
+    ]
+
+    # Totals after oversampling for each model
+    new_totals = [
+        12,  # Sonnet 3.5 v2
+        63,  # Sonnet 3.7
+        2,   # Sonnet 3.7 1k
+        9,   # Sonnet 3.7 64k
+        13,  # DeepSeek R1
+        15,  # ChatGPT-4o
+        13,  # GPT-4o Aug '24
+        7    # Gemini 2.5 Pro
+    ]
+
+    # Calculate average (not shown in the plot but reported)
+    average = np.mean(retention_percentages)  # 76.52%
+
+    # Create the bar chart
+    plt.style.use("seaborn-v0_8-white")
+    plt.figure(figsize=(12, 6))
+
+    # Create empty lists to store legend handles
+    legend_handles = []
+    seen_vendors = set()
+
+    # Create bars with vendor-specific colors
+    bars = []
+    for i, model in enumerate(models):
+        vendor = model_vendors[model]
+        color = vendor_colors[vendor]
+        bar = plt.bar(i, retention_percentages[i], color=color, edgecolor="black", linewidth=1, alpha=0.8)
+        bars.append(bar)
+        
+        # Add to legend only if we haven't seen this vendor yet
+        if vendor not in seen_vendors:
+            # Map vendor names to display names
+            vendor_display_names = {
+                "anthropic": "Anthropic",
+                "deepseek": "DeepSeek",
+                "google": "Google",
+                "meta-llama": "Meta",
+                "openai": "OpenAI",
+                "qwen": "Qwen",
+            }
+            legend_handles.append((bar, vendor_display_names[vendor]))
+            seen_vendors.add(vendor)
+
+    # Add labels and title
+    plt.xlabel('Model', fontsize=18)
+    plt.ylabel('Unfaithfulness Retention\nAfter Oversampling (%)', fontsize=18)
+
+    # Add value labels on top of bars
+    for i, bar in enumerate(bars):
+        height = float(retention_percentages[i])
+        plt.text(i, height + 1, f'{height:.2f}%\nn={new_totals[i]}', ha='center', va='bottom', fontsize=12)
+
+    # Add horizontal line at average
+    plt.axhline(y=float(average), color='red', linestyle='--', alpha=0.7)
+    plt.text(-0.5, float(average)+2, f'Average: {average:.2f}%', color='red')
+
+    # Add legend
+    plt.legend(
+        [h[0] for h in legend_handles],
+        [h[1] for h in legend_handles],
+        loc="upper left",
+        bbox_to_anchor=(1.0, 1.0),
+        frameon=True,
+        fontsize=16
+    )
+
+    # Rotate x-axis labels for better readability
+    plt.xticks(range(len(models)), models, rotation=45, ha='right', fontsize=16)
+
+    # y-limits
+    plt.ylim(0, 115)
+    plt.yticks(np.arange(0, 110, 10), fontsize=16)
+
+    # Add grid for better readability
+    plt.grid(axis='y', linestyle='--', alpha=0.3)
+    plt.gca().set_axisbelow(True)
+
+    # Adjust layout
+    plt.tight_layout()
+    plt.savefig(save_dir / "oversampling_unfaithfulness_retention.pdf")
+
+    # Show the plot
+    plt.show()
+    plt.close()
+
 
 # %%
 
@@ -1255,5 +1391,6 @@ for model in df["model_id"].unique():
     save_all_plots(df, DATA_DIR / ".." / ".." / "plots" / model_name, model=model_name)
 
 save_unfaithful_shortcuts_plot(DATA_DIR / ".." / ".." / "plots" / "all_models")
+save_oversampling_plot(df, DATA_DIR / ".." / ".." / "plots" / "all_models")
 
 # %%
