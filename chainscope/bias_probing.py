@@ -504,7 +504,22 @@ class ProbeTrainer:
     def train(
         self,
         project_name: str,
-    ) -> tuple[LinearProbe, WandbSdkRun]:
+    ) -> tuple[LinearProbe, WandbSdkRun] | None:
+        # Check if a run with this name already exists
+        run_name = self.c.get_run_name()
+        api = wandb.Api()
+        try:
+            existing_runs = list(api.runs(
+                f"cot-probing/{project_name}",
+                {"$and": [{"display_name": run_name}, {"state": "finished"}]}
+            ))
+            if existing_runs:
+                print(f"Run with name '{run_name}' already exists, skipping.")
+                return None
+        except (RequestsHTTPError, WandbCommError):
+            # If we can't check for existing runs, proceed anyway
+            pass
+
         # Initialize W&B
         run = wandb.init(
             entity="cot-probing",
@@ -709,7 +724,7 @@ def train_bias_probe(
     args: argparse.Namespace,
     experiment_uuid: str,
     cv_test_fold: int,
-) -> tuple[LinearProbe, WandbSdkRun]:
+) -> tuple[LinearProbe, WandbSdkRun] | None:
     trainer_config = build_trainer_config(args, experiment_uuid, cv_test_fold)
     resid_by_qid_by_template, df = load_resids_and_df(
         trainer_config.data_config, args.resids_dir
