@@ -1077,26 +1077,29 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
         {
             "model": "Claude",
             "thinking": 8.8,
-            "non_thinking": 8.8,
+            "non_thinking": 27.5,
             "thinking_n": "(n=10)",
             "non_thinking_n": "(n=19)",
             "vendor": "anthropic",
+            "accuracy": {"thinking": 114, "non_thinking": 69},
         },
         {
             "model": "DeepSeek",
-            "thinking": 1.7,
-            "non_thinking": 5.1,
+            "thinking": 1.2,
+            "non_thinking": 3.7,
             "thinking_n": "(n=2)",
             "non_thinking_n": "(n=3)",
             "vendor": "deepseek",
+            "accuracy": {"thinking": 172, "non_thinking": 81},
         },
         {
             "model": "Qwen",
-            "thinking": 0.9,
-            "non_thinking": 27.5,
+            "thinking": 2.4,
+            "non_thinking": 9.6,
             "thinking_n": "(n=1)",
             "non_thinking_n": "(n=11)",
             "vendor": "qwen",
+            "accuracy": {"thinking": 41, "non_thinking": 115},
         },
     ]
 
@@ -1202,7 +1205,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     # Customize the plot
     ax.set_ylabel("Unfaithfulness Rate (%)", fontsize=20, labelpad=10)
     plt.xlabel("Model", fontsize=24, labelpad=10)
-    plt.ylim(0, 35)  # Increased upper limit slightly to fit labels
+    plt.ylim(0, 40)  # Increased upper limit slightly to fit labels
     ax.set_xticks(x)
     ax.set_xticklabels(plot_data["model"], rotation=0)
 
