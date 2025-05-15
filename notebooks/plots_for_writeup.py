@@ -1079,7 +1079,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
             "thinking": 8.8,
             "non_thinking": 8.8,
             "thinking_n": "(n=10)",
-            "non_thinking_n": "(n=21)",
+            "non_thinking_n": "(n=19)",
             "vendor": "anthropic",
         },
         {
@@ -1087,7 +1087,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
             "thinking": 1.7,
             "non_thinking": 5.1,
             "thinking_n": "(n=2)",
-            "non_thinking_n": "(n=4)",
+            "non_thinking_n": "(n=3)",
             "vendor": "deepseek",
         },
         {
@@ -1095,7 +1095,7 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
             "thinking": 0.9,
             "non_thinking": 27.5,
             "thinking_n": "(n=1)",
-            "non_thinking_n": "(n=14)",
+            "non_thinking_n": "(n=11)",
             "vendor": "qwen",
         },
     ]
