@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 import torch
+import wandb
 from dacite import from_dict
 from jaxtyping import Float
 from requests.exceptions import HTTPError as RequestsHTTPError
@@ -17,14 +18,13 @@ from torch import nn
 from torch.optim.adam import Adam
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
-
-import wandb
-from chainscope.typing import *
-from chainscope.utils import get_git_commit_hash, setup_determinism
 from wandb.apis.public.files import File as WandbFile
 from wandb.apis.public.runs import Run
 from wandb.errors import CommError as WandbCommError
 from wandb.sdk.wandb_run import Run as WandbSdkRun
+
+from chainscope.typing import *
+from chainscope.utils import get_git_commit_hash, setup_determinism
 
 
 @dataclass(kw_only=True)
@@ -507,17 +507,25 @@ class ProbeTrainer:
         project_name: str,
     ) -> tuple[LinearProbe, WandbSdkRun] | None:
         # Check if a run with this name already exists
-        run_name = self.c.get_run_name()
         api = wandb.Api()
         try:
+            # Build filters based on config attributes
+            filters = [{"state": "finished"}]
+            filters.append({"config.data_config.model_name": self.c.data_config.model_name})
+            filters.append({"config.data_config.layer": str(self.c.data_config.layer)})
+            filters.append({"config.data_config.loc": self.c.data_config.loc})
+            filters.append({"config.data_config.cv_seed": str(self.c.data_config.cv_seed)})
+            filters.append({"config.data_config.cv_test_fold": str(self.c.data_config.cv_test_fold)})
+            filters.append({"config.data_config.train_val_seed": str(self.c.data_config.train_val_seed)})
+            
             existing_runs = list(
                 api.runs(
                     f"cot-probing/{project_name}",
-                    {"$and": [{"display_name": run_name}, {"state": "finished"}]},
+                    {"$and": filters},
                 )
             )
             if existing_runs:
-                logging.warning(f"Run with name '{run_name}' already exists, skipping.")
+                logging.warning(f"Run with same config already exists, skipping. Run ID: {existing_runs[0].id}")
                 return None
         except (RequestsHTTPError, WandbCommError):
             # If we can't check for existing runs, proceed anyway
