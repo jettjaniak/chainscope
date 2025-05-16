@@ -216,7 +216,7 @@ def create_comparison_plot(
     plt.tight_layout()
     fig_dir = Path(f"plots/bias_probes/{model_name}/{loc}")
     fig_dir.mkdir(parents=True, exist_ok=True)
-    plt.savefig(fig_dir / f"L{layer}.png")
+    plt.savefig(fig_dir / f"L{layer}.pdf")
     plt.close()
 
 
@@ -288,7 +288,7 @@ def create_fvu_line_plot(
     # Save plot
     fig_dir = Path(f"plots/bias_probes/{model_name}/{loc}")
     fig_dir.mkdir(parents=True, exist_ok=True)
-    plt.savefig(fig_dir / "fvu_by_layer.png")
+    plt.savefig(fig_dir / "fvu_by_layer.pdf")
     plt.close()
 
 
@@ -296,7 +296,7 @@ def create_combined_fvu_line_plot(
     fvu_by_loc_layer: dict[str, dict[int, float]], model_name: str
 ) -> None:
     """Create a line plot showing FVU across layers for multiple locations."""
-    plt.figure(figsize=(9, 7), dpi=300)
+    plt.figure(figsize=(10, 7), dpi=300)
 
     # Find global min and max FVU across all locations
     all_fvus = []
@@ -325,6 +325,11 @@ def create_combined_fvu_line_plot(
     colors = colormaps["nipy_spectral"](np.linspace(0, 0.9, n_colors))
     # Create a mapping from location to color
     color_by_loc = dict(zip(LOC_ORDER, colors))
+    # print colors in HTML hex format
+    for loc, color in color_by_loc.items():
+        rgb = [int(c * 255) for c in color[:3]]  # Convert to 0-255 range and take only RGB
+        hex_color = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
+        print(f"{loc=} {hex_color=}")
 
     # Plot each location in the specified order if it exists in the data
     for i, loc in enumerate(LOC_ORDER):
@@ -358,6 +363,7 @@ def create_combined_fvu_line_plot(
     # Save plot
     fig_dir = Path(f"plots/bias_probes/{model_name}")
     fig_dir.mkdir(parents=True, exist_ok=True)
+    plt.savefig(fig_dir / "fvu_by_layer_combined.pdf")
     plt.savefig(fig_dir / "fvu_by_layer_combined.png")
     plt.close()
 
@@ -506,7 +512,7 @@ def create_seed_comparison_boxplot(
     # Save plot
     fig_dir = Path(f"plots/bias_probes/{model_name}/{loc}")
     fig_dir.mkdir(parents=True, exist_ok=True)
-    plt.savefig(fig_dir / f"seed_comparison_L{min(layers)}-L{max(layers)}.png")
+    plt.savefig(fig_dir / f"seed_comparison_L{min(layers)}-L{max(layers)}.pdf")
     plt.close()
 
 
