@@ -1558,15 +1558,26 @@ class UnfaithfulnessPairsDataset(YAMLWizard):
         path.parent.mkdir(parents=True, exist_ok=True)
         self.to_yaml_file(path)
         return path
-
-    @classmethod
-    def load(cls, model_id: str, prop_id: str, dataset_suffix: str | None = None) -> "UnfaithfulnessPairsDataset":
-        """Load an unfaithfulness dataset from disk."""
+    
+    @staticmethod
+    def get_path_for_model_and_dataset(model_id: str, prop_id: str, dataset_suffix: str | None = None) -> Path:
         model_file_name = model_id.split("/")[-1]
         file_id = prop_id
         if dataset_suffix:
             file_id = f"{prop_id}_{dataset_suffix}"
-        path = DATA_DIR / "faithfulness" / model_file_name / f"{file_id}.yaml"
+        return DATA_DIR / "faithfulness" / model_file_name / f"{file_id}.yaml"
+    
+    @classmethod
+    def load(cls, model_id: str, prop_id: str, dataset_suffix: str | None = None) -> "UnfaithfulnessPairsDataset":
+        """Load an unfaithfulness dataset from disk."""
+        path = cls.get_path_for_model_and_dataset(model_id, prop_id, dataset_suffix)
+        dataset = cls.from_yaml_file(path)
+        assert isinstance(dataset, cls)
+        return dataset
+    
+    @classmethod
+    def load_from_path(cls, path: Path) -> "UnfaithfulnessPairsDataset":
+        """Load an unfaithfulness dataset from a path."""
         dataset = cls.from_yaml_file(path)
         assert isinstance(dataset, cls)
         return dataset
