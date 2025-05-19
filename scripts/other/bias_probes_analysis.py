@@ -457,12 +457,27 @@ def create_seed_comparison_boxplot(
         # Save data to cache
         save_seed_comparison_cache(cache_path, data_by_layer, fvu_by_seed_layer)
 
-    # Set up the figure
-    plt.figure(figsize=(8, 5), dpi=300)
-
     # Prepare data for boxplot
     box_data = [data_by_layer[layer] for layer in layers]
 
+    # Find min and max FVU values for scaling
+    all_values = [val for layer_values in box_data for val in layer_values if val is not None]
+    min_fvu = min(all_values) if all_values else 0.0
+    max_fvu = max(all_values) if all_values else 2.0
+
+    # Set up the figure
+    if len(layers) <= 20:
+        xsize = 8
+    else:
+        xsize = 15
+        
+    if max_fvu > 10.0:
+        ysize = 10
+    else:
+        ysize = 5
+
+    plt.figure(figsize=(xsize, ysize), dpi=300)
+    
     # Create boxplot
     bp = plt.boxplot(
         box_data,
@@ -471,8 +486,10 @@ def create_seed_comparison_boxplot(
         showfliers=False,  # Don't show outliers as separate points
     )
 
-    # Set x-axis labels after creating the boxplot
-    plt.xticks(range(1, len(layers) + 1), [str(layer) for layer in layers])
+    # Set x-axis labels showing every other layer (in pairs)
+    tick_positions = range(1, len(layers) + 1)
+    tick_labels = [str(layer) if i % 2 == 0 else "" for i, layer in enumerate(layers)]
+    plt.xticks(tick_positions, tick_labels)
 
     # Customize boxplot colors
     for box in bp["boxes"]:
@@ -503,11 +520,37 @@ def create_seed_comparison_boxplot(
     plt.xlabel("Layer")
     plt.ylabel("Fraction of Variance Unexplained (FVU)\n(lower is better)")
     plt.title(
-        f"{model_name}\nFVU by seed for end-of-turn token, layers {min(layers)}-{max(layers)}"
+        f"{model_name}\nFVU by seed for {loc} token, layers {min(layers)}-{max(layers)}"
     )
 
     # Format y-axis as percentages
     plt.gca().yaxis.set_major_formatter(FuncFormatter(lambda y, _: "{:.0%}".format(y)))
+    
+    # Apply custom scale transformation if there are values below 100%
+    if min_fvu < 1.0:
+        # Create custom scale transformation - values below 1.0 take up 70% of the axis height
+        if max_fvu > 10.0:
+            z = 0.3  # Proportion of the axis dedicated to 0-100%
+        else:
+            z = 0.75  # Proportion of the axis dedicated to 0-100%
+        
+        # Define custom scale transformation
+        forward, inverse = get_custom_scale_transform(max_fvu, min(min_fvu, 0.0), z)
+        plt.gca().set_yscale(FuncScale(plt.gca().yaxis, (forward, inverse)))
+        
+        # Create ticks for 0-100% (more dense in this region)
+        below_100_ticks = np.arange(0, 1.01, 0.1)  # 0%, 10%, 20%, ..., 100%
+        
+        # Create ticks for values above 100% (less dense)
+        max_value_rounded = np.ceil(max_fvu)
+        if max_value_rounded > 1.0:
+            step = 0.5 if max_value_rounded <= 3.0 else 1.0
+            above_100_ticks = np.arange(1.0, max_value_rounded + step, step)
+            yticks = np.unique(np.concatenate([below_100_ticks, above_100_ticks]))
+        else:
+            yticks = below_100_ticks
+            
+        plt.yticks(yticks)
 
     # Save plot
     fig_dir = Path(f"plots/bias_probes/{model_name}/{loc}")
