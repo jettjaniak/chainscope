@@ -128,6 +128,7 @@ faithfulness_files = list(faithfulness_dir.glob("*.yaml"))
 unfaithful_q_ids = []
 p_correct_by_qid = {}
 reversed_q_ids = {}
+prop_ids_with_suffix_in_faithfulness = set()
 
 for file in faithfulness_files:
     prop_id_with_suffix = file.stem
@@ -155,6 +156,11 @@ for file in faithfulness_files:
         
         reversed_q_ids[qid] = question.metadata.reversed_q_id
         reversed_q_ids[question.metadata.reversed_q_id] = qid
+        
+        prop_ids_with_suffix_in_faithfulness.add(prop_id_with_suffix)
+
+print(f"Number of prop_ids_with_suffix in faithfulness: {len(prop_ids_with_suffix_in_faithfulness)}")
+print(prop_ids_with_suffix_in_faithfulness)
 
 # %%
 
@@ -164,17 +170,18 @@ sampling_params = SamplingParams(
     top_p=0.9,
     max_new_tokens=8000,
 )
+model_name = model_id.split("/")[-1]
 
 # Load pattern evaluations for each prop_id_with_suffix
 pattern_evals: dict[str, UnfaithfulnessPatternEval] = {}
-for prop_id_with_suffix in prop_ids_with_suffix:
+for prop_id_with_suffix in prop_ids_with_suffix_in_faithfulness:
     try:
-        eval_path = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id / prop_id_with_suffix / f"{model_id.split('/')[-1]}.yaml"
+        eval_path = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id / prop_id_with_suffix / f"{model_name}.yaml"
         if eval_path.exists():
             pattern_evals[prop_id_with_suffix] = UnfaithfulnessPatternEval.load(eval_path)
             print(f"Loaded pattern evaluation for {prop_id_with_suffix}")
         else:
-            print(f"No pattern evaluation found for {prop_id_with_suffix}")
+            print(f"No pattern evaluation found for {prop_id_with_suffix} in path {eval_path}")
     except Exception as e:
         print(f"Error loading pattern evaluation for {prop_id_with_suffix}: {e}")
 
@@ -193,7 +200,8 @@ print(f"P_correct (reversed): {p_correct_by_qid[reversed_q_ids[unfaithful_q_ids[
 
 # %%
 
-filter_unfaithfulness_pattern: Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"] | None = None
+filter_unfaithfulness_pattern: Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"] | None = "argument-switching"
+only_one_unfaithfulness_pattern = True
 
 # Find the pair of unfaithful qs with largest difference in p_correct
 
@@ -226,8 +234,12 @@ for qid in unfaithful_q_ids:
                 if qid in pattern_eval.pattern_analysis_by_qid:
                     pattern_analysis = pattern_eval.pattern_analysis_by_qid[qid]
                     if pattern_analysis.categorization_for_pair:
-                        if filter_unfaithfulness_pattern in pattern_analysis.categorization_for_pair:
-                            matches_filter = True
+                        categories = pattern_analysis.categorization_for_pair
+                        if filter_unfaithfulness_pattern in categories:
+                            if only_one_unfaithfulness_pattern:
+                                matches_filter = len(categories) == 1
+                            else:
+                                matches_filter = True
         
         if matches_filter:
             pair = tuple(sorted([qid, rev_q_id]))  # Sort to ensure consistent ordering
@@ -290,7 +302,6 @@ for (qid1, qid2), acc_diff in unfaithful_qids_pairs[:K]:
     if pattern_analysis:
         if pattern_analysis.categorization_for_pair:
             print(f"\nUnfaithfulness patterns: {', '.join(pattern_analysis.categorization_for_pair)}")
-    print()
 
     print("First prompt:\n")
     print(f"`{q1_prompt}`\n")
