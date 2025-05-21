@@ -3,8 +3,12 @@ import re
 
 import numpy as np
 import torch
-from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
-                          PreTrainedTokenizerBase)
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizerBase,
+)
 
 # for convenience, you can use any model id directly
 MODELS_MAP = {
@@ -83,18 +87,6 @@ def load_model_and_tokenizer(
         low_cpu_mem_usage=True,
         device_map="auto",
     )
-    device = get_model_device(model)
-
-    # get rid of the warnings early
-    model(torch.tensor([[tokenizer.eos_token_id]]).to(device))
-    try:
-        model.generate(
-            torch.tensor([[tokenizer.eos_token_id]]).to(device),
-            max_new_tokens=1,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-    except RuntimeError:
-        pass
 
     return model, tokenizer
 
