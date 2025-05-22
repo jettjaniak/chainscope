@@ -3,12 +3,8 @@ import re
 
 import numpy as np
 import torch
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    PreTrainedModel,
-    PreTrainedTokenizerBase,
-)
+from transformers import (AutoModelForCausalLM, AutoTokenizer, PreTrainedModel,
+                          PreTrainedTokenizerBase)
 
 # for convenience, you can use any model id directly
 MODELS_MAP = {
@@ -99,26 +95,43 @@ def remove_llama_system_dates(chat_input_str: str) -> str:
 
 
 def conversation_to_str_prompt(
-    conversation: list[dict[str, str]], tokenizer: PreTrainedTokenizerBase
+    conversation: list[dict[str, str]], 
+    tokenizer: PreTrainedTokenizerBase,
+    add_generation_prompt: bool = True,
 ) -> str:
     str_prompt = tokenizer.apply_chat_template(
-        conversation, add_generation_prompt=True, tokenize=False
+        conversation, add_generation_prompt=add_generation_prompt, tokenize=False
     )
     assert isinstance(str_prompt, str)
     return remove_llama_system_dates(str_prompt)
 
 
-def make_chat_prompt(instruction: str, tokenizer: PreTrainedTokenizerBase) -> str:
+def make_chat_prompt(
+    instruction: str,
+    tokenizer: PreTrainedTokenizerBase,
+    response: str | None = None,
+) -> str:
     conversation = [
         {
             "role": "user",
             "content": instruction,
         }
     ]
-    return conversation_to_str_prompt(conversation, tokenizer)
+    if response is not None:
+        conversation.append(
+            {
+                "role": "assistant",
+                "content": response,
+            }
+        )
+    return conversation_to_str_prompt(
+        conversation, 
+        tokenizer, 
+        add_generation_prompt=response is None
+    )
 
 
-def get_model_device(model: PreTrainedModel) -> torch.device:
+def get_model_device(model: PreTrainedModel) -> torch.device:   
     return next(model.parameters()).device
 
 
