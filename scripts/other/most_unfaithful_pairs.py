@@ -150,6 +150,8 @@ for file in faithfulness_files:
             
         unfaithful_q_ids.append(qid)
         unfaithful_q_ids.append(question.metadata.reversed_q_id)
+
+        # print(f"qid: {qid}, reversed_q_id: {question.metadata.reversed_q_id} from {prop_id_with_suffix}")
         
         p_correct_by_qid[qid] = question.metadata.p_correct
         p_correct_by_qid[question.metadata.reversed_q_id] = question.metadata.reversed_q_p_correct
@@ -298,23 +300,11 @@ wm_template = Instructions.load("instr-wm").cot
 # %%
 
 # Print the top K pairs with largest difference
-K = 3
+K = 5
 for (qid1, qid2), metric in unfaithful_qids_pairs[:K]:
-    q1_answer = df.loc[df["qid"] == qid1, "answer"].values[0]
-    q2_answer = df.loc[df["qid"] == qid2, "answer"].values[0]
-    q1_acc = p_correct_by_qid[qid1]
-    q2_acc = p_correct_by_qid[qid2]
-    
-    q1_str = df.loc[df["qid"] == qid1, "q_str"].values[0]
-    q2_str = df.loc[df["qid"] == qid2, "q_str"].values[0]
-    q1_prompt = wm_template.format(question=q1_str)[:-1]
-    q2_prompt = wm_template.format(question=q2_str)[:-1]
-
     dataset_id = df.loc[df["qid"] == qid1, "dataset_id"].values[0]
     prop_id = df.loc[df["qid"] == qid1, "prop_id"].values[0]
     dataset_suffix = df.loc[df["qid"] == qid1, "dataset_suffix"].values[0]
-    x_name = df.loc[df["qid"] == qid1, "x_name"].values[0]
-    y_name = df.loc[df["qid"] == qid1, "y_name"].values[0]
 
     # Get prop_id_with_suffix from dataset_id
     prop_id_with_suffix = f"{prop_id}"
@@ -348,8 +338,28 @@ for (qid1, qid2), metric in unfaithful_qids_pairs[:K]:
                 for resp_id, resp_analysis in pattern_analysis.q2_analysis.responses.items():
                     if resp_analysis.answer_flipping_classification == "YES":
                         q2_answer_flipping_count += 1
+        else:
+            print(f"No pattern analysis found for {qid1} {qid2} on {prop_id_with_suffix}")
+    else:
+        print(f"No pattern eval found for {prop_id_with_suffix}")
 
+    assert main_qid is not None and reversed_qid is not None, "main_qid or reversed_qid is None"
+    
     print(f"Dataset id: {dataset_id}")
+
+    q1_answer = df.loc[df["qid"] == main_qid, "answer"].values[0]
+    q2_answer = df.loc[df["qid"] == reversed_qid, "answer"].values[0]
+    q1_acc = p_correct_by_qid[main_qid]
+    q2_acc = p_correct_by_qid[reversed_qid]
+    
+    q1_str = df.loc[df["qid"] == main_qid, "q_str"].values[0]
+    q2_str = df.loc[df["qid"] == reversed_qid, "q_str"].values[0]
+    q1_prompt = wm_template.format(question=q1_str)[:-1]
+    q2_prompt = wm_template.format(question=q2_str)[:-1]
+
+    x_name = df.loc[df["qid"] == main_qid, "x_name"].values[0]
+    y_name = df.loc[df["qid"] == main_qid, "y_name"].values[0]
+
     print(f"First entity: {x_name}")
     print(f"Second entity: {y_name}")
     
