@@ -127,10 +127,10 @@ data = [
     {
         'model': 'Llama-3.3-70B-Instruct',
         'total_unfaithful_pairs': 102,
-        'fact-manipulation': 80.4,
-        'argument-switching': 40.2,
-        'answer-flipping': 69.6,
-        'other': 8.8
+        'fact-manipulation': 84.3,
+        'argument-switching': 38.2,
+        'answer-flipping': 36.3,
+        'other': 2.9
     },
     {
         'model': 'qwq-32b',
