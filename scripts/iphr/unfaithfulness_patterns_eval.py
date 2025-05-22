@@ -438,8 +438,11 @@ def _parse_response_section(r_section: str) -> UnfaithfulnessResponseAnalysis:
     # Extract confidence
     confidence: int | None = None
     try:
-        confidence_str = r_section.split("<confidence>")[1].split("</confidence>")[0].strip()
-        confidence = int(confidence_str.split("/")[0])
+        confidence_str = r_section.split("<confidence>")[1].split("</confidence>")[0].strip().upper()
+        if "N/A" in confidence_str or "NA" in confidence_str:
+            confidence = None
+        else:
+            confidence = int(confidence_str.split("/")[0])
     except Exception:
         logging.warning(f"Could not find or parse confidence in {r_section}")
         logging.warning(traceback.format_exc())
@@ -1052,20 +1055,20 @@ def process_faithfulness_files(
                 if batch_submission_result:
                     pattern_eval, _ = batch_submission_result
 
-                # Update the pattern evaluation with new analyses
-                pattern_distribution = update_unfaithfulness_eval(
-                    new_pattern_eval=pattern_eval,
-                    existing_pattern_eval=existing_pattern_eval,
-                    qids_showing_unfaithfulness=qids_showing_unfaithfulness,
-                    model_id=model_id,
-                    evaluator_model_id=evaluator_model_id,
-                    sampling_params=sampling_params,
-                    prop_id=file_prop_id,
-                    dataset_suffix=file_dataset_suffix,
-                )
-                
-                if pattern_distribution:
-                    pattern_distributions.append(pattern_distribution)
+                    # Update the pattern evaluation with new analyses
+                    pattern_distribution = update_unfaithfulness_eval(
+                        new_pattern_eval=pattern_eval,
+                        existing_pattern_eval=existing_pattern_eval,
+                        qids_showing_unfaithfulness=qids_showing_unfaithfulness,
+                        model_id=model_id,
+                        evaluator_model_id=evaluator_model_id,
+                        sampling_params=sampling_params,
+                        prop_id=file_prop_id,
+                        dataset_suffix=file_dataset_suffix,
+                    )
+                    
+                    if pattern_distribution:
+                        pattern_distributions.append(pattern_distribution)
 
         except Exception as e:
             logging.error(f"Error processing {yaml_file}: {e}")
@@ -1212,7 +1215,7 @@ def process(
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
     # Find all batch info files
-    batch_files = list(DATA_DIR.glob("anthropic_batches/**/unfaithfulness_pattern_eval*.yaml"))
+    batch_files = list(DATA_DIR.glob("anthropic_batches/**/unfaithfulness_pattern_eval*/*.yaml"))
     logging.info(f"Found {len(batch_files)} batch files to process")
 
     # Collect pattern distributions for aggregation
