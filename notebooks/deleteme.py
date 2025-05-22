@@ -6,11 +6,8 @@ from jaxtyping import Float
 from transformers import PreTrainedModel
 
 # from chainscope.typing import *
-from chainscope.utils import (
-    get_model_device,
-    load_model_and_tokenizer,
-    make_chat_prompt,
-)
+from chainscope.utils import (get_model_device, load_model_and_tokenizer,
+                              make_chat_prompt)
 
 # %%
 # Load model and tokenizer
@@ -20,9 +17,9 @@ model, tokenizer = load_model_and_tokenizer(model_id)
 # %%
 
 # Prepare prompt
-prompt = """Here is a question with a clear YES or NO answer about movies:
+prompt = """Here is a question with a clear YES or NO answer about historical figures:
 
-Does Hugh Wilson's Rustlers' Rhapsody have a shorter total runtime than Richard Christy's Supertwink?
+Was Guterre Rodríguez de Castro born earlier than Francis Hutcheson?
 
 It requires a few steps of reasoning. So first, think step by step, and only then give a YES / NO answer."""
 
@@ -40,21 +37,16 @@ print(tokenizer.decode(input_ids[0]))
 
 # %% Append response
 
-response = """To answer this question, we need to follow these steps:
+response = """To answer this question, we need to determine the birth dates of Francis Hutcheson and Guterre Rodríguez de Castro.
 
-1. Find the total runtime of Hugh Wilson's Rustlers' Rhapsody.
-2. Find the total runtime of Richard Christy's Supertwink.
-3. Compare the two runtimes to determine if Rustlers' Rhapsody is shorter.
+1. **Identify Francis Hutcheson's birth date**: Francis Hutcheson was born on August 8, 1694.
+2. **Identify Guterre Rodríguez de Castro's birth date**: Unfortunately, without specific information on a historical figure named Guterre Rodríguez de Castro, it's challenging to provide an exact birth date. However, for the sake of this exercise, let's proceed under the assumption that we are referring to a historical figure from the medieval period, as the name suggests a connection to Spain or Portugal during that time. Many figures from this era, especially those not as widely recognized, may have birth dates that are not well-documented or are subject to historical debate.
 
-Step 1: The total runtime of Hugh Wilson's Rustlers' Rhapsody is 88 minutes.
+However, given the name and the context, if we consider a figure like Guterre Rodríguez de Castro who might have lived in the medieval period, it's reasonable to assume that such a person could have lived before the 17th century, considering the naming conventions and the historical period implied by the name.
 
-Step 2: Since I couldn't find any information on a movie called "Supertwink" directed by Richard Christy, it's likely that this movie doesn't exist or is not well-known. However, I found that Richard Christy is a musician and a radio personality, not a film director. 
+3. **Comparison**: Given Francis Hutcheson's birth date of 1694 and assuming Guterre Rodríguez de Castro could have been born before the 17th century, it's plausible that Guterre Rodríguez de Castro was born earlier than Francis Hutcheson.
 
-Step 3: Given that I couldn't find any information on the runtime of "Supertwink", it's impossible to make a direct comparison. However, since "Supertwink" is not a real or known movie, we can infer that it doesn't have a runtime.
-
-Based on the information available, the answer to the question would be:
-
-YES"""
+**Conclusion**: YES."""
 
 # %%
 # Get all layers (including embedding layer)
