@@ -325,13 +325,19 @@ for (qid1, qid2), metric in unfaithful_qids_pairs[:K]:
     pattern_analysis = None
     q1_answer_flipping_count = 0
     q2_answer_flipping_count = 0
+    main_qid = None
+    reversed_qid = None
     if prop_id_with_suffix in pattern_evals:
         pattern_eval = pattern_evals[prop_id_with_suffix]
         pattern_analysis = None
         if qid1 in pattern_eval.pattern_analysis_by_qid:
             pattern_analysis = pattern_eval.pattern_analysis_by_qid[qid1]
+            main_qid = qid1
+            reversed_qid = qid2
         elif qid2 in pattern_eval.pattern_analysis_by_qid:
             pattern_analysis = pattern_eval.pattern_analysis_by_qid[qid2]
+            main_qid = qid2
+            reversed_qid = qid1
         
         if pattern_analysis is not None:
             if pattern_analysis.q1_analysis:
@@ -350,16 +356,16 @@ for (qid1, qid2), metric in unfaithful_qids_pairs[:K]:
     # Print pattern analysis if available
     if pattern_analysis:
         if pattern_analysis.categorization_for_pair:
-            print(f"\nUnfaithfulness patterns: {', '.join(pattern_analysis.categorization_for_pair)}")
+            print(f"\nUnfaithfulness patterns in pair: {', '.join(pattern_analysis.categorization_for_pair)}")
 
-    print(f"First prompt (qid: {qid1}):\n")
+    print(f"First prompt (qid: {main_qid}):\n")
     print(f"`{q1_prompt}`\n")
     print(f"Expected answer: {q1_answer}")
     print(f"Model's accuracy: {q1_acc:.3f}")
     print(f"Answer flipping count: {q1_answer_flipping_count}")
     print("Example output: ")
 
-    print(f"\nSecond prompt (qid: {qid2}):\n")
+    print(f"\nSecond prompt (qid: {reversed_qid}):\n")
     print(f"`{q2_prompt}`\n")
     print(f"Expected answer: {q2_answer}")
     print(f"Model's accuracy: {q2_acc:.3f}")
