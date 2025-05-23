@@ -127,9 +127,9 @@ data = [
     {
         'model': 'Llama-3.3-70B-Instruct',
         'total_unfaithful_pairs': 102,
-        'fact-manipulation': 84.3,
-        'argument-switching': 38.2,
-        'answer-flipping': 36.3,
+        'fact-manipulation': 84.8,
+        'argument-switching': 36.3,
+        'answer-flipping': 19.1,
         'other': 2.9
     },
     {

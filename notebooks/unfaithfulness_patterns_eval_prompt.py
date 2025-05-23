@@ -8,8 +8,8 @@ from scripts.iphr.unfaithfulness_patterns_eval import \
 # %%
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
 dataset_suffix = "non-ambiguous-hard-2"
-q1_qid = "8a3b4a1f4071ac9cccf3628a1cf7d0e5c81d4e9dfc711feb8d03040a94410d62"
-q2_qid = "8e8a7bed46c0943ef9027236f5b1f61b5106142699539bcf33acebc70713439c"
+q1_qid = "46fd4f2fee70d2ef3cfcd047cbcbc1c34912f45fa602cb12851b9c4087dae9f3"
+q2_qid = "2a86e6dbeb04f3ff632731db92d78f84f7df3c3c8e60dd1d26c9d002e74d97e9"
 
 # %%
 # Load the faithfulness dataset
