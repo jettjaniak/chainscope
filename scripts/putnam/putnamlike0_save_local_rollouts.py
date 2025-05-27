@@ -121,7 +121,7 @@ def generate_local_rollouts(
     # Initialize model
     model = HookedTransformer.from_pretrained(
         model_name=model_id,
-        device="cuda:0",  # "cuda" if torch.cuda.is_available() else "cpu",
+        device="cuda",  # "cuda" if torch.cuda.is_available() else "cpu",
         n_devices=2,
     )
     assert model.tokenizer is not None, "Tokenizer not initialized"
@@ -130,11 +130,11 @@ def generate_local_rollouts(
     # Prepare questions
     questions = dataset.questions[:prefix] if prefix else dataset.questions
     # Filter to non-_a1 for limited run.
-    questions = [q for q in questions if not q.name.endswith("_a1")]
+    # questions = [q for q in questions if not q.name.endswith("_a1")]
     responses_by_qid = {}
     raw_model = model
     model = HookedTransformerWithGenerator(raw_model)
-    #model.hooked_transformer.to(model.cfg.device)
+    # model.hooked_transformer.to(model.cfg.device)
 
     # Process each question
     for q in questions:
@@ -161,7 +161,7 @@ def generate_local_rollouts(
                         top_p=top_p,
                         return_type="tokens",
                         verbose=True,
-                        eos_token_id=model.tokenizer.pad_token_id
+                        eos_token_id=model.tokenizer.pad_token_id,
                     ):
                         generated.append(token)
                 except Exception:
