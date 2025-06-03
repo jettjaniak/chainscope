@@ -250,7 +250,7 @@ def is_instruct_model(model_id: str) -> bool:
     return (
         "instruct" in lower_model_id
         or "-it" in lower_model_id
-        or "google" in lower_model_id
+        or "gemini" in lower_model_id
         or "anthropic" in lower_model_id
         or "deepseek" in lower_model_id
         or "openai" in lower_model_id
