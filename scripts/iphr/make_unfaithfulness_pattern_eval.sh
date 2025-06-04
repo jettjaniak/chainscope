@@ -20,7 +20,7 @@ wait_for_batches() {
 for model_dir in "$FAITHFULNESS_DIR"/*/; do
   model=$(basename "$model_dir")
   echo "▶ Processing model $model"
-  python ./scripts/iphr/unfaithfulness_patterns_eval.py submit -v -m "$model" -s "$SUFFIX" --api "$API"
+  python ./scripts/iphr/unfaithfulness_patterns_eval.py submit -m "$model" -s "$SUFFIX" --api "$API"
 done 
 
 if [ "$API" == "ant-batch" ]; then

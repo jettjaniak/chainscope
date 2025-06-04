@@ -9,9 +9,8 @@ import click
 from beartype import beartype
 from tqdm import tqdm
 
-from chainscope.api_utils.anthropic_utils import (
-    process_batch_results as process_anthropic_batch_results,
-)
+from chainscope.api_utils.anthropic_utils import \
+    process_batch_results as process_anthropic_batch_results
 from chainscope.api_utils.anthropic_utils import submit_anthropic_batch
 from chainscope.api_utils.common import get_responses_async
 from chainscope.typing import *
@@ -52,7 +51,6 @@ def sample_responses_proportionally(
 
     if not question_data.metadata.is_oversampled:
         # Sampling is not needed
-        logging.info("Sampling is not needed for non-oversampled question pair")
         return q1_all_responses, q2_all_responses
 
     def sample_for_question(
