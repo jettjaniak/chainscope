@@ -458,7 +458,7 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
 
     fig.tight_layout(rect=(0, 0, 1, 0.94)) # Adjust rect to leave space for title and fig
 
-    plt.savefig(f"logit_trajectory_token_before_final_answer_{model_id.split('/')[-1]}_qid_{qid[:8]}_response_{response_id[:8]}.png", dpi=300)
+    plt.savefig(f"logit_trajectory_token_before_final_answer_{model_id.split('/')[-1]}_qid_{qid[:8]}_response_{response_id[:8]}.png", dpi=300, bbox_inches="tight")
     plt.show()
 
 
