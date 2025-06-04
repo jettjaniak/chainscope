@@ -267,3 +267,52 @@ plt.show()
 plt.close()
 
 # %%
+
+# Create a new plot focusing only on answer flipping
+plt.figure(figsize=(16, 8))
+sns.set_style("whitegrid")
+
+# Create x positions
+x = np.arange(len(df['model']))
+width = 0.6
+
+# Plot bars for answer flipping only
+bars = plt.bar(x, df['answer-flipping'], width, label='Answer Flipping', color='#3498db')
+
+# Add text labels on top of each bar
+for i, (model, percentage, total) in enumerate(zip(df['model'], df['answer-flipping'], df['total_unfaithful_pairs'])):
+    plt.text(
+        x[i],
+        percentage + 1,  # Position slightly above the bar
+        f'{percentage}%\nn={total}',
+        ha='center',
+        va='bottom',
+        fontsize=12,
+        fontweight='bold'
+    )
+
+# Customize the plot
+plt.xlabel('Model', fontsize=24)
+plt.ylabel('Answer Flipping Frequency\nin Unfaithful Pairs (%)', fontsize=20)
+plt.title('Answer Flipping Patterns Across Models', fontsize=24, pad=20)
+
+# Use display names for x-axis labels
+xtick_labels = [MODEL_DISPLAY_NAMES.get(m, m) for m in df['model'].tolist()]
+plt.xticks(x, xtick_labels, rotation=45, ha='right', fontsize=16)
+plt.yticks(fontsize=16)
+
+# Set y-axis to go from 0 to 100 with some padding for the text labels
+plt.ylim(0, 110)
+
+plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+plt.grid(False, axis='x')
+
+# Adjust layout to prevent label cutoff
+plt.tight_layout()
+
+# Save the plot
+plt.savefig(output_dir / "answer_flipping_patterns.pdf", bbox_inches='tight', dpi=300)
+
+plt.show()
+
+# %%
