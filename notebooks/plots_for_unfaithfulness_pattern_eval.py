@@ -15,26 +15,26 @@ data = [
     {
         'model': 'claude-3.5-haiku',
         'total_unfaithful_pairs': 363,
-        'fact-manipulation': 64.7,
-        'argument-switching': 44.9,
-        'answer-flipping': 71.3,
-        'other': 14.0
+        'fact-manipulation': 67.2,
+        'argument-switching': 44.6,
+        'answer-flipping': 67.5,
+        'other': 5.2
     },
     {
         'model': 'claude-3.6-sonnet',
         'total_unfaithful_pairs': 22,
         'fact-manipulation': 91.7,
-        'argument-switching': 0.0,
-        'answer-flipping': 33.3,
+        'argument-switching': 8.3,
+        'answer-flipping': 25.0,
         'other': 8.3
     },
     {
         'model': 'claude-3.7-sonnet',
         'total_unfaithful_pairs': 90,
         'fact-manipulation': 14.3,
-        'argument-switching': 11.1,
-        'answer-flipping': 95.2,
-        'other': 52.4
+        'argument-switching': 7.9,
+        'answer-flipping': 93.7,
+        'other': 27.0
     },
     {
         'model': 'claude-3.7-sonnet_1k',
@@ -47,66 +47,66 @@ data = [
     {
         'model': 'claude-3.7-sonnet_64k',
         'total_unfaithful_pairs': 12,
-        'fact-manipulation': 66.7,
-        'argument-switching': 33.3,
-        'answer-flipping': 44.4,
+        'fact-manipulation': 77.8,
+        'argument-switching': 11.1,
+        'answer-flipping': 55.6,
         'other': 0.0
     },
     {
         'model': 'deepseek-chat',
         'total_unfaithful_pairs': 60,
-        'fact-manipulation': 73.3,
+        'fact-manipulation': 68.3,
         'argument-switching': 21.7,
-        'answer-flipping': 38.3,
-        'other': 11.7
+        'answer-flipping': 31.7,
+        'other': 1.7
     },
     {
         'model': 'deepseek-r1',
         'total_unfaithful_pairs': 18,
         'fact-manipulation': 100.0,
-        'argument-switching': 7.7,
-        'answer-flipping': 15.4,
+        'argument-switching': 15.4,
+        'answer-flipping': 7.7,
         'other': 0.0
     },
     {
         'model': 'gpt-4o-mini',
         'total_unfaithful_pairs': 660,
-        'fact-manipulation': 48.0,
-        'argument-switching': 76.4,
-        'answer-flipping': 76.4,
-        'other': 7.1
+        'fact-manipulation': 51.2,
+        'argument-switching': 78.3,
+        'answer-flipping': 68.8,
+        'other': 1.8
     },
     {
         'model': 'gpt-4o-2024-08-06',
         'total_unfaithful_pairs': 18,
-        'fact-manipulation': 84.6,
-        'argument-switching': 15.4,
-        'answer-flipping': 61.5,
-        'other': 7.7
+        'fact-manipulation': 92.3,
+        'argument-switching': 23.1,
+        'answer-flipping': 76.9,
+        'other': 0.0
     },
     {
         'model': 'chatgpt-4o-latest',
         'total_unfaithful_pairs': 24,
         'fact-manipulation': 100.0,
-        'argument-switching': 6.7,
-        'answer-flipping': 20.0,
+        'argument-switching': 0.0,
+        'answer-flipping': 6.7,
         'other': 0.0
     },
     {
         'model': 'gemini-pro-1.5',
         'total_unfaithful_pairs': 320,
-        'fact-manipulation': 75.3,
-        'argument-switching': 27.5,
-        'answer-flipping': 46.6,
-        'other': 14.1
+        'fact-manipulation': 76.2,
+        'argument-switching': 28.1,
+        'answer-flipping': 45.6,
+        'other': 7.5
     },
     {
         'model': 'gemini-2.5-flash-preview',
         'total_unfaithful_pairs': 106,
         'fact-manipulation': 35.8,
-        'argument-switching': 73.6,
-        'answer-flipping': 62.3,
-        'other': 3.8
+        'argument-switching': 76.4,
+        'answer-flipping': 58.5,
+        'other': 0.9
     },
     {
         'model': 'gemini-2.5-pro-preview',
@@ -119,26 +119,26 @@ data = [
     {
         'model': 'Llama-3.1-70B',
         'total_unfaithful_pairs': 159,
-        'fact-manipulation': 69.2,
-        'argument-switching': 46.5,
-        'answer-flipping': 58.5,
-        'other': 8.8
+        'fact-manipulation': 73.0,
+        'argument-switching': 49.7,
+        'answer-flipping': 50.3,
+        'other': 5.0
     },
     {
         'model': 'Llama-3.3-70B-Instruct',
         'total_unfaithful_pairs': 102,
-        'fact-manipulation': 84.8,
-        'argument-switching': 36.3,
-        'answer-flipping': 19.1,
-        'other': 2.9
+        'fact-manipulation': 88.2,
+        'argument-switching': 41.2,
+        'answer-flipping': 17.6,
+        'other': 1.0
     },
     {
         'model': 'qwq-32b',
         'total_unfaithful_pairs': 220,
-        'fact-manipulation': 99.5,
-        'argument-switching': 14.5,
-        'answer-flipping': 36.4,
-        'other': 0.0
+        'fact-manipulation': 99.1,
+        'argument-switching': 19.1,
+        'answer-flipping': 25.9,
+        'other': 0.5
     }
 ]
 
