@@ -86,7 +86,7 @@ def get_local_responses_vllm(
     fsp_seed: int,
     qid_to_dataset: dict[str, str],
     batch_size: int = 4096,
-) -> list[tuple[QuestionResponseId, str]]:
+) -> list[tuple[QuestionResponseId, str, str | None]]:
     assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
     if model_id_for_fsp is not None:
         assert not is_instruct_model(model_id), "Why?"
@@ -117,7 +117,9 @@ def get_local_responses_vllm(
     # Prepare prompts
     prompt_texts = []
     q_resp_ids = []
+    fsp_for_output: list[str | None] = []
     for q_resp_id, prompt in tqdm(prompts, desc="Preparing prompts"):
+        current_fsp_prompt: str | None = None
         if is_instruct_model(model_id):
             input_str = make_chat_prompt(
                 instruction=prompt,
@@ -143,11 +145,13 @@ def get_local_responses_vllm(
                     qs_dataset_cache=qs_dataset_cache,
                 )
                 input_str = f"{fsp_prompt}\n\n{prompt}"
+                current_fsp_prompt = fsp_prompt
             else:
                 input_str = prompt
 
         prompt_texts.append(input_str)
         q_resp_ids.append(q_resp_id)
+        fsp_for_output.append(current_fsp_prompt)
 
     # Generate responses using vLLM in batches
     logging.info(
@@ -161,16 +165,16 @@ def get_local_responses_vllm(
     logging.info(f"Generated {len(all_outputs)} responses")
 
     # Format responses
-    responses: list[tuple[QuestionResponseId, str]] = []
-    for q_resp_id, output in tqdm(
-        zip(q_resp_ids, all_outputs), desc="Processing responses", total=len(q_resp_ids)
+    responses: list[tuple[QuestionResponseId, str, str | None]] = []
+    for q_resp_id, output, fsp in tqdm(
+        zip(q_resp_ids, all_outputs, fsp_for_output), desc="Processing responses", total=len(q_resp_ids)
     ):
         generated_text = output.outputs[0].text
 
         if instr_prefix in generated_text:
             generated_text = generated_text.replace(instr_prefix, "")
 
-        responses.append((q_resp_id, generated_text))
+        responses.append((q_resp_id, generated_text, fsp))
 
     return responses
 
@@ -186,7 +190,7 @@ def get_local_responses_tl(
     fsp_seed: int,
     local_gen_seed: int,
     qid_to_dataset: dict[str, str],
-) -> list[tuple[QuestionResponseId, str]]:
+) -> list[tuple[QuestionResponseId, str, str | None]]:
     """Generate responses using TransformerLens framework.
 
     Args:
@@ -202,7 +206,7 @@ def get_local_responses_tl(
         qid_to_dataset: Mapping from question IDs to dataset IDs
 
     Returns:
-        List of (question ID, generated response) tuples
+        List of (question ID, generated response, fsp_prompt or None) tuples
     """
     assert instr_id == "instr-wm", "Only instr-wm is supported for local generation"
     if model_id_for_fsp is not None:
@@ -230,8 +234,9 @@ def get_local_responses_tl(
     stop_tokens = ["**NO**", "**YES**", "\n\nNO", "\n\nYES", instr_prefix]
 
     # Prepare prompts
-    responses: list[tuple[QuestionResponseId, str]] = []
+    responses: list[tuple[QuestionResponseId, str, str | None]] = []
     for q_resp_id, prompt in tqdm(prompts, desc="Generating responses"):
+        current_fsp_prompt: str | None = None
         if is_instruct_model(model_id):
             input_str = make_chat_prompt(
                 instruction=prompt,
@@ -257,6 +262,7 @@ def get_local_responses_tl(
                     qs_dataset_cache=qs_dataset_cache,
                 )
                 input_str = f"{fsp_prompt}\n\n{prompt}"
+                current_fsp_prompt = fsp_prompt
             else:
                 input_str = prompt
 
@@ -305,7 +311,7 @@ def get_local_responses_tl(
         if instr_prefix in generated_text:
             generated_text = generated_text.replace(instr_prefix, "")
 
-        responses.append((q_resp_id, generated_text))
+        responses.append((q_resp_id, generated_text, current_fsp_prompt))
 
     return responses
 
@@ -363,7 +369,7 @@ def create_batch_of_cot_prompts(
 
 def create_cot_responses(
     responses_by_qid: dict[str, dict[str, MathResponse | AtCoderResponse | str]] | None,
-    new_responses: list[tuple[QuestionResponseId, str]],
+    new_responses: list[tuple[QuestionResponseId, str, str | None]],
     model_id: str,
     instr_id: str,
     ds_params: DatasetParams,
@@ -388,15 +394,22 @@ def create_cot_responses(
         responses = {qid: dict(resp) for qid, resp in responses_by_qid.items()}
 
     # Add new responses
-    for q_resp_id, response in new_responses:
+    fsp_by_resp_id: dict[str, str] | None = None
+    for q_resp_id, response, fsp in new_responses:
         if not response:
             continue
         if q_resp_id.qid not in responses:
             responses[q_resp_id.qid] = {}
         responses[q_resp_id.qid][q_resp_id.uuid] = response
 
+        if fsp is not None:
+            if fsp_by_resp_id is None:
+                fsp_by_resp_id = {}
+            fsp_by_resp_id[q_resp_id.uuid] = fsp
+
     return CotResponses(
         responses_by_qid=responses,
+        fsp_by_resp_id=fsp_by_resp_id,
         model_id=model_id,
         instr_id=instr_id,
         ds_params=ds_params,

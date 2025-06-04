@@ -449,12 +449,12 @@ def local(
 
     if results:
         # Group results by dataset
-        results_by_dataset: dict[str, list[tuple[QuestionResponseId, str]]] = {}
-        for q_resp_id, response in results:
+        results_by_dataset: dict[str, list[tuple[QuestionResponseId, str, str | None]]] = {}
+        for q_resp_id, response, fsp in results:
             dataset_id = qid_to_dataset[q_resp_id.qid]
             if dataset_id not in results_by_dataset:
                 results_by_dataset[dataset_id] = []
-            results_by_dataset[dataset_id].append((q_resp_id, response))
+            results_by_dataset[dataset_id].append((q_resp_id, response, fsp))
 
         # Save responses for each dataset
         for dataset_id, dataset_results in results_by_dataset.items():

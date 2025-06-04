@@ -1222,6 +1222,7 @@ class CotResponses(YAMLWizard):
     # For normal datasets
     # qid -> {uuid -> response_str or a MathResponse or AtCoderResponse}
     responses_by_qid: dict[str, dict[str, MathResponse | AtCoderResponse | str]]
+    fsp_by_resp_id: dict[str, str] | None
     model_id: str
     instr_id: str
     ds_params: AtCoderDatasetParams | MathDatasetParams | DatasetParams
