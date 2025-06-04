@@ -23,7 +23,7 @@ for model_dir in "$FAITHFULNESS_DIR"/*/; do
   python ./scripts/iphr/unfaithfulness_patterns_eval.py submit -m "$model" -s "$SUFFIX" --api "$API"
 done 
 
-if [ "$API" == "ant-batch" ]; then
+if [[ "$API" == "ant-batch" ]]; then
   wait_for_batches "$API"
   python ./scripts/iphr/unfaithfulness_patterns_eval.py process
 fi

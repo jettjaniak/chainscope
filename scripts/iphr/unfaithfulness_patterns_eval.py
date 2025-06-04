@@ -9,8 +9,9 @@ import click
 from beartype import beartype
 from tqdm import tqdm
 
-from chainscope.api_utils.anthropic_utils import \
-    process_batch_results as process_anthropic_batch_results
+from chainscope.api_utils.anthropic_utils import (
+    process_batch_results as process_anthropic_batch_results,
+)
 from chainscope.api_utils.anthropic_utils import submit_anthropic_batch
 from chainscope.api_utils.common import get_responses_async
 from chainscope.typing import *
