@@ -51,6 +51,7 @@ qid = "2827dc90917aaa08070b15340cf1142c28716aa4381e07fbf5f2dc69be6d342f"
 row = df[df["qid"] == qid].iloc[0]
 prop_id = row["prop_id"]
 dataset_suffix = row["dataset_suffix"]
+expected_answer = row["answer"]
 
 # %% Load faithfulness data and unfaithfulness pattern evaluation data
 faithfulness_dataset = UnfaithfulnessPairsDataset.load(model_id, prop_id, dataset_suffix)
@@ -423,7 +424,13 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
         label=f"'{decoded_token_for_plot_no}' (ID: {main_no_token_id})",
     )
 
-    plt.title(f"Logit Trajectory for YES vs NO Tokens at {seq_position_to_analyze_str} for {response_id[:8]}\n{'Answer Flipping Detected' if is_answer_flipping_response else 'No Answer Flipping'}", fontsize=16)
+    title = f"Logit Trajectory for YES vs NO at {seq_position_to_analyze_str} for response {response_id[:8]}"
+    title += f"\nExpected Answer: {expected_answer}"
+    if is_answer_flipping_response:
+        title += f". Answer Flipping Detected"
+    else:
+        title += f". No Answer Flipping"
+    plt.title(title, fontsize=16)
     plt.xlabel("Layer Number (0=Embeddings, 1 to N=Transformer Blocks)", fontsize=12)
     plt.ylabel("Logit Value", fontsize=12)
     plt.xticks(ticks=layer_numbers, labels=[str(l) for l in layer_numbers])
