@@ -406,8 +406,8 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
 
     # ---- Combined Plot (Optional) ----
 
-    plt.figure(figsize=(18, 7))
-    plt.plot(
+    fig, ax = plt.subplots(figsize=(18, 10))
+    ax.plot(
         layer_numbers,
         yes_logits_by_layer,
         marker="o",
@@ -415,7 +415,7 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
         color="green",
         label=f"'{decoded_token_for_plot_yes}' (ID: {main_yes_token_id})",
     )
-    plt.plot(
+    ax.plot(
         layer_numbers,
         no_logits_by_layer,
         marker="s",
@@ -424,22 +424,39 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
         label=f"'{decoded_token_for_plot_no}' (ID: {main_no_token_id})",
     )
 
-    title = f"Logit Trajectory for YES vs NO at {seq_position_to_analyze_str} for response {response_id[:8]}"
-    title += f"\nExpected Answer: {expected_answer}"
+    title_text = f"Logit Trajectory for YES vs NO at {seq_position_to_analyze_str} for response {response_id[:8]}"
+    title_text += f"\nExpected Answer: {expected_answer}"
     if is_answer_flipping_response:
-        title += f". Answer Flipping Detected"
+        title_text += f". Answer Flipping Detected"
     else:
-        title += f". No Answer Flipping"
-    plt.title(title, fontsize=16)
-    plt.xlabel("Layer Number (0=Embeddings, 1 to N=Transformer Blocks)", fontsize=12)
-    plt.ylabel("Logit Value", fontsize=12)
-    plt.xticks(ticks=layer_numbers, labels=[str(l) for l in layer_numbers])
+        title_text += f". No Answer Flipping Detected"
+    ax.set_title(title_text, fontsize=16)
+
+    # Add prompt and response below the title
+    # Figure out a good y position for the text - start just below the title
+    # The title's y position is typically 1.0, but we use tight_layout later,
+    # so we need to be careful with absolute figure coordinates.
+    # We'll add text and then adjust subplot parameters.
+    
+    # Construct the text string
+    full_text_to_display = f"\textbf{{Prompt:}}\n{prompt}\n\n\textbf{{Response:}}\n{response_str}"
+
+    # Add the text using figtext. Adjust y_start as needed.
+    # These are figure coordinates (0 to 1).
+    # (x, y, s, fontdict=None, **kwargs)
+    # We set y to be just below where the title usually is, and allow wrapping.
+    plt.figtext(0.05, -0.01, full_text_to_display, ha="left", va="top", fontsize=12, wrap=True, bbox=dict(boxstyle='round,pad=0.5', fc='white', alpha=1))
+
+    ax.set_xlabel("Layer Number (0=Embeddings, 1 to N=Transformer Blocks)", fontsize=12)
+    ax.set_ylabel("Logit Value", fontsize=12)
+    ax.set_xticks(ticks=layer_numbers, labels=[str(l) for l in layer_numbers])
     max_y = max(max(yes_logits_by_layer), max(no_logits_by_layer))
     min_y = min(min(yes_logits_by_layer), min(no_logits_by_layer))
-    plt.yticks(ticks=np.arange(min_y, max_y, 0.1))
-    plt.legend(fontsize=10)
-    plt.grid(True, linestyle="--", alpha=0.7)
-    plt.tight_layout()
+    ax.set_yticks(ticks=np.arange(min_y, max_y, 0.1))
+    ax.legend(fontsize=10)
+    ax.grid(True, linestyle="--", alpha=0.7)
+
+    fig.tight_layout(rect=(0, 0, 1, 0.94)) # Adjust rect to leave space for title and fig
     plt.show()
 
 
@@ -447,3 +464,4 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
 
 for response_id in all_response_ids:
     make_plot_logit_trajectory_token_before_final_answer(response_id)
+# %%
