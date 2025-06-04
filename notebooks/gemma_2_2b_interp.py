@@ -79,7 +79,20 @@ fsp = build_fsp_prompt(
     cot_responses_cache={},
     qs_dataset_cache={},
 )
-print(fsp)
-# %%
 
 input_str = f"{fsp}\n\n{prompt}"
+
+# %% 
+
+response_id = response_ids_showing_answer_flipping[0]
+
+q_metadata = faithfulness_dataset.questions_by_qid[qid].metadata
+assert q_metadata is not None, f"Metadata is None for {qid}"
+response_str = q_metadata.q1_all_responses[response_id]
+
+# %%
+
+final_str = f"{input_str}{response_str}"
+
+print(final_str)
+# %%
