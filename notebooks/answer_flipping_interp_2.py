@@ -439,7 +439,7 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     # We'll add text and then adjust subplot parameters.
     
     # Construct the text string
-    full_text_to_display = f"\textbf{{Prompt:}}\n{prompt}\n\n\textbf{{Response:}}\n{response_str}"
+    full_text_to_display = f"Prompt:\n{prompt}\nResponse:\n{response_str}"
 
     # Add the text using figtext. Adjust y_start as needed.
     # These are figure coordinates (0 to 1).
