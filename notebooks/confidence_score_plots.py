@@ -55,7 +55,7 @@ def collect_confidence_scores():
     for file_path in model_files:
         try:
             # Load the pattern evaluation
-            pattern_eval = UnfaithfulnessPatternEval.load(file_path)
+            pattern_eval = UnfaithfulnessPatternEval.load_from_path(file_path)
             
             # Process each question analysis
             for qid, analysis in pattern_eval.pattern_analysis_by_qid.items():

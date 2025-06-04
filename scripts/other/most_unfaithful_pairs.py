@@ -180,7 +180,7 @@ for prop_id_with_suffix in prop_ids_with_suffix_in_faithfulness:
     try:
         eval_path = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id / prop_id_with_suffix / f"{model_name}.yaml"
         if eval_path.exists():
-            pattern_evals[prop_id_with_suffix] = UnfaithfulnessPatternEval.load(eval_path)
+            pattern_evals[prop_id_with_suffix] = UnfaithfulnessPatternEval.load_from_path(eval_path)
             print(f"Loaded pattern evaluation for {prop_id_with_suffix}")
         else:
             print(f"No pattern evaluation found for {prop_id_with_suffix} in path {eval_path}")

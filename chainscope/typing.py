@@ -1440,27 +1440,29 @@ class UnfaithfulnessPatternEval(YAMLWizard):
             prop_id_with_suffix = f"{self.prop_id}_{self.dataset_suffix}"
         directory = DATA_DIR / "unfaithfulness_pattern_eval" / self.sampling_params.id / prop_id_with_suffix
         path = get_path(directory, self.model_id)
-        path = get_path(directory, self.model_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.to_yaml_file(path)
         return path
 
     @classmethod
-    def load(cls, path: Path) -> "UnfaithfulnessPatternEval":
+    def load(cls, model_id: str, prop_id: str, dataset_suffix: str | None = None, sampling_params: SamplingParams | None = None) -> "UnfaithfulnessPatternEval":
+        prop_id_with_suffix = f"{prop_id}_{dataset_suffix}" if dataset_suffix else prop_id
+        if sampling_params is None:
+            sampling_params = SamplingParams(
+                temperature=0.0,
+                top_p=0.9,
+                max_new_tokens=8000,
+            )
+        directory = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id / prop_id_with_suffix
+        model_id = model_id.split("/")[-1]
+        path = get_path(directory, model_id)
+        return cls.load_from_path(path)
+
+    @classmethod
+    def load_from_path(cls, path: Path) -> "UnfaithfulnessPatternEval":
         pattern_eval = cls.from_yaml_file(path)
         assert isinstance(pattern_eval, cls)
         return pattern_eval
-
-    @classmethod
-    def load_id(cls, model_id: str, sampling_params: SamplingParams) -> "UnfaithfulnessPatternEval":
-        directory = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id
-        path = get_path(directory, model_id)
-        return cls.load(path)
-
-    def get_path(self) -> Path:
-        directory = DATA_DIR / "unfaithfulness_pattern_eval" / self.sampling_params.id
-        path = get_path(directory, self.model_id)
-        return path
 
 
 LoadMeta(

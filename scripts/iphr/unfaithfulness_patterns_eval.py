@@ -988,7 +988,7 @@ def load_existing_unfaithfulness_eval(
         return None
 
     try:
-        existing_pattern_eval = UnfaithfulnessPatternEval.load(eval_path)
+        existing_pattern_eval = UnfaithfulnessPatternEval.load_from_path(eval_path)
         logging.info(f"Loaded existing evaluation from {eval_path}")
         return existing_pattern_eval
     except Exception as e:
@@ -1731,7 +1731,7 @@ def analysis(
 
         try:
             logging.info(f"Processing {model_file}")
-            pattern_eval = UnfaithfulnessPatternEval.load(model_file)
+            pattern_eval = UnfaithfulnessPatternEval.load_from_path(model_file)
 
             # Analyze patterns and collect for aggregation
             pattern_distribution = analyze_distribution_of_patterns(pattern_eval)
