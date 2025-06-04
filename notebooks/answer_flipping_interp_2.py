@@ -1,4 +1,5 @@
 # %%
+import copy
 from functools import partial
 
 import matplotlib.pyplot as plt
@@ -6,6 +7,7 @@ import numpy as np
 import pandas as pd
 import torch
 from jaxtyping import Float
+from transformers.models.llama.modeling_llama import LlamaRMSNorm
 
 from chainscope.typing import *
 from chainscope.utils import (get_model_device, load_model_and_tokenizer,
@@ -22,7 +24,17 @@ model.config._attn_implementation = "eager"
 # Get the unembedding matrix (W_U = lm_head.weight.T)
 # model.lm_head.weight has shape (vocab_size, hidden_dim)
 # So, W_U = model.lm_head.weight.T has shape (hidden_dim, vocab_size)
-W_U = model.lm_head.weight.T
+W_U = model.lm_head.weight.T.clone().detach().cpu()
+
+# Get the final layer norm for proper logits computation
+# Create a separate copy of the final norm for CPU analysis (don't modify the original model)
+final_norm_cpu = LlamaRMSNorm(
+    hidden_size=model.config.hidden_size, 
+    eps=model.config.rms_norm_eps
+)
+# Copy the weights from the original norm layer
+final_norm_cpu.weight.data = model.model.norm.weight.data.cpu().clone()
+final_norm_cpu = final_norm_cpu.cpu()
 
 # %%
 
@@ -290,11 +302,11 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     for i in range(len(input_ids[0]) - 1, start_idx - 1, -1):
         print(f"Token {i}: `{tokenizer.decode(input_ids[0][i])}` (id: {input_ids[0][i]})")
         if input_ids[0][i] in yes_token_ids:
-            seq_position_to_analyze = i
+            seq_position_to_analyze = i - 1
             main_yes_token_id = input_ids[0][i]
             break
         elif input_ids[0][i] in no_token_ids:
-            seq_position_to_analyze = i
+            seq_position_to_analyze = i - 1
             main_no_token_id = input_ids[0][i]
             break
     
@@ -317,150 +329,111 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     #     top_token = tokenizer.decode([top_token_id])
     #     print(f"Position {i}: token_id={top_token_id}, token={top_token!r}")
 
+    print(f"Top 10 tokens and their probabilities in the seq position to analyze:")
+    logits_at_position = logits[seq_position_to_analyze]
+    probs_at_position = torch.softmax(logits_at_position, dim=0)
+    top_10_indices = torch.topk(probs_at_position, 10).indices
+    for i, token_id in enumerate(top_10_indices):
+        prob = probs_at_position[token_id].item()
+        token_str = tokenizer.decode([token_id])
+        print(f"  {i+1}. Token ID {token_id}: '{token_str}' (prob: {prob:.4f})")
+
     # Analyze logit for "YES" token
     print(
         f"Using token ID for YES analysis: {main_yes_token_id} (corresponds to '{tokenizer.decode([main_yes_token_id])}')"
     )
     decoded_token_for_plot_yes = tokenizer.decode([main_yes_token_id])
 
-    unembed_vector_yes = W_U[:, main_yes_token_id].clone().detach().cpu()  # Shape: (hidden_dim,)
+    print(
+        f"Using token ID for NO analysis: {main_no_token_id} (corresponds to '{tokenizer.decode([main_no_token_id])}')"
+    )
+    decoded_token_for_plot_no = tokenizer.decode([main_no_token_id])
 
-    # 3. Calculate logit for "YES" at each layer's final position residual stream
-    # acts_by_layer keys are layer indices (0 for embeddings, 1 to N for transformer blocks)
+    # 3. Calculate logit for "YES" and "NO" at each layer's final position residual stream
     layer_numbers = sorted(acts_by_layer.keys())
-    yes_logits_by_layer = []
+    yes_probs_by_layer = []
+    no_probs_by_layer = []
 
-    # The hook resid_stream_hook_fn already does .cpu() and stores (seq_len, d_model)
     for layer_idx in layer_numbers:
         if layer_idx not in acts_by_layer:
             print(
-                f"Warning: Layer {layer_idx} not found in acts_by_layer. Skipping for YES."
+                f"Warning: Layer {layer_idx} not found in acts_by_layer. Skipping for YES/NO."
             )
-            yes_logits_by_layer.append(float("nan"))
+            yes_probs_by_layer.append(float("nan"))
+            no_probs_by_layer.append(float("nan"))
             continue
 
         layer_activations = acts_by_layer[layer_idx]  # Expected Shape: (seq_len, d_model)
 
         if not isinstance(layer_activations, torch.Tensor):
             print(
-                f"Warning: Activations for layer {layer_idx} (YES) are not a tensor (type: {type(layer_activations)}). Skipping."
+                f"Warning: Activations for layer {layer_idx} are not a tensor (type: {type(layer_activations)}). Skipping."
             )
-            yes_logits_by_layer.append(float("nan"))
-            continue
-
-        if (
-            layer_activations.ndim == 2 and layer_activations.shape[0] > 0
-        ):  # Ensure (seq_len > 0, d_model)
-            h_last_prompt_token = layer_activations[seq_position_to_analyze, :]  # Shape: (d_model)
-            logit_val_yes = (
-                h_last_prompt_token.to(unembed_vector_yes.device) @ unembed_vector_yes
-            )
-            yes_logits_by_layer.append(logit_val_yes.item())
-        else:
-            print(
-                f"Warning: Layer {layer_idx} (YES) activations have unexpected shape or size: {layer_activations.shape}. Skipping."
-            )
-            yes_logits_by_layer.append(float("nan"))
-
-    # ---- Analysis for "NO" token ----
-
-    print(
-        f"Using token ID for NO analysis: {main_no_token_id} (corresponds to '{tokenizer.decode([main_no_token_id])}')"
-    )
-    decoded_token_for_plot_no = tokenizer.decode([main_no_token_id])
-
-    # 2. Get unembedding vector for "NO"
-    unembed_vector_no = W_U[:, main_no_token_id].clone().detach().cpu()  # Shape: (hidden_dim,)
-
-    # 3. Calculate logit for "NO" at each layer's final position residual stream
-    no_logits_by_layer = []
-
-    for layer_idx in layer_numbers:  # Re-use the same layer_numbers from YES analysis
-        if layer_idx not in acts_by_layer:
-            print(
-                f"Warning: Layer {layer_idx} not found in acts_by_layer. Skipping for NO."
-            )
-            no_logits_by_layer.append(float("nan"))
-            continue
-
-        layer_activations = acts_by_layer[layer_idx]
-
-        if not isinstance(layer_activations, torch.Tensor):
-            print(
-                f"Warning: Activations for layer {layer_idx} (NO) are not a tensor (type: {type(layer_activations)}). Skipping."
-            )
-            no_logits_by_layer.append(float("nan"))
+            yes_probs_by_layer.append(float("nan"))
+            no_probs_by_layer.append(float("nan"))
             continue
 
         if layer_activations.ndim == 2 and layer_activations.shape[0] > 0:
-            h_last_prompt_token = layer_activations[seq_position_to_analyze, :]
-            logit_val_no = (
-                h_last_prompt_token.to(unembed_vector_no.device) @ unembed_vector_no
-            )
-            no_logits_by_layer.append(logit_val_no.item())
+            h_last_prompt_token = layer_activations[seq_position_to_analyze, :]  # Shape: (d_model)
+            # Apply final layer normalization before computing logits (all on CPU)
+            h_normalized = final_norm_cpu(h_last_prompt_token)
+            # Compute logits for all tokens
+            logits = h_normalized @ W_U  # Shape: (vocab_size,)
+            probs = torch.softmax(logits, dim=0)
+            yes_probs_by_layer.append(probs[main_yes_token_id].item())
+            no_probs_by_layer.append(probs[main_no_token_id].item())
         else:
             print(
-                f"Warning: Layer {layer_idx} (NO) activations have unexpected shape or size: {layer_activations.shape}. Skipping."
+                f"Warning: Layer {layer_idx} activations have unexpected shape or size: {layer_activations.shape}. Skipping."
             )
-            no_logits_by_layer.append(float("nan"))
+            yes_probs_by_layer.append(float("nan"))
+            no_probs_by_layer.append(float("nan"))
 
     # ---- Combined Plot (Optional) ----
 
     fig, ax = plt.subplots(figsize=(18, 10))
     ax.plot(
         layer_numbers,
-        yes_logits_by_layer,
+        yes_probs_by_layer,
         marker="o",
         linestyle="-",
         color="green",
-        label=f"'{decoded_token_for_plot_yes}' (ID: {main_yes_token_id})",
+        label=f"'{decoded_token_for_plot_yes}' (ID: {main_yes_token_id}) Probability",
     )
     ax.plot(
         layer_numbers,
-        no_logits_by_layer,
+        no_probs_by_layer,
         marker="s",
         linestyle="--",
         color="red",
-        label=f"'{decoded_token_for_plot_no}' (ID: {main_no_token_id})",
+        label=f"'{decoded_token_for_plot_no}' (ID: {main_no_token_id}) Probability",
     )
 
-    title_text = f"Logit Trajectory for YES vs NO at {seq_position_to_analyze_str} for response {response_id[:8]}"
+    title_text = f"YES vs NO Probability Trajectory at {seq_position_to_analyze_str} for response {response_id[:8]}"
     title_text += f"\nExpected Answer: {expected_answer}"
     if is_answer_flipping_response:
-        title_text += f". Answer Flipping Detected"
+        title_text += f". Categorized as Answer Flipping"
     else:
-        title_text += f". No Answer Flipping Detected"
+        title_text += f". Categorized as No Answer Flipping"
     ax.set_title(title_text, fontsize=16)
 
     # Add prompt and response below the title
-    # Figure out a good y position for the text - start just below the title
-    # The title's y position is typically 1.0, but we use tight_layout later,
-    # so we need to be careful with absolute figure coordinates.
-    # We'll add text and then adjust subplot parameters.
-    
-    # Construct the text string
     full_text_to_display = f"Prompt:\n{prompt}\nResponse:\n{response_str}"
-
-    # Add the text using figtext. Adjust y_start as needed.
-    # These are figure coordinates (0 to 1).
-    # (x, y, s, fontdict=None, **kwargs)
-    # We set y to be just below where the title usually is, and allow wrapping.
     plt.figtext(0.05, -0.01, full_text_to_display, ha="left", va="top", fontsize=12, wrap=True, bbox=dict(boxstyle='round,pad=0.5', fc='white', alpha=1))
 
     ax.set_xlabel("Layer Number (0=Embeddings, 1 to N=Transformer Blocks)", fontsize=12)
-    ax.set_ylabel("Logit Value", fontsize=12)
+    ax.set_ylabel("Probability", fontsize=12)
     ax.set_xticks(ticks=layer_numbers, labels=[str(l) for l in layer_numbers])
-    max_y = max(max(yes_logits_by_layer), max(no_logits_by_layer))
-    min_y = min(min(yes_logits_by_layer), min(no_logits_by_layer))
-    ax.set_yticks(ticks=np.arange(min_y, max_y, 0.1))
+    max_prob = max(max(yes_probs_by_layer), max(no_probs_by_layer))
+    min_prob = min(min(yes_probs_by_layer), min(no_probs_by_layer))
+    ax.set_yticks(ticks=np.linspace(min_prob, max_prob, 10))
     ax.legend(fontsize=10)
     ax.grid(True, linestyle="--", alpha=0.7)
 
     fig.tight_layout(rect=(0, 0, 1, 0.94)) # Adjust rect to leave space for title and fig
 
-    plt.savefig(f"logit_trajectory_token_before_final_answer_{model_id.split('/')[-1]}_qid_{qid[:8]}_response_{response_id[:8]}.png", dpi=300, bbox_inches="tight")
+    plt.savefig(f"prob_trajectory_before_final_answer_{model_id.split('/')[-1]}_qid_{qid[:8]}_response_{response_id[:8]}.png", dpi=300, bbox_inches="tight")
     plt.show()
-
 
 # %%
 
