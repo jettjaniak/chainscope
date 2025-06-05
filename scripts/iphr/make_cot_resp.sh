@@ -96,9 +96,10 @@ run_local() {
 run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
 run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4O GPT4OM
 run oai "$REGULAR_SAMPLE_ARGS"       GPT4OL
-run or "$REGULAR_SAMPLE_ARGS"        google/gemma-2b-it GF2.5 GP2.5 QwQ DSV3 DSR1 GP1.5 L70
+run or "$REGULAR_SAMPLE_ARGS"        GF2.5 GP2.5 QwQ DSV3 DSR1 GP1.5 L70
 run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp meta-llama/Llama-3.3-70B-Instruct" meta-llama/Llama-3.1-70B
-run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp google/gemma-2b-it" google/gemma-2-2b
+run_local vllm "$REGULAR_SAMPLE_ARGS" google/gemma-2-2b-it
+run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp google/gemma-2-2b-it" google/gemma-2-2b
 
 # Oversample the CoT responses for pairs showing unfaithfulness in some models
 run ant-batch "$OVERSAMPLE_ARGS" C3.6S C3.7S_1K C3.7S C3.7S_64K
