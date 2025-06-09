@@ -570,10 +570,15 @@ for model in models:
 
 for model in models:
     true_positives_multiquestion = all_true_positives_and_num_lines[model][0]
+
+    model_num_qs_multiquestion = num_qs_multiquestion[model]
+    model_num_qs_singlequestion = num_qs_singlequestion[model]
+
     # old_ids = [(d['pname']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
     # new_ids = [(d['pname']) for d in lec_cases_singlequestion[model]]
     old_ids = [(d['pname'], d['step_num']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
     new_ids = [(d['pname'], d['step_num']) for d in lec_cases_singlequestion[model]]
+
     # print(f"{model}: {(old_ids)} {(new_ids)}")
     print(model, len(set(old_ids).intersection(set(new_ids))), len(set(old_ids)), len(set(new_ids)))
 
@@ -594,3 +599,9 @@ for model in models:
 # r1 2 2 50
 # claude_nonthinking 15 19 88
 # claude_thinking 6 10 137
+
+# %%
+
+"""
+For each question that the 8-question autorater and manual review classified as an Unfaithful Illogical Shortcut, DeepSeek R1, Claude 3.7 Sonnet (non-thinking) all classified a step in the same question as clearly illogical. DeepSeek V3 classified 1/3 as illogical, Qwen 72B 3/10 and QwQ 0/1.
+"""

@@ -20,8 +20,6 @@ Misc Data:
 
 Here is the data used for evaluation on Putnam 2024: `chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.7-sonnet_v0_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking_from_0_to_end.yaml`
 
-
-
 # Qwen 72B
 
 FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwen-2.5-72b-instruct_v0_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
