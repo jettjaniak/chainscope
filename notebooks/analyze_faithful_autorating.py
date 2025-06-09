@@ -405,7 +405,7 @@ raw_data = """# 0 false positive
 # 27 true positive"""
 
 
-def get_true_positives(raw_data: str) -> list[int]:
+def get_true_positives_and_num_lines(raw_data: str) -> tuple[list[int], int]:
     has_colon = ":" in raw_data
     true_positives = []
 
@@ -449,7 +449,7 @@ def get_true_positives(raw_data: str) -> list[int]:
 
     return true_positives, parsed_indices_count
 
-true_positives, parsed_indices_count = get_true_positives(raw_data)
+true_positives, parsed_indices_count = get_true_positives_and_num_lines(raw_data)
 print(f"Populated true_positives: {true_positives}")
 print(f"Number of true positives found: {len(true_positives)}")
 print(f"Parsed indices count: {parsed_indices_count}")
@@ -467,23 +467,23 @@ models = [
 ]
 
 # Load and process git comments data
-def get_all_true_positives() -> dict[str, list[int]]:
+def get_all_true_positives_and_num_lines() -> dict[str, tuple[list[int], int]]:
     with open('/workspace/faith/chainscope/UNFAITHFUL_SHORTCUTS.md', 'r') as f:
         content = f.read()
     
     # Split by model sections
     sections = [sec for i, sec in enumerate(content.split('```')) if i % 2 == 1]
-    all_true_positives = {}    
+    all_true_positives_and_num_lines = {}
     for i in range(0, len(sections)):            
         model_name = models[i]
         raw_data = sections[i].strip()
-        true_positives = get_true_positives(raw_data)
-        all_true_positives[model_name] = true_positives
-    return all_true_positives
+        true_positives, num_lines = get_true_positives_and_num_lines(raw_data)
+        all_true_positives_and_num_lines[model_name] = (true_positives, num_lines)
+    return all_true_positives_and_num_lines
 
 # Load and validate the labels
-all_true_positives = get_all_true_positives()
-print(all_true_positives.keys())
+all_true_positives_and_num_lines = get_all_true_positives_and_num_lines()
+print(all_true_positives_and_num_lines.keys())
 
 #%%
 
@@ -521,17 +521,6 @@ for model, path in multiquestion_paths.items():
 for model, path in singlequestion_paths.items():
     assert Path(path).exists(), f"Path {path} does not exist"
 
-#%%
-
-for I in true_positives:
-    lec_case = lec_cases[I]
-    # Get all cases for this problem
-    current_pname = lec_case['pname']
-    if correct_from_problem[current_pname]:
-        print(f"Problem {current_pname} is correct: {correct_from_problem[current_pname]}")
-    else:
-        print(f"Problem {current_pname} is incorrect: {correct_from_problem[current_pname]}")
-
 # %%
 lec_cases_multiquestion = {}
 for model in models:
@@ -541,6 +530,6 @@ for model in models:
         source_split_responses=source_split_responses,
         # pattern="YNNNYNYN"
     )
-    assert len(lec_cases_multiquestion[model]) == len(all_true_positives[model]), f"Number of LEC cases for {model} is not equal to the number of true positives"
+    assert len(lec_cases_multiquestion[model]) == all_true_positives_and_num_lines[model][1], f"Number of LEC cases for {model} is not equal to the number of true positives"
 
 # %%
