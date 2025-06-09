@@ -13,6 +13,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
+from dataclasses import dataclass
 
 import anthropic
 import httpx
@@ -32,6 +33,9 @@ from IPython import get_ipython
 from typing import Final
 import plotly.graph_objects as go
 from PIL import Image
+
+from dataclasses import dataclass
+from typing import Dict, List
 
 
 ENABLE_AUTORELOAD = True  # @param {"type": "boolean"}
@@ -121,10 +125,20 @@ responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses
 print(f"Loading responses from: {responses_path}")
 responses = SplitCotResponses.load(responses_path)
 
+@dataclass
+class UnfaithfulStepInfo:
+    qid: int
+    problem_id: str
+    problem_statement: str
+    prefix: str  # All response steps up to this point
+    step_str: str  # The actual unfaithful step
+
 # Function to get unfaithful steps
-def get_unfaithful_steps(response) -> tuple[int, list[int]]:
+def get_unfaithful_steps(qid, response) -> tuple[int, List[UnfaithfulStepInfo]]:
     unfaithful_steps = []
     cur_flagged = 0
+    prefix_steps = []
+    
     for i, step in enumerate(response.model_answer):
         # Convert string representation to dict if needed
         if isinstance(step, str):
@@ -138,15 +152,26 @@ def get_unfaithful_steps(response) -> tuple[int, list[int]]:
             
         # Only add unfaithful steps
         if step_dict["unfaithfulness"] == "YNNNYNYN":
-            unfaithful_steps.append(f"Step {i+1}: {step_dict['step_str']}")
+            unfaithful_steps.append(UnfaithfulStepInfo(
+                qid=qid,
+                problem_id=response.name,
+                problem_statement=response.problem,
+                prefix="\n".join(prefix_steps),
+                step_str=step_dict['step_str']
+            ))
             cur_flagged += 1
+            
+        # Add current step to prefix for future steps
+        prefix_steps.append(step_dict['step_str'])
 
-    return cur_flagged, "\n".join(unfaithful_steps)
+    return cur_flagged, unfaithful_steps
 
 
 #%%
 
 total_flagged = 0
+all_unfaithful_steps: List[UnfaithfulStepInfo] = []
+output_lines = []
 
 # Process each response
 for qid, response in enumerate(responses.split_responses_by_qid.values()):
@@ -154,18 +179,76 @@ for qid, response in enumerate(responses.split_responses_by_qid.values()):
         continue
         
     response = response["default"]
-    cur_flagged, unfaithful_steps = get_unfaithful_steps(response)
-    total_flagged += cur_flagged
+    print(f"\nFull response for {response.name}:")
+    print(f"Problem: {response.problem}")
+    print(f"Solution: {response.solution}")
+    print("Model answer steps:")
+    for i, step in enumerate(response.model_answer):
+        if isinstance(step, str):
+            step_dict = ast.literal_eval(step)
+        else:
+            step_dict = step
+        print(f"Step {i+1}: {step_dict['step_str']}")
+    print("="*80)
     
-    # Only print if there are unfaithful steps
+    cur_flagged, unfaithful_steps = get_unfaithful_steps(qid, response)
+    total_flagged += cur_flagged
+    all_unfaithful_steps.extend(unfaithful_steps)
+    
+    cur_output_lines = []
+
+    # Only collect output if there are unfaithful steps
     if unfaithful_steps:
-        print(f"\nProblem: {response.name}")
-        print(f"Problem statement:\n{response.problem}")
-        print("\nUnfaithful steps:")
-        print(unfaithful_steps)
-        print("\n" + "="*80)
+        cur_output_lines.extend([
+            f"Problem: {response.name}",
+            f"Problem statement:\n{response.problem}",
+            "Unfaithful steps:"
+        ])
+        
+        for step in unfaithful_steps:
+            # Verify prefix is actually a prefix of the full solution
+            # NOTE: Line breaker may not be \n for other models...
+            full_solution = "\n".join(
+                ast.literal_eval(step)['step_str'] if isinstance(step, str) else step['step_str']
+                for step in response.model_answer
+            ).strip()
+            step_prefix = step.prefix.strip()
+            
+            # Find first mismatch point
+            for i in range(min(len(full_solution), len(step_prefix))):
+                if full_solution[i] != step_prefix[i]:
+                    start = max(0, i - 10)
+                    end = min(len(full_solution), i + 10)
+                    
+                    # Create highlighted versions with | around the mismatched character
+                    full_sol_highlight = full_solution[start:i] + "|" + full_solution[i] + "|" + full_solution[i+1:end]
+                    prefix_highlight = step.prefix[start:i] + "|" + step.prefix[i] + "|" + step.prefix[i+1:end]
+                    
+                    error_msg = (
+                        f"First mismatch at position {i}:\n"
+                        f"Full solution: ...{full_sol_highlight}...\n"
+                        f"Prefix:        ...{prefix_highlight}..."
+                    )
+                    raise ValueError(error_msg)
+
+            print("Worked!")
+            cur_output_lines.extend([
+                f"Step: {step.step_str}",
+                f"Prefix:\n{step_prefix}",
+                "-" * 40
+            ])
+        
+        cur_output_lines.append("\n" + "="*80)
+        output_lines.append(cur_output_lines)
 
 assert total_flagged == total_lines, (total_flagged, total_lines)
+
+#%%
+
+# Print all collected output
+for cur in output_lines:
+    print("\n***\n".join(cur))
+    break
 
 #%%
 
