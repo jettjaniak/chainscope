@@ -162,6 +162,14 @@ async def generate_or_response_async(
             #     ],
             # },
         }
+        if "qwq" in str(model_id):
+            extra_body["provider"] = {
+                "allow_fallbacks": False,
+                "order": [
+                    "Nebius",
+                    # "Together",
+                ],
+            }
 
         if is_anthropic_thinking_model(model_id):
             thinking_budget_tokens = get_budget_tokens(model_id)
