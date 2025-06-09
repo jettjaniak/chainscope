@@ -95,12 +95,7 @@ if __name__ == "__main__":
         print("Please set it before running the script.")
         exit(1)
 
-    # Choose a Claude model.
-    # For a list of available models, refer to Anthropic documentation
-    # or your project's model choices like "claude-3-opus-20240229",
-    # "claude-3-sonnet-20240229", "claude-3-haiku-20240307",
-    # "claude-3-5-sonnet-20240620", "claude-2.1", etc.
-    claude_model_name = "claude-3-haiku-20240307" 
+    claude_model_name = "claude-3-7-sonnet-20250219"
 
     try:
         claude_client = Claude(model_name=claude_model_name)

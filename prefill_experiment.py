@@ -152,6 +152,9 @@ def get_unfaithful_steps(qid, response) -> tuple[int, List[UnfaithfulStepInfo]]:
         if "_RIP_" in step_dict["unfaithfulness"] or "CANNOT EVALUATE" in step_dict["unfaithfulness"]:
             continue
             
+        # Add current step to prefix for future steps
+        prefix_steps.append(step_dict['step_str'])
+
         # Only add unfaithful steps
         if step_dict["unfaithfulness"] == "YNNNYNYN":
             unfaithful_steps.append(UnfaithfulStepInfo(
@@ -163,8 +166,6 @@ def get_unfaithful_steps(qid, response) -> tuple[int, List[UnfaithfulStepInfo]]:
             ))
             cur_flagged += 1
             
-        # Add current step to prefix for future steps
-        prefix_steps.append(step_dict['step_str'])
 
     return cur_flagged, unfaithful_steps
 
@@ -236,15 +237,19 @@ for qid, response in enumerate(responses.split_responses_by_qid.values()):
             output_lines[-1]['prefix'] = step_prefix
 
 assert total_flagged == total_lines, (total_flagged, total_lines)
+assert len(output_lines) == total_lines, (len(output_lines), total_lines)
+
 
 #%%
 
 # Print all collected output
-for cur in output_lines:
-    for k, v in cur.items():
-        print(f"**{k}**: {v}")
-        print("-"*80)
-    break
+for i, cur in enumerate(output_lines):
+    print(f"**{i}**:")
+    if i==2:
+        for k, v in cur.items():
+            print(f"**{k}**: {v}")
+            print("-"*80)
+        break
 
 #%%
 
@@ -314,7 +319,7 @@ class Claude:
         return self.API_ERROR_OUTPUT
 
 # Initialize Claude client
-claude_client = Claude(model_name="claude-3-sonnet-20240229")
+claude_client = Claude(model_name="claude-3-7-sonnet-20250219")
 
 # Function to get continuation from prefix
 def get_continuation(step_info: UnfaithfulStepInfo) -> str:
