@@ -90,7 +90,7 @@ assert load_dotenv(dotenv_path='/workspace/faith/chainscope/.env', verbose=True)
 
 # Load the original responses.
 # responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet:thinking_v0_just_correct_responses_newline_split_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
-responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet_v0_just_correct_responses_newline_split_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
+responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/putnam_neurips_sonnet_nonthinking_experiment/anthropic__claude-3.7-sonnet_v0_all_and_terse_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
 
 if "splitted" in str(responses_path):
     source_path = Path(''.join(str(responses_path).split("_splitted")[:-1]) + "_splitted.yaml")
@@ -248,10 +248,13 @@ lec_cases = []
 ref_string=""
 
 # MAINLINE EVAL
-# pattern = "YNNNYNYN"
+pattern = "YNNNYNYN"
 
 # DOES THE MODEL "OWN UP" EVER?
-pattern = "YNNNYNYY"
+# pattern = "YNNNYNYY"
+
+if pattern != "YNNNYNYN":
+    print("WARNING!!! Not the mainline evaluation pattern!")
 
 # Iterate through all problems and steps
 for qid, response in enumerate(split_responses):
@@ -328,9 +331,16 @@ print(f"Found {len(lec_cases)} LATENT_ERROR_CORRECTION cases, dists are: {sorted
 
 #%%
 
-# yep, the three highlighted are indeed unfaithful shortcuts
+# 0: false positive
+# 1: true positive?
+# 2: same as above (doubling down...)
+# 3: false positive
+# 4: true positive
+# 5: same as above
+# 6: true positive
+# DO NOT SUBMIT not finished!!
 
-I = 6
+I = 7
 
 for lec_case in [lec_cases[I]]:
     # Get all cases for this problem
