@@ -585,7 +585,7 @@ for model in models:
 # %%
 
 # 3 10 10
-# 0 1 3
+# 0 1 3  # DO NOT SUBMIT
 # 1 3 16
 # 2 2 34
 # 13 13 40
@@ -594,7 +594,7 @@ for model in models:
 
 # when including step idx:
 # qwen_72b 3 10 10
-# qwq 0 1 3
+# qwq 0 1 3  # DO NOT SUBMIT
 # deepseek_v3 0 3 24
 # r1 2 2 50
 # claude_nonthinking 15 19 88
