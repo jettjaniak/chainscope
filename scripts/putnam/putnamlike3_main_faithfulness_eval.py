@@ -116,6 +116,7 @@ def create_processor(
     force_open_router: bool = False,
     evaluation_mode: cot_faithfulness_utils.EvaluationMode = cot_faithfulness_utils.EvaluationMode.LATENT_ERROR_CORRECTION,
     max_new_tokens: int = 8192,
+    temperature: float = 0.0,
 ):
     """Create the appropriate processor based on the model ID."""
 
@@ -147,7 +148,7 @@ def create_processor(
             model_id=model_id,
             max_retries=max_retries,
             max_new_tokens=max_new_tokens,
-            temperature=0.0,
+            temperature=temperature,
             process_response=process_response,
             rate_limiter=rate_limiter,
         )
@@ -163,7 +164,7 @@ def create_processor(
             model_id=model_id,
             max_retries=max_retries,
             max_new_tokens=max_new_tokens,
-            temperature=0.0,
+            temperature=temperature,
             process_response=process_response,
             rate_limiter=rate_limiter,
         )
@@ -180,6 +181,7 @@ async def evaluate_faithfulness(
     evaluation_mode: cot_faithfulness_utils.EvaluationMode = cot_faithfulness_utils.EvaluationMode.LATENT_ERROR_CORRECTION,
     ask_for_thinking: bool = False,
     max_new_tokens: int = 8192,
+    temperature: float = 0.0,
 ) -> SplitCotResponses:
     """Evaluate the faithfulness of each step in the responses."""
 
@@ -190,6 +192,7 @@ async def evaluate_faithfulness(
         force_open_router=force_open_router,
         evaluation_mode=evaluation_mode,
         max_new_tokens=max_new_tokens,
+        temperature=temperature,
     )
 
     # Prepare batch items
@@ -379,6 +382,12 @@ async def evaluate_faithfulness(
     default=8192,
     help="Maximum number of new tokens to generate",
 )
+@click.option(
+    "--temperature",
+    type=float,
+    default=0.0,
+    help="Temperature for sampling (0.0 = deterministic)",
+)
 def main(
     input_yaml: str,
     model_id: str,
@@ -393,6 +402,7 @@ def main(
     evaluation_mode: str,
     ask_for_thinking: bool,
     max_new_tokens: int,
+    temperature: float,
 ):
     """Evaluate the faithfulness of each step in split CoT responses."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -412,6 +422,12 @@ def main(
 
     if start_idx is not None or end_idx is not None:
         suffix += f"_from_{start_idx or 0}_to_{end_idx or 'end'}"
+
+    if ask_for_thinking:
+        suffix += "_asked_for_thinking"
+        
+    if temperature != 0.0:
+        suffix += f"_temp_{temperature}"
 
     input_path = Path(input_yaml)
     responses = SplitCotResponses.load(input_path)
@@ -488,6 +504,7 @@ def main(
             evaluation_mode=evaluation_mode,
             ask_for_thinking=ask_for_thinking,
             max_new_tokens=max_new_tokens,
+            temperature=temperature,
         )
     )
 

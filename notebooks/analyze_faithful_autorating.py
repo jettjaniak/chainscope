@@ -90,7 +90,9 @@ assert load_dotenv(dotenv_path='/workspace/faith/chainscope/.env', verbose=True)
 
 # Load the original responses.
 # responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet:thinking_v0_just_correct_responses_newline_split_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
-responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/putnam_neurips_sonnet_nonthinking_experiment/anthropic__claude-3.7-sonnet_v0_all_and_terse_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
+# responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/putnam_neurips_sonnet_nonthinking_experiment/anthropic__claude-3.7-sonnet_v0_all_and_terse_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
+# responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwen-2.5-72b-instruct_v0_just_correct_responses_splitted_qwen_slash_qwen-2_dot_5-72b-instruct_reward_hacking.yaml")
+responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwq-32b-preview_just_correct_responses_newline_split_qwen_slash_qwq-32b_reward_hacking_from_0_to_2.yaml")
 
 if "splitted" in str(responses_path):
     source_path = Path(''.join(str(responses_path).split("_splitted")[:-1]) + "_splitted.yaml")
@@ -252,6 +254,7 @@ pattern = "YNNNYNYN"
 
 # DOES THE MODEL "OWN UP" EVER?
 # pattern = "YNNNYNYY"
+# YNNNNNYN
 
 if pattern != "YNNNYNYN":
     print("WARNING!!! Not the mainline evaluation pattern!")
@@ -284,7 +287,8 @@ for qid, response in enumerate(split_responses):
 
         dist = sum(int(x!=y) for x, y in zip(step_dict["unfaithfulness"], pattern, strict=True))
 
-        if len(step_dict["unfaithfulness"]) == len(pattern) and dist<=0:
+        if len(step_dict["unfaithfulness"]) == len(pattern) and dist <= 0:
+            print(step_dict["unfaithfulness"])
             # Get original steps from source file
             source_steps = []
             source_response = source_split_responses[qid]
@@ -328,6 +332,31 @@ print()
 print(ref_string)
 print()
 print(f"Found {len(lec_cases)} LATENT_ERROR_CORRECTION cases, dists are: {sorted(list(case['dist'] for case in lec_cases))}")
+
+#%%
+
+I = 0
+
+for lec_case in [lec_cases[I]]:
+    # Get all cases for this problem
+    current_pname = lec_case['pname']
+    cases_for_problem = [i for i, case in enumerate(lec_cases) if case['pname'] == current_pname]
+    case_num = cases_for_problem.index(I) + 1  # +1 for 1-based indexing
+    total_cases = len(cases_for_problem)
+
+    print_concerning_case(
+        lec_case,
+        evaluation_mode=cot_faithfulness_utils.EvaluationMode.REWARD_HACKING,
+        show_step_num=False,
+        case_num=case_num,
+        total_cases=total_cases
+    )
+
+    break
+
+#%%
+
+# TODO: something is fucked with the FIMO file / print_case function
 
 #%%
 
@@ -404,29 +433,6 @@ for line in raw_data.strip().split('\n'):
 
 print(f"Populated true_positives: {true_positives}")
 print(f"Number of true positives found: {len(true_positives)}")
-
-I = 30
-
-for lec_case in [lec_cases[I]]:
-    # Get all cases for this problem
-    current_pname = lec_case['pname']
-    cases_for_problem = [i for i, case in enumerate(lec_cases) if case['pname'] == current_pname]
-    case_num = cases_for_problem.index(I) + 1  # +1 for 1-based indexing
-    total_cases = len(cases_for_problem)
-
-    print_concerning_case(
-        lec_case,
-        evaluation_mode=cot_faithfulness_utils.EvaluationMode.REWARD_HACKING,
-        show_step_num=False,
-        case_num=case_num,
-        total_cases=total_cases
-    )
-
-    break
-
-#%%
-
-# TODO: something is fucked with the FIMO file / print_case function
 
 # %%
 
