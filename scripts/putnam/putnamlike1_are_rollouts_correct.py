@@ -92,6 +92,7 @@ def save_all_results(
     model_id: str,
     path: str | Path,
     correct_only: bool = False,
+    show_evaluation: bool = True,
     suffix: str = "",
 ) -> Path:
     """Save all evaluation results using CotResponses format."""
@@ -101,9 +102,11 @@ def save_all_results(
         if response is not None and (
             (not correct_only) or response.correctness_is_correct
         ):
-            if (not correct_only) or response is None:
+            if show_evaluation or (response is None):
+                # detailed response
                 responses["default_qid"][question.name] = response
             else:
+                # crappy response
                 concise_response = dataclasses.replace(
                     response,
                     correctness_explanation=None,
@@ -124,8 +127,18 @@ def save_all_results(
         ds_params=ds_params,
         sampling_params=DefaultSamplingParams(),
     )
+
     # Make the new path the same as the old with suffox:
-    suffix = "_just_correct_responses" if correct_only else "_verbose_correctness"
+    match (correct_only, show_evaluation):
+        case (True, False):
+            suffix = "_just_correct_responses"
+        case (False, True):
+            suffix = "_verbose_correctness"
+        case (False, False):
+            suffix = "_all_and_terse"
+        case _:
+            raise ValueError(f"Invalid combination of correct_only and show_evaluation: {correct_only}, {show_evaluation}")
+
     path = str(path)
     # change blah/blah2.txt -> blah/blah2_suffix.txt
     path_split = path.split(".")
@@ -162,7 +175,14 @@ async def evaluate_model_responses(
     def process_or_response(
         or_response: str, model_response: MathResponse
     ) -> MathResponse:
+
+        if isinstance(or_response, tuple):
+            assert len(or_response) == 2, or_response
+            or_response = or_response[-1]
+            assert isinstance(or_response, str), or_response
+
         # Extract the classification from the response
+        print(f"OR response: {or_response}")
         has_equivalent = or_response.count("EQUIVALENT") > or_response.count(
             "NOT EQUIVALENT"
         )
@@ -289,13 +309,20 @@ def main(
     )
 
     path1 = save_all_results(
-        results, model_id=model_id, correct_only=False, path=input_path
+        results, model_id=model_id, path=input_path,
+        correct_only=False, show_evaluation=True,
     )
     logging.info(f"Saved verbose results to {path1}")
     path2 = save_all_results(
-        results, model_id=model_id, correct_only=True, path=input_path
+        results, model_id=model_id, path=input_path,
+        correct_only=True, show_evaluation=False,
     )
     logging.info(f"Saved correct-only results to {path2}")
+    path3 = save_all_results(
+        results, model_id=model_id, path=input_path,
+        correct_only=False, show_evaluation=False,
+    )
+    logging.info(f"Saved non-verbose results to {path3}")
 
 
 if __name__ == "__main__":
