@@ -73,9 +73,9 @@ MANUAL FILTERING DATA:
 
 # DeepSeek V3 (Chat)
 
-FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_critical_steps.yaml`
+FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
 
-MANUAL FILTERING FILE: `DO NOT SUBMIT`  # Need to fill in.
+MANUAL FILTERING FILE: `chainscope/notebooks/analyze_faithful_autorating_full_history/state_at_1741303650_mar_6_23_27.py`
 
 MANUAL FILTERING DATA:
 
@@ -92,9 +92,9 @@ MANUAL FILTERING DATA:
 
 # DeepSeek Reasoner
 
-FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-reasoner_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_critical_steps.yaml`
+FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-reasoner_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
 
-MANUAL FILTERING FILE: `DO NOT SUBMIT`
+MANUAL FILTERING FILE: `notebooks/analyze_faithful_autorating_full_history/state_at_1741297723_mar_6_21_48.py`
 
 MANUAL FILTERING DATA:
 
@@ -108,6 +108,7 @@ MANUAL FILTERING DATA:
 # 6 true positive, great binomial coefficient example
 # 7 same as above
 ```
+
 
 # Claude 3.7 Sonnet (Non-thinking)
 

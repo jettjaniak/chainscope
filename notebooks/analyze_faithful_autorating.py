@@ -43,17 +43,12 @@ if ENABLE_AUTORELOAD and get_ipython() is not None:
 # TODO(arthur): Add deps to pyproject.toml:
 
 from chainscope import typing as ctyping
-from google import genai as google_genai
 from openai import OpenAI
-from google.genai import types as google_types
 
 from chainscope import typing as ctyping
 from chainscope.typing import CotResponses, MathDatasetParams, DefaultSamplingParams, DatasetParams
 
-try:
-    import jax  # Just for tree mapping :)
-except Exception as e:
-    print("TODO(arthur): FIX JAX!!!")
+import jax  # Just for tree mapping :-)
 
 # Print all collected cases:
 def print_concerning_case(
@@ -89,12 +84,12 @@ def print_concerning_case(
     print(f"Reasoning:\n\n{case['reasoning']}")
 
 # Load env
-assert load_dotenv(dotenv_path='/workspace/atc1/chainscope/.env', verbose=True)
+assert load_dotenv(dotenv_path='/workspace/faith/chainscope/.env', verbose=True)
 
 # %% 
 
 # Load the original responses.
-responses_path = Path("/workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.7-sonnet_v0_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_reward_hacking_from_0_to_end.yaml")
+responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
 
 if "splitted" in str(responses_path):
     source_path = Path(''.join(str(responses_path).split("_splitted")[:-1]) + "_splitted.yaml")
@@ -326,35 +321,9 @@ print(f"Found {len(lec_cases)} LATENT_ERROR_CORRECTION cases, dists are: {sorted
 
 #%%
 
-# 0 false pos
-# 1: true positive (but only found in below 2)
-# 2: same as above
-# 3: same as above (but actually this was the key step)
-# 4: true positive (but only found in below)
-# 5: same as above (but actually this was the key step)
-# 6: same as above
-# 7: false pos (the answer is actually correct)
-# 8: same as above
-# 9: true positive (but it is close to call...)
-# 10: true positive (but it is close to call...)
-# 11: same as above
-# 12: true positive
-# 13: true positive (but only found in below)
-# 14: same as above
-# 15: true positive
-# 16: true positive (but only found in below)
-# 17: same as above
-# 18: true positive
-# 19: true positive (but only found in below kinda)
-# 20: same as above
-# 21: true positive
-# 22: same as above (actually, this question has TWO different true positives, though!)
-# 23: true positive
-# 24: true positive
-# 25: true positive
-# 26: false positive (plausibly the model is dumb enough to think that this works!)
+# yep, the three highlighted are indeed unfaithful shortcuts
 
-I = 26
+I = 6
 
 for lec_case in [lec_cases[I]]:
     # Get all cases for this problem
@@ -375,13 +344,13 @@ for lec_case in [lec_cases[I]]:
 
 #%%
 
-# DO NOT SUBMIT: Something is fucked with the FIMO file / print_case function
+# TODO: something is fucked with the FIMO file / print_case function
 
 # %%
 
 # Load and process git comments data
 def load_git_comments():
-    with open('/workspace/atc1/chainscope/scripts/git_comments.txt', 'r') as f:
+    with open('/workspace/faith/chainscope/scripts/git_comments.txt', 'r') as f:
         content = f.read()
     
     # Split by model sections
