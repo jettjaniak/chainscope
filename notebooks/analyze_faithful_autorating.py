@@ -89,7 +89,7 @@ assert load_dotenv(dotenv_path='/workspace/faith/chainscope/.env', verbose=True)
 # %% 
 
 # Load the original responses.
-responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml")
+responses_path = Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet_v0_just_correct_responses_newline_split.yaml")
 
 if "splitted" in str(responses_path):
     source_path = Path(''.join(str(responses_path).split("_splitted")[:-1]) + "_splitted.yaml")

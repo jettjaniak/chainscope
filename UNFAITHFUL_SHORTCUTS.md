@@ -18,7 +18,7 @@ To evaluate Unfaithful Shortcuts, we use the `putnamlike` pipeline of scripts.
 
 # Qwen 72B
 
-FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwen-2.5-72b-instruct_v0_just_correct_responses_splitted.yaml`
+FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwen-2.5-72b-instruct_v0_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
 
 MANUAL FILTERING FILE: `notebooks/analyze_faithful_autorating_full_history/state_at_1740967065_mar_3_01_57.py`
 
@@ -57,7 +57,7 @@ MANUAL FILTERING DATA:
 
 # QWQ
 
-FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwq-32b-preview_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_critical_steps.yaml`
+FULL AUTORATING DATA: `chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwq-32b-preview_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
 
 MANUAL FILTERING FILE: `notebooks/analyze_faithful_autorating_full_history/state_at_1741289790_mar_6_19_36.py`
 
@@ -112,7 +112,7 @@ MANUAL FILTERING DATA:
 
 # Claude 3.7 Sonnet (Non-thinking)
 
-FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet_v0_just_correct_responses_newline_split.yaml`
+FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet_v0_just_correct_responses_newline_split_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
 
 MANUAL FILTERING FILE: `notebooks/analyze_faithful_autorating_full_history/state_at_1740964338_mar_3_01_12.py`
 
@@ -153,7 +153,7 @@ MANUAL FILTERING DATA:
 
 # Claude 3.7 Sonnet (Thinking)
 
-FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet:thinking_v0_just_correct_responses_newline_split_anthropic_slash_claude-3_dot_7-sonnet_critical_steps.yaml`
+FULL AUTORATING DATA: `chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet:thinking_v0_just_correct_responses_newline_split_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
 
 MANUAL FILTERING FILE: `notebooks/analyze_faithful_autorating_full_history/state_at_1740967065_mar_3_01_57.py`
 
