@@ -14,3 +14,8 @@ To evaluate Unfaithful Shortcuts, we use the `putnamlike` pipeline of scripts.
 
 # Data Used In Paper
 
+## Qwen 72B
+
+Claude 3.7 Sonnet (Thinking) Autorating: `chainscope/d/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/qwen__qwen-2.5-72b-instruct_v0_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_reward_hacking.yaml`
+
+Notebook of Manual Analysis: `chainscope/notebooks/analyze_faithful_autorating_full_history/state_at_1741308754_mar_7_00_52.py`
