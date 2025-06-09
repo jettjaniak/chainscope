@@ -3,16 +3,14 @@
 
 From **/chainscope/** run:
 
-```
 python3 -m dotenv run python3 \
   scripts/putnamlike2_split_cots.py \
-  d/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/google__gemini-exp-1206:free_v0_prefix_1_just_correct_responses.yaml \
-  --model_id "openai/gpt-4o" \
+  /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.7-sonnet_v0_just_correct_responses.yaml \
+  --model_id "anthropic/claude-3.7-sonnet:thinking" \
   --max_retries=3 \
   --prefix=1 \
-  --max_new_tokens_override=100000 \
+  --max_new_tokens_override=120000 \
   --verbose
-```
 
 """
 
@@ -62,6 +60,12 @@ from chainscope.typing import *
     help="Only process the first N items in the batch. If not set, process all items.",
 )
 @click.option(
+    "--timeout",
+    type=float,
+    default=None,
+    help="Request timeout in seconds (only supported for OpenRouter models)",
+)
+@click.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -75,9 +79,10 @@ def main(
     max_parallel: int | None,
     max_new_tokens_override: int | None,
     prefix: int | None,
+    timeout: float | None,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
-    logging.warning("WARNING! This is somewhat unreliable, particularly for really long rollouts, as it does only very basic checks of the correct format by checking that the length of the steps added together is within 10% of the original response length")
+    logging.warning("WARNING! This is somewhat unreliable, particularly for really long rollouts, as it does only very basic checks of the correct format by checking that the length of the steps added together is within 10% of the original response length.")
     cot_responses = CotResponses.load(Path(responses_path))
     results = split_cot_responses(
         responses=cot_responses,
@@ -86,6 +91,7 @@ def main(
         max_parallel=max_parallel,
         max_new_tokens_override=max_new_tokens_override,
         prefix=prefix,
+        request_timeout=timeout,
     )
     path = responses_path
     suffix = "_splitted"

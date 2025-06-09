@@ -3,10 +3,17 @@
 """E.g. run:
 
 python3 -m dotenv run python3 scripts/putnamlike1_are_rollouts_correct.py \
-    d/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/google__gemini-exp-1206:free_v0_prefix_1.yaml \
+    /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat.yaml \
     --model_id "anthropic/claude-3.5-sonnet" \
     --verbose \
     --prefix=1
+
+Or (for 2024 problems):
+
+python3 -m dotenv run python3 scripts/putnamlike1_are_rollouts_correct.py \
+    /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.7-sonnet_v0.yaml \
+    --model_id "anthropic/claude-3.5-sonnet" \
+    --verbose
 """
 
 import asyncio
@@ -181,7 +188,7 @@ async def evaluate_model_responses(
             solution=model_response.solution,
             model_answer=model_response.model_answer,
             model_thinking=model_response.model_thinking,
-            correctness_explanation=or_response,
+            correctness_explanation=or_response[0] if isinstance(or_response, tuple) else or_response,
             correctness_is_correct=is_correct,
             correctness_classification=classification,
         )
@@ -256,7 +263,8 @@ def main(
     prefix: Optional[int],
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
-
+    if "3.7" in model_id:
+        logging.warning("Claude 3.7 did not work for me and I reverted to 3.5... FYI")
     input_path = Path(input_yaml)
 
     model_responses = load_putnam_model_responses(input_path, prefix)

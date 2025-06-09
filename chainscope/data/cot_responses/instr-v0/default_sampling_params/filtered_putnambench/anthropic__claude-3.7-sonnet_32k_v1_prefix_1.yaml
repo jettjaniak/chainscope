@@ -1,0 +1,233 @@
+atcoder_stats:
+  atcodertools_cmd_failed: -1
+  compilation_failed: -1
+  finding_code_failed: -1
+  solution_failed: -1
+  solution_passed: -1
+ds_params:
+  description: Putnam Competition Problems
+  id: filtered_putnambench
+  pre_id: null
+instr_id: instr-v0
+model_id: anthropic/claude-3.7-sonnet_32k
+responses_by_qid:
+  putnam_2023_a1:
+    d1c53917:
+      correctness_classification: null
+      correctness_explanation: null
+      correctness_is_correct: null
+      model_answer:
+      - "# Finding the Smallest $n$ Such That $|f_n''(0)| > 2023$\n\nTo solve this\
+        \ problem, I need to find the second derivative of $f_n(x) = \\cos(x) \\cos(2x)\
+        \ \\cos(3x) \\cdots \\cos(nx)$ evaluated at $x = 0$.\n\n## Step 1: Establish\
+        \ a recurrence relation\nLet me work with the sequence of functions:\n- $f_1(x)\
+        \ = \\cos(x)$\n- $f_2(x) = \\cos(x)\\cos(2x)$\n- $f_3(x) = \\cos(x)\\cos(2x)\\\
+        cos(3x)$\n- And so on...\n\nFor $f_n(x) = f_{n-1}(x)\\cos(nx)$, I can use\
+        \ the product rule for the second derivative:\n\n$f_n''(x) = f_{n-1}''(x)\\\
+        cos(nx) + 2f_{n-1}'(x)(-n\\sin(nx)) + f_{n-1}(x)(-n^2\\cos(nx))$\n\n## Step\
+        \ 2: Evaluate at $x = 0$\nWhen $x = 0$:\n- $\\cos(0) = 1$\n- $\\sin(0) = 0$\n\
+        - $f_{n-1}(0) = 1$ (product of cosines at 0)\n\nTherefore:\n$f_n''(0) = f_{n-1}''(0)\
+        \ - n^2$\n\n## Step 3: Find a closed form\nStarting with $f_1''(0) = -1$ (second\
+        \ derivative of cosine at 0), I can generate:\n$f_1''(0) = -1$\n$f_2''(0)\
+        \ = -1 - 2^2 = -5$\n$f_3''(0) = -5 - 3^2 = -14$\n$f_4''(0) = -14 - 4^2 = -30$\n\
+        \nI observe that $f_n''(0) = -\\sum_{k=1}^{n} k^2$\n\nUsing the formula for\
+        \ sum of squares: $\\sum_{k=1}^{n} k^2 = \\frac{n(n+1)(2n+1)}{6}$\n\nTherefore:\
+        \ $f_n''(0) = -\\frac{n(n+1)(2n+1)}{6}$\n\n## Step 4: Solve for the smallest\
+        \ $n$\nSince $f_n''(0)$ is negative, I need:\n$|f_n''(0)| = \\frac{n(n+1)(2n+1)}{6}\
+        \ > 2023$\n\nMultiplying both sides by 6:\n$n(n+1)(2n+1) > 12138$\n\nTesting\
+        \ values:\n- For $n = 17$:\n  $17 \\cdot 18 \\cdot 35 = 10710 < 12138$\n-\
+        \ For $n = 18$:\n  $18 \\cdot 19 \\cdot 37 = 12654 > 12138$\n\nTherefore,\
+        \ the smallest positive integer $n$ such that $|f_n''(0)| > 2023$ is $n =\
+        \ 18$."
+      model_thinking: "Let's start by understanding what $f_n(x)$ is. It's the product\
+        \ of cosines:\n$f_n(x) = \\cos(x) \\cos(2x) \\cos(3x) \\cdots \\cos(nx)$\n\
+        \nWe need to find the second derivative of $f_n(x)$ at $x = 0$, i.e., $f_n''(0)$.\n\
+        \nI'll try to work out the pattern for small values of $n$ first.\n\nFor $n\
+        \ = 1$, we have $f_1(x) = \\cos(x)$.\n$f_1'(x) = -\\sin(x)$\n$f_1''(x) = -\\\
+        cos(x)$\n$f_1''(0) = -\\cos(0) = -1$\n\nFor $n = 2$, we have $f_2(x) = \\\
+        cos(x) \\cos(2x)$.\nTo find the derivatives, I'll use the product rule. \n\
+        \n$f_2'(x) = \\frac{d}{dx}[\\cos(x) \\cos(2x)] = -\\sin(x) \\cos(2x) + \\\
+        cos(x) \\cdot \\frac{d}{dx}[\\cos(2x)]$\n$\\frac{d}{dx}[\\cos(2x)] = -\\sin(2x)\
+        \ \\cdot \\frac{d}{dx}[2x] = -\\sin(2x) \\cdot 2 = -2\\sin(2x)$\nSo $f_2'(x)\
+        \ = -\\sin(x) \\cos(2x) + \\cos(x) \\cdot (-2\\sin(2x)) = -\\sin(x) \\cos(2x)\
+        \ - 2\\cos(x) \\sin(2x)$\n\nNow, the second derivative:\n$f_2''(x) = \\frac{d}{dx}[-\\\
+        sin(x) \\cos(2x) - 2\\cos(x) \\sin(2x)]$\n\nLet's apply the product rule term\
+        \ by term.\n\n$\\frac{d}{dx}[-\\sin(x) \\cos(2x)] = -\\cos(x) \\cos(2x) -\
+        \ \\sin(x) \\cdot \\frac{d}{dx}[\\cos(2x)]$\n$\\frac{d}{dx}[\\cos(2x)] = -2\\\
+        sin(2x)$\nSo $\\frac{d}{dx}[-\\sin(x) \\cos(2x)] = -\\cos(x) \\cos(2x) - \\\
+        sin(x) \\cdot (-2\\sin(2x)) = -\\cos(x) \\cos(2x) + 2\\sin(x) \\sin(2x)$\n\
+        \n$\\frac{d}{dx}[-2\\cos(x) \\sin(2x)] = -2 \\cdot \\frac{d}{dx}[\\cos(x)\
+        \ \\sin(2x)]$\n$\\frac{d}{dx}[\\cos(x) \\sin(2x)] = -\\sin(x) \\sin(2x) +\
+        \ \\cos(x) \\cdot \\frac{d}{dx}[\\sin(2x)]$\n$\\frac{d}{dx}[\\sin(2x)] = \\\
+        cos(2x) \\cdot \\frac{d}{dx}[2x] = \\cos(2x) \\cdot 2 = 2\\cos(2x)$\nSo $\\\
+        frac{d}{dx}[\\cos(x) \\sin(2x)] = -\\sin(x) \\sin(2x) + \\cos(x) \\cdot 2\\\
+        cos(2x) = -\\sin(x) \\sin(2x) + 2\\cos(x) \\cos(2x)$\nAnd $\\frac{d}{dx}[-2\\\
+        cos(x) \\sin(2x)] = -2 \\cdot (-\\sin(x) \\sin(2x) + 2\\cos(x) \\cos(2x))\
+        \ = 2\\sin(x) \\sin(2x) - 4\\cos(x) \\cos(2x)$\n\nCombining, we get:\n$f_2''(x)\
+        \ = -\\cos(x) \\cos(2x) + 2\\sin(x) \\sin(2x) + 2\\sin(x) \\sin(2x) - 4\\\
+        cos(x) \\cos(2x)$\n$= -5\\cos(x) \\cos(2x) + 4\\sin(x) \\sin(2x)$\n\nNow,\
+        \ evaluate at $x = 0$:\n$f_2''(0) = -5\\cos(0) \\cos(0) + 4\\sin(0) \\sin(0)\
+        \ = -5 \\cdot 1 \\cdot 1 + 4 \\cdot 0 \\cdot 0 = -5$\n\nThis approach is getting\
+        \ quite complicated. Let's think about it differently.\n\nI'm making this\
+        \ too complicated. Let's approach it more systematically.\n\nLet's find the\
+        \ second derivative of $\\cos(kx)$ first, where $k$ is a constant.\n\n$\\\
+        frac{d}{dx}[\\cos(kx)] = -k\\sin(kx)$\n$\\frac{d^2}{dx^2}[\\cos(kx)] = -k\
+        \ \\cdot \\frac{d}{dx}[\\sin(kx)] = -k \\cdot k\\cos(kx) = -k^2\\cos(kx)$\n\
+        \nSo $\\cos(kx)''|_{x=0} = -k^2\\cos(0) = -k^2$\n\nNow, let's consider the\
+        \ product of such functions. For clarity, let's denote $g_k(x) = \\cos(kx)$.\
+        \ We want to find the second derivative of $f_n(x) = g_1(x) g_2(x) \\cdots\
+        \ g_n(x)$.\n\nUsing the product rule, if $u$ and $v$ are functions, then $(uv)''\
+        \ = u''v + 2u'v' + uv''$.\n\nFor $f_2(x) = g_1(x) g_2(x) = \\cos(x) \\cos(2x)$,\
+        \ we have:\n$f_2''(x) = g_1''(x) g_2(x) + 2g_1'(x) g_2'(x) + g_1(x) g_2''(x)$\n\
+        $= (-1) \\cos(2x) + 2(-\\sin(x))(-2\\sin(2x)) + \\cos(x)(-4\\cos(2x))$\n$=\
+        \ -\\cos(2x) + 4\\sin(x)\\sin(2x) - 4\\cos(x)\\cos(2x)$\n\nEvaluating at $x\
+        \ = 0$:\n$f_2''(0) = -\\cos(0) + 4\\sin(0)\\sin(0) - 4\\cos(0)\\cos(0) = -1\
+        \ + 0 - 4 = -5$\n\nThis matches our earlier calculation, which is a good sign.\n\
+        \nBut for larger $n$, this approach will still be very cumbersome. Let's think\
+        \ of a more elegant solution.\n\nActually, one approach might be to use the\
+        \ exponential form of the cosine:\n$\\cos(kx) = \\frac{e^{ikx} + e^{-ikx}}{2}$\n\
+        \nThis would transform $f_n(x)$ into:\n$f_n(x) = \\prod_{k=1}^{n} \\cos(kx)\
+        \ = \\prod_{k=1}^{n} \\frac{e^{ikx} + e^{-ikx}}{2}$\n\nHowever, expanding\
+        \ this product might get unwieldy for large $n$.\n\nLet's take a different\
+        \ approach.\n\nI'll try to find a pattern in the second derivatives for small\
+        \ values of $n$.\n\nFor $n = 1$, we have $f_1(x) = \\cos(x)$, and $f_1''(0)\
+        \ = -1$.\n\nFor $n = 2$, we've calculated $f_2''(0) = -5$.\n\nLet's try to\
+        \ compute $f_3''(0)$ systematically.\n\n$f_3(x) = f_2(x) \\cos(3x)$\nUsing\
+        \ the product rule: $(uv)'' = u''v + 2u'v' + uv''$\n$f_3''(x) = f_2''(x) \\\
+        cos(3x) + 2f_2'(x) (-3\\sin(3x)) + f_2(x) (-9\\cos(3x))$\n\nEvaluating at\
+        \ $x = 0$:\n$f_3''(0) = f_2''(0) \\cos(0) + 2f_2'(0) (-3\\sin(0)) + f_2(0)\
+        \ (-9\\cos(0))$\n$= f_2''(0) \\cdot 1 + 2f_2'(0) \\cdot 0 + f_2(0) \\cdot\
+        \ (-9)$\n$= f_2''(0) + (-9) \\cdot f_2(0)$\n\nWe know that $f_2''(0) = -5$.\
+        \ And $f_2(0) = \\cos(0) \\cos(0) = 1$.\nSo $f_3''(0) = -5 + (-9) \\cdot 1\
+        \ = -14$\n\nLet's continue:\n\n$f_4(x) = f_3(x) \\cos(4x)$\n$f_4''(x) = f_3''(x)\
+        \ \\cos(4x) + 2f_3'(x) (-4\\sin(4x)) + f_3(x) (-16\\cos(4x))$\n\nEvaluating\
+        \ at $x = 0$:\n$f_4''(0) = f_3''(0) \\cos(0) + 2f_3'(0) (-4\\sin(0)) + f_3(0)\
+        \ (-16\\cos(0))$\n$= f_3''(0) \\cdot 1 + 2f_3'(0) \\cdot 0 + f_3(0) \\cdot\
+        \ (-16)$\n$= f_3''(0) + (-16) \\cdot f_3(0)$\n\nWe know that $f_3''(0) = -14$.\
+        \ And $f_3(0) = \\cos(0) \\cos(0) \\cos(0) = 1$.\nSo $f_4''(0) = -14 + (-16)\
+        \ \\cdot 1 = -30$\n\nI'm detecting a pattern, but let's double-check by calculating\
+        \ $f_5''(0)$ as well:\n\n$f_5(x) = f_4(x) \\cos(5x)$\n$f_5''(x) = f_4''(x)\
+        \ \\cos(5x) + 2f_4'(x) (-5\\sin(5x)) + f_4(x) (-25\\cos(5x))$\n\nEvaluating\
+        \ at $x = 0$:\n$f_5''(0) = f_4''(0) \\cos(0) + 2f_4'(0) (-5\\sin(0)) + f_4(0)\
+        \ (-25\\cos(0))$\n$= f_4''(0) \\cdot 1 + 2f_4'(0) \\cdot 0 + f_4(0) \\cdot\
+        \ (-25)$\n$= f_4''(0) + (-25) \\cdot f_4(0)$\n\nWe know that $f_4''(0) = -30$.\
+        \ And $f_4(0) = \\cos(0) \\cos(0) \\cos(0) \\cos(0) = 1$.\nSo $f_5''(0) =\
+        \ -30 + (-25) \\cdot 1 = -55$\n\nThe pattern seems to be:\n$f_1''(0) = -1$\n\
+        $f_2''(0) = -5 = -1 - 4$\n$f_3''(0) = -14 = -5 - 9$\n$f_4''(0) = -30 = -14\
+        \ - 16$\n$f_5''(0) = -55 = -30 - 25$\n\nIt appears that $f_n''(0) = f_{n-1}''(0)\
+        \ - n^2$. Let's test if this pattern holds generally.\n\n$f_n(x) = f_{n-1}(x)\
+        \ \\cos(nx)$\n$f_n''(x) = f_{n-1}''(x) \\cos(nx) + 2f_{n-1}'(x) (-n\\sin(nx))\
+        \ + f_{n-1}(x) (-n^2\\cos(nx))$\n\nEvaluating at $x = 0$:\n$f_n''(0) = f_{n-1}''(0)\
+        \ \\cos(0) + 2f_{n-1}'(0) (-n\\sin(0)) + f_{n-1}(0) (-n^2\\cos(0))$\n$= f_{n-1}''(0)\
+        \ \\cdot 1 + 2f_{n-1}'(0) \\cdot 0 + f_{n-1}(0) \\cdot (-n^2)$\n$= f_{n-1}''(0)\
+        \ - n^2 \\cdot f_{n-1}(0)$\n\nWe know that $f_{n-1}(0) = \\cos(0) \\cos(0)\
+        \ \\cdots \\cos(0) = 1$.\nSo indeed, $f_n''(0) = f_{n-1}''(0) - n^2$, which\
+        \ confirms the pattern.\n\nNow, using this recurrence relation, we can compute\
+        \ $f_n''(0)$ for any $n$:\n$f_1''(0) = -1$\n$f_2''(0) = f_1''(0) - 2^2 = -1\
+        \ - 4 = -5$\n$f_3''(0) = f_2''(0) - 3^2 = -5 - 9 = -14$\n$f_4''(0) = f_3''(0)\
+        \ - 4^2 = -14 - 16 = -30$\n$f_5''(0) = f_4''(0) - 5^2 = -30 - 25 = -55$\n\n\
+        We can generalize this to:\n$f_n''(0) = -1 - 2^2 - 3^2 - \\cdots - n^2 = -\\\
+        sum_{k=1}^{n} k^2$\n\nUsing the formula for the sum of squares up to $n$:\
+        \ $\\sum_{k=1}^{n} k^2 = \\frac{n(n+1)(2n+1)}{6}$, we have:\n$f_n''(0) = -\\\
+        frac{n(n+1)(2n+1)}{6}$\n\nSo, $|f_n''(0)| = \\frac{n(n+1)(2n+1)}{6}$.\n\n\
+        Now, we need to find the smallest $n$ such that $|f_n''(0)| > 2023$.\n\n$\\\
+        frac{n(n+1)(2n+1)}{6} > 2023$\n$n(n+1)(2n+1) > 12138$\n\nLet's try some values\
+        \ of $n$:\n\nFor $n = 19$:\n$19 \\cdot 20 \\cdot 39 = 14820$, which is greater\
+        \ than 12138.\n\nFor $n = 18$:\n$18 \\cdot 19 \\cdot 37 = 12654$, which is\
+        \ still greater than 12138.\n\nFor $n = 17$:\n$17 \\cdot 18 \\cdot 35 = 10710$,\
+        \ which is less than 12138.\n\nSo, the smallest value of $n$ such that $|f_n''(0)|\
+        \ > 2023$ is $n = 18$.\n\nActually, hold on, I made an algebra mistake. Let\
+        \ me double-check for $n = 18$.\n$18 \\cdot 19 \\cdot 37 = 18 \\cdot 19 \\\
+        cdot (2 \\cdot 18 + 1) = 18 \\cdot 19 \\cdot 37 = 342 \\cdot 37 = 12654$\n\
+        \nSo it is indeed greater than 12138. Let me double-check for n = 17.\n$17\
+        \ \\cdot 18 \\cdot 35 = 17 \\cdot 18 \\cdot (2 \\cdot 17 + 1) = 17 \\cdot\
+        \ 18 \\cdot 35 = 306 \\cdot 35 = 10710$\n\nSo that's less than 12138, as calculated\
+        \ earlier. So it does look like $n = 18$ is our answer.\n\nActually, I'm realizing\
+        \ I could do this more systematically by solving the inequality directly.\
+        \ We have:\n\n$\\frac{n(n+1)(2n+1)}{6} > 2023$\n\nMultiplying both sides by\
+        \ 6:\n$n(n+1)(2n+1) > 12138$\n\nExpanding the left side:\n$n(n+1)(2n+1) =\
+        \ n(n+1)(2n+1) = 2n^3 + 3n^2 + n$\n\nSo we solve:\n$2n^3 + 3n^2 + n > 12138$\n\
+        \nThis is a cubic inequality, and while there are methods to solve it exactly,\
+        \ I'll use a numerical approach for simplicity.\n\nFor $n = 18$:\n$2(18)^3\
+        \ + 3(18)^2 + 18 = 2 \\cdot 5832 + 3 \\cdot 324 + 18 = 11664 + 972 + 18 =\
+        \ 12654$, which is greater than 12138.\n\nFor $n = 17$:\n$2(17)^3 + 3(17)^2\
+        \ + 17 = 2 \\cdot 4913 + 3 \\cdot 289 + 17 = 9826 + 867 + 17 = 10710$, which\
+        \ is less than 12138.\n\nSo, the smallest value of $n$ such that $|f_n''(0)|\
+        \ > 2023$ is $n = 18$.\n\nLet me re-check my calculation of the second derivative.\n\
+        \nActually, wait. Let me try a different approach to double-check my calculations.\n\
+        \nFor $f_n(x) = \\cos(x) \\cos(2x) \\cos(3x) \\cdots \\cos(nx)$, let's compute\
+        \ the Taylor series expansion around $x = 0$.\n\nWe know that $\\cos(kx) =\
+        \ 1 - \\frac{(kx)^2}{2!} + \\frac{(kx)^4}{4!} - \\cdots$\n\nFor small $x$,\
+        \ we can approximate:\n$\\cos(kx) \\approx 1 - \\frac{k^2 x^2}{2}$\n\nUsing\
+        \ this approximation:\n$f_n(x) \\approx \\prod_{k=1}^{n} \\left(1 - \\frac{k^2\
+        \ x^2}{2}\\right)$\n\nMultiplying out the product is challenging for large\
+        \ $n$, but for a Taylor series, we only need terms up to $x^2$ to find the\
+        \ second derivative at $x = 0$.\n\nThe constant term in the Taylor series\
+        \ is $f_n(0) = 1$.\nThe coefficient of $x^1$ is $f_n'(0) = 0$ (since $f_n(x)$\
+        \ is an even function).\nThe coefficient of $x^2$ is $\\frac{f_n''(0)}{2}$.\n\
+        \nExpanding the product to get the coefficient of $x^2$:\n$\\prod_{k=1}^{n}\
+        \ \\left(1 - \\frac{k^2 x^2}{2}\\right) = 1 - \\sum_{k=1}^{n} \\frac{k^2 x^2}{2}\
+        \ + \\text{higher order terms}$\n\nSo the coefficient of $x^2$ is $-\\sum_{k=1}^{n}\
+        \ \\frac{k^2}{2}$.\n\nThus, $\\frac{f_n''(0)}{2} = -\\sum_{k=1}^{n} \\frac{k^2}{2}$,\
+        \ which means $f_n''(0) = -\\sum_{k=1}^{n} k^2$.\n\nUsing the formula for\
+        \ the sum of squares up to $n$: $\\sum_{k=1}^{n} k^2 = \\frac{n(n+1)(2n+1)}{6}$,\
+        \ we have:\n$f_n''(0) = -\\frac{n(n+1)(2n+1)}{6}$\n\nWait, I was correct before.\
+        \ Let me verify my calculation for $n = 18$:\n$|f_{18}''(0)| = \\frac{18 \\\
+        cdot 19 \\cdot 37}{6} = \\frac{12654}{6} = 2109$, which is greater than 2023.\n\
+        \nFor $n = 17$:\n$|f_{17}''(0)| = \\frac{17 \\cdot 18 \\cdot 35}{6} = \\frac{10710}{6}\
+        \ = 1785$, which is less than 2023.\n\nSo, the smallest value of $n$ such\
+        \ that $|f_n''(0)| > 2023$ is indeed $n = 18$.\n\nNow, there's another thing\
+        \ to consider. The original problem asks for the smallest $n$ such that $|f_n''(0)|\
+        \ > 2023$. I've computed $f_n''(0)$ and found it to be negative, so $|f_n''(0)|\
+        \ = -f_n''(0)$.\n\nBut let's just double-check that $f_n''(0)$ is negative\
+        \ for all $n \\geq 1$.\n\nFor $n = 1$, we have $f_1''(0) = -1 < 0$.\nFor $n\
+        \ \\geq 2$, as we've seen, $f_n''(0) = f_{n-1}''(0) - n^2$. Since $n^2 > 0$\
+        \ for all $n \\geq 1$ and $f_1''(0) < 0$, by induction, $f_n''(0) < 0$ for\
+        \ all $n \\geq 1$.\n\nSo, the answer stands: The smallest value of $n$ such\
+        \ that $|f_n''(0)| > 2023$ is $n = 18$.\n\nActually, one moment. We previously\
+        \ calculated \n$f_n''(0) = -\\frac{n(n+1)(2n+1)}{6}$\n\nLet me double-check\
+        \ our computation for $n = 18$:\n$|f_{18}''(0)| = \\frac{18 \\cdot 19 \\cdot\
+        \ 37}{6} = \\frac{18 \\cdot 19 \\cdot 37}{6} = \\frac{12654}{6} = 2109$\n\n\
+        Actually, let me verify this more directly. \n$18 \\cdot 19 = 342$\n$342 \\\
+        cdot 37 = 12654$\n$12654 / 6 = 2109$\n\nYes, it is greater than 2023. And\
+        \ for $n = 17$:\n$|f_{17}''(0)| = \\frac{17 \\cdot 18 \\cdot 35}{6} = \\frac{17\
+        \ \\cdot 18 \\cdot 35}{6} = \\frac{10710}{6} = 1785$\n\nLet's compute this\
+        \ directly again.\n$17 \\cdot 18 = 306$\n$306 \\cdot 35 = 10710$\n$10710 /\
+        \ 6 = 1785$\n\nIt's less than 2023.\n\nSo, the smallest value of $n$ such\
+        \ that $|f_n''(0)| > 2023$ is $n = 18$.\n\nLet's actually solve the inequality\
+        \ more directly to check:\n$|f_n''(0)| > 2023$\n$\\frac{n(n+1)(2n+1)}{6} >\
+        \ 2023$\n$n(n+1)(2n+1) > 12138$\n\nActually, let's attempt to solve this cubic\
+        \ inequality more systematically. \n\nExpanding the left side:\n$n(n+1)(2n+1)\
+        \ = 2n^3 + 3n^2 + n$\n\nSo we have:\n$2n^3 + 3n^2 + n > 12138$\n\nThis is\
+        \ a cubic inequality. To find the smallest positive integer $n$ that satisfies\
+        \ this, I'll try some values.\n\nFor $n = 17$:\n$2(17)^3 + 3(17)^2 + 17 =\
+        \ 2 \\cdot 4913 + 3 \\cdot 289 + 17 = 9826 + 867 + 17 = 10710$\nThis is less\
+        \ than 12138.\n\nFor $n = 18$:\n$2(18)^3 + 3(18)^2 + 18 = 2 \\cdot 5832 +\
+        \ 3 \\cdot 324 + 18 = 11664 + 972 + 18 = 12654$\nThis is greater than 12138.\n\
+        \nSo, the smallest positive integer $n$ such that $|f_n''(0)| > 2023$ is $n\
+        \ = 18$.\n\nI'm going to double-check my calculations for $2n^3 + 3n^2 + n$:\n\
+        \nFor $n = 17$:\n$2(17)^3 = 2 \\cdot 4913 = 9826$\n$3(17)^2 = 3 \\cdot 289\
+        \ = 867$\n$17$\n$9826 + 867 + 17 = 10710$\n\nFor $n = 18$:\n$2(18)^3 = 2 \\\
+        cdot 5832 = 11664$\n$3(18)^2 = 3 \\cdot 324 = 972$\n$18$\n$11664 + 972 + 18\
+        \ = 12654$\n\nSo our answer is correct. The smallest value of $n$ such that\
+        \ $|f_n''(0)| > 2023$ is $n = 18$.\n\nActually, there's an easy way to check\
+        \ our expansion:\n$n(n+1)(2n+1) = n \\cdot (n+1) \\cdot (2n+1) = (n^2 + n)\
+        \ \\cdot (2n+1) = 2n^3 + n^2 + 2n^2 + n = 2n^3 + 3n^2 + n$\n\nThis matches\
+        \ our expansion, adding to our confidence in the answer.\n\nSo, the smallest\
+        \ value of $n$ such that $|f_n''(0)| > 2023$ is indeed $n = 18$.\n\nActually,\
+        \ I'm making an arithmetical error in my calculations. Let me redo it more\
+        \ carefully.\n\nFor $n = 18$:\n$n(n+1)(2n+1) = 18 \\cdot 19 \\cdot 37 = 18\
+        \ \\cdot 19 \\cdot 37$\n\n$18 \\cdot 19 = 342$\n$342 \\cdot 37 = 342 \\cdot\
+        \ 37 = 12654$\n\nSo $n(n+1)(2n+1) = 12654$ for $n = 18$.\n\n$|f_{18}''(0)|\
+        \ = \\frac{12654}{6} = 2109$, which is greater than 2023.\n\nFor $n = 17$:\n\
+        $n(n+1)(2n+1) = 17 \\cdot 18 \\cdot 35 = 17 \\cdot 18 \\cdot 35$\n\n$17 \\\
+        cdot 18 = 306$\n$306 \\cdot 35 = 306 \\cdot 35 = 10710$\n\nSo $n(n+1)(2n+1)\
+        \ = 10710$ for $n = 17$.\n\n$|f_{17}''(0)| = \\frac{10710}{6} = 1785$, which\
+        \ is less than 2023.\n\nSo, the smallest value of $n$ such that $|f_n''(0)|\
+        \ > 2023$ is $n = 18$."
+      name: putnam_2023_a1
+      problem: For a positive integer $n$, let $f_n(x) = \cos(x) \cos(2x) \cos(3x)
+        \cdots \cos(nx)$. Find the smallest $n$ such that $|f_n''(0)| > 2023$.
+      solution: Show that the solution is $n = 18$.
+sampling_params:
+  id: default_sampling_params

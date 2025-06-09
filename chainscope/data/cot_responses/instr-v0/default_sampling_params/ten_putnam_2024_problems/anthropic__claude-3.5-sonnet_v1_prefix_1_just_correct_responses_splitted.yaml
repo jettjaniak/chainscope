@@ -1,0 +1,54 @@
+ds_params:
+  dataset_type: atcoder
+  description: 'Putnam Competition Problems with Evaluations (Suffix: )'
+  id: putnambench_with_evaluations
+  pre_id: null
+failed_to_split_count: 0
+instr_id: evaluation
+model_id: evaluation
+sampling_params:
+  id: default_sampling_params
+split_responses_by_qid:
+  default_qid:
+    putnam_2024_a1_attempt_1:
+      correctness_classification: null
+      correctness_explanation: null
+      correctness_is_correct: null
+      model_answer:
+      - "Let me solve this step by step.\n\n1) First, let's understand what we're\
+        \ looking for:\n   * We need to find values of n where this equation has positive\
+        \ integer solutions\n   * The equation is 2a^n + 3b^n = 4c^n"
+      - "2) Let's try n = 1:\n   * 2a + 3b = 4c\n   * This has many solutions, like\
+        \ a=1, b=2, c=2\n   * So n=1 is a valid solution"
+      - "3) For n \u2265 2, let's use Fermat's Last Theorem:\n   * FLT states that\
+        \ for n > 2, x^n + y^n = z^n has no positive integer solutions\n   * But our\
+        \ equation is different due to coefficients"
+      - "4) Let's rearrange: 2a^n + 3b^n = 4c^n\n   * Dividing by 2: a^n + (3/2)b^n\
+        \ = 2c^n"
+      - "5) For n \u2265 2:\n   * If this had solutions, (3/2)b^n would need to be\
+        \ an integer\n   * Since b is a positive integer, b^n is a positive integer\n\
+        \   * For (3/2)b^n to be an integer, 2 must divide b^n\n   * This means b\
+        \ must be even"
+      - "6) Let b = 2k where k is a positive integer:\n   * a^n + 3(2k)^n = 2c^n\n\
+        \   * a^n + 3\xB72^n\xB7k^n = 2c^n"
+      - "7) For n \u2265 2:\n   * The middle term 3\xB72^n\xB7k^n is divisible by\
+        \ 3\n   * The right term 2c^n is even\n   * Therefore a^n must be both divisible\
+        \ by 3 and even\n   * This means a must be divisible by 6"
+      - "8) Let a = 6m where m is a positive integer:\n   * (6m)^n + 3\xB72^n\xB7\
+        k^n = 2c^n\n   * 6^n\xB7m^n + 3\xB72^n\xB7k^n = 2c^n"
+      - "9) For n \u2265 2:\n   * The left term is divisible by 6^n\n   * The middle\
+        \ term is divisible by 3\xB72^n\n   * But the right term is only divisible\
+        \ by 2\n   * This creates a contradiction"
+      - 'Therefore, the only value of n that works is n = 1.
+
+
+        The answer is {1}.'
+      - "To verify this is complete:\n* We proved n = 1 works\n* We proved no n \u2265\
+        \ 2 works\n* Since n must be positive, we've covered all cases\n\nTherefore,\
+        \ n = 1 is the only solution."
+      model_thinking: null
+      name: putnam_2024_a1_attempt_1
+      problem: Determine all positive integers $n$ for which there exist positive
+        integers $a$, $b$, and $c$ satisfying \[ 2a^n + 3b^n = 4c^n. \]
+      solution: Prove that only $n=1$ works.
+successfully_split_count: 1

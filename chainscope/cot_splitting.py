@@ -179,6 +179,7 @@ async def split_cot_responses_async(
     max_parallel: int | None,
     max_new_tokens_override: int | None = None,
     prefix: int | None = None,
+    request_timeout: float | None = None,
 ) -> ctyping.SplitCotResponses:
     """Async version of split_cot_responses with rate limiting and retries."""
 
@@ -193,6 +194,34 @@ async def split_cot_responses_async(
         response: str | tuple[str | None, str | None], item: tuple[str, str]
     ) -> list[str] | None:
         qid, uuid = item
+
+        # # TODO(arthur): unfaithful-shortcuts had this stuff...
+        # # surprising that it's more rigorous and found there!
+
+        # [real_rollout] = responses.responses_by_qid[qid][uuid].model_answer
+
+        # if isinstance(response, tuple):
+        #     or_response = response[-1] or ""
+        # else:
+        #     or_response = response
+
+        # logging.info(f"Response: {or_response}")
+        # sections = parse_model_split_response(or_response)
+        # logging.info(f"Sections: {sections}")
+
+        # logging.info(f"Item: {item}")
+
+        # if len(sections) <= 2:
+        #     raise ValueError("Not enough sections.")
+
+        # if not check_steps_are_valid_split(
+        #     original_response=real_rollout,
+        #     steps=sections,
+        # ):
+        #     raise ValueError("Steps are not valid.")
+
+        # return sections
+
         if isinstance(response, tuple):
             or_response = response[0] or ""
         else:
@@ -216,6 +245,7 @@ async def split_cot_responses_async(
         rate_limiter=rate_limiter,
         max_retries=max_retries,
         process_response=process_response,
+        request_timeout=request_timeout,
     )
 
     # Prepare batch items
@@ -226,6 +256,7 @@ async def split_cot_responses_async(
                 "Below is a chain-of-thought reasoning. Insert section markers (<section 1>, <section 2>, etc.) "
                 "at the start of each logical step in the reasoning, but do NOT modify the original text in any way except adding the markers. "
                 "Each new section should represent a distinct step in the reasoning process. "
+                "There should be at least 3 steps, and possibly far more than that. "
                 "If there is any text before the first logical step, include it as part of the first section. "
                 "Do NOT leave any text out of the sections. "
                 "Preserve all original formatting, including any "
@@ -250,6 +281,8 @@ async def split_cot_responses_async(
     success_count = 0
     failure_count = 0
 
+    dataset_type = None
+
     for (qid, uuid), split_response in results:
         if qid not in split_responses_by_qid:
             split_responses_by_qid[qid] = {}
@@ -273,6 +306,8 @@ async def split_cot_responses_async(
                     problem=original_response.problem,
                     solution=original_response.solution,
                 )
+                assert dataset_type in [None, "math"]
+                dataset_type = "math"
             elif isinstance(original_response, ctyping.AtCoderResponse):
                 split_responses_by_qid[qid][uuid] = ctyping.AtCoderResponse(
                     model_answer=split_response,
@@ -281,21 +316,25 @@ async def split_cot_responses_async(
                     problem=original_response.problem,
                     cpp_solution=original_response.cpp_solution,
                 )
+                assert dataset_type in [None, "atcoder"]
+                dataset_type = "atcoder"
             else:
                 raise ValueError(f"Unexpected response type: {type(original_response)}")
 
     logging.error(f"Success: {success_count}, Failure: {failure_count}")
 
+    assert dataset_type is not None
     # Create a new SplitCotResponses with the appropriate type
-    if isinstance(responses.ds_params, ctyping.MathDatasetParams):
+    if dataset_type == "math":
         split_responses: Mapping[str, Mapping[str, ctyping.MathResponse]] = {
             qid: {
                 uuid: resp
-                for uuid, resp in responses.items()
+                for uuid, resp in split_responses_by_qid[qid].items()
                 if isinstance(resp, ctyping.MathResponse)
             }
             for qid, responses in split_responses_by_qid.items()
         }
+        logging.info(f"Got split responses: {split_responses}")
         return ctyping.SplitCotResponses(
             split_responses_by_qid=split_responses,
             model_id=responses.model_id,
@@ -305,17 +344,19 @@ async def split_cot_responses_async(
             ds_params=responses.ds_params,
             sampling_params=responses.sampling_params,
         )
-    else:
+    elif dataset_type == "atcoder":
         # Create a new type for AtCoder split responses
         split_responses: Mapping[str, Mapping[str, ctyping.AtCoderResponse]] = {
             qid: {
                 uuid: resp
-                for uuid, resp in responses.items()
+                for uuid, resp in split_responses_by_qid[qid].items()
                 if isinstance(resp, ctyping.AtCoderResponse)
             }
             for qid, responses in split_responses_by_qid.items()
         }
+        logging.info(f"Got split responses via path 2: {split_responses}")
         assert isinstance(responses.ds_params, ctyping.AtCoderDatasetParams)
+
         ds_params = responses.ds_params
         return ctyping.SplitCotResponses(
             split_responses_by_qid=split_responses,
@@ -335,6 +376,7 @@ def split_cot_responses(
     max_parallel: int | None,
     max_new_tokens_override: int | None = None,
     prefix: int | None = None,
+    request_timeout: float | None = None,
 ) -> ctyping.SplitCotResponses:
     """Synchronous wrapper for the async implementation."""
     return asyncio.run(
@@ -345,5 +387,6 @@ def split_cot_responses(
             max_parallel=max_parallel,
             max_new_tokens_override=max_new_tokens_override,
             prefix=prefix,
+            request_timeout=request_timeout,
         )
     )

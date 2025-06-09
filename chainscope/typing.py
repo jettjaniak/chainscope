@@ -2,10 +2,11 @@ import logging
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Callable, Literal, Sequence  # noqa: F401
 
 import yaml
 from dataclass_wizard import DumpMeta, LoadMeta, YAMLWizard, fromdict
+from jaxtyping import Float, Int  # noqa: F401
 
 from chainscope import DATA_DIR
 
@@ -285,10 +286,10 @@ DumpMeta(key_transform="SNAKE").bind_to(DatasetParams)
 @dataclass
 class MathDatasetParams(YAMLWizard):
     description: str
+    id: str = "filtered_putnambench"
 
-    # These create nested directories if used:
-    id: str | None
-    pre_id: str | None
+    # Creates nested directories if used:
+    pre_id: str | None = None
 
 
 LoadMeta(
@@ -1242,7 +1243,8 @@ class CotResponses(YAMLWizard):
             )
 
         if isinstance(self.ds_params, MathDatasetParams):
-            end_dir = "filtered_putnambench"
+            end_dir = self.ds_params.id
+
         elif isinstance(self.ds_params, AtCoderDatasetParams):
             end_dir = "atcoder"
         else:

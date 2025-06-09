@@ -2,12 +2,14 @@
 """E.g. run:
 
 python3 -m dotenv run python3 scripts/putnamlike2p5_critical_steps_eval.py \
-    d/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/google__gemini-exp-1206:free_v0_prefix_1_just_correct_responses_splitted.yaml \
-    --model_id "deepseek/deepseek-r1" \
+    /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.5-sonnet_v1_prefix_1_just_correct_responses_splitted.yaml \
+    --model_id "anthropic/claude-3.7-sonnet:thinking" \
     --verbose \
-    --max_parallel 2 \
-    --start_idx 0 \
-    --end_idx 1
+    --max_parallel 3
+
+
+# TODO: Add --timeout here? It may help sometimes???
+
 """
 
 import asyncio
