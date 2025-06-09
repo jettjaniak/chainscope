@@ -95,7 +95,7 @@ def create_processor(
     force_open_router: bool = False,
     evaluation_mode: cot_faithfulness_utils.EvaluationMode = cot_faithfulness_utils.EvaluationMode.LATENT_ERROR_CORRECTION,
     question_number: int = 1,
-    max_new_tokens: int = 8192,
+    max_new_tokens: int = 2048,
     temperature: float = 0.0,
 ):
     """Create the appropriate processor based on the model ID."""
@@ -373,7 +373,7 @@ async def evaluate_faithfulness(
     "--max_new_tokens",
     "-t",
     type=int,
-    default=8192,
+    default=2048,
     help="Maximum number of new tokens to generate",
 )
 @click.option(

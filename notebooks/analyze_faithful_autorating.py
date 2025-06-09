@@ -253,7 +253,7 @@ split_responses, source_split_responses = get_split_responses_from_path(response
 
 #%%
 
-def get_lec_cases_from_split_and_source_responses(split_responses: list, source_split_responses: list, pattern: str = "YNNNYNYN") -> list[dict]:
+def get_lec_cases_from_split_and_source_responses_and_num_steps_and_num_steps(split_responses: list, source_split_responses: list, pattern: str = "YNNNYNYN") -> tuple[list[dict], int, int]:
     # MAINLINE EVAL
     # pattern = "YNNNYNYN"
     # DOES THE MODEL "OWN UP" EVER?
@@ -268,10 +268,15 @@ def get_lec_cases_from_split_and_source_responses(split_responses: list, source_
     # Collect all sketchy cases
     lec_cases = []
     ref_string=""
+    
+    num_steps = 0
+    num_qs = 0
 
     # Iterate through all problems and steps
     for qid, response in enumerate(split_responses):
+        num_qs += 1
         for i, step in enumerate(response.model_answer):
+            num_steps += 1
 
             if SKIP_ATTEMPT_GREATER_THAN_5 and "attempt" in response.name and int(response.name.split("attempt_")[-1]) > 5:
                 continue
@@ -342,11 +347,11 @@ def get_lec_cases_from_split_and_source_responses(split_responses: list, source_
     print(ref_string)
     print()
     print(f"Found {len(lec_cases)} LATENT_ERROR_CORRECTION cases, dists are: {sorted(list(case['dist'] for case in lec_cases))}")
-    return lec_cases
+    return lec_cases, num_qs, num_steps
 
 #%%
 
-lec_cases = get_lec_cases_from_split_and_source_responses(split_responses, source_split_responses)
+lec_cases, num_qs, num_steps = get_lec_cases_from_split_and_source_responses_and_num_steps_and_num_steps(split_responses, source_split_responses)
 
 #%%
 
@@ -523,13 +528,59 @@ for model, path in singlequestion_paths.items():
 
 # %%
 lec_cases_multiquestion = {}
+num_qs_multiquestion = {}
+num_steps_multiquestion = {}
+
 for model in models:
     split_responses, source_split_responses = get_split_responses_from_path(Path(multiquestion_paths[model]))
-    lec_cases_multiquestion[model] = get_lec_cases_from_split_and_source_responses(
+    lec_cases_multiquestion[model], num_qs, num_steps = get_lec_cases_from_split_and_source_responses_and_num_steps_and_num_steps(
         split_responses=split_responses,
         source_split_responses=source_split_responses,
         # pattern="YNNNYNYN"
     )
+    num_qs_multiquestion[model] = num_qs
+    num_steps_multiquestion[model] = num_steps
     assert len(lec_cases_multiquestion[model]) == all_true_positives_and_num_lines[model][1], f"Number of LEC cases for {model} is not equal to the number of true positives"
 
 # %%
+
+lec_cases_singlequestion = {}
+num_qs_singlequestion = {}
+num_steps_singlequestion = {}
+
+for model in models:
+    split_responses, source_split_responses = get_split_responses_from_path(Path(singlequestion_paths[model]))
+    lec_cases_singlequestion[model], num_qs, num_steps = get_lec_cases_from_split_and_source_responses_and_num_steps_and_num_steps(
+        split_responses=split_responses,
+        source_split_responses=source_split_responses,
+        pattern="Y"
+    )
+    num_qs_singlequestion[model] = num_qs
+    num_steps_singlequestion[model] = num_steps
+
+    #assert these are the same
+    print(
+        f"{model}: {num_qs_singlequestion[model]} and {num_qs_multiquestion[model]}"
+    )
+    print(
+        f"{model}: {num_steps_singlequestion[model]} and {num_steps_multiquestion[model]}"
+    )
+
+# %%
+
+for model in models:
+    true_positives_multiquestion = all_true_positives_and_num_lines[model][0]
+    old_ids = [(d['pname']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
+    new_ids = [(d['pname']) for d in lec_cases_singlequestion[model]]
+    # print(f"{model}: {(old_ids)} {(new_ids)}")
+    print(len(set(old_ids).intersection(set(new_ids))), len(set(old_ids)), len(set(new_ids)))
+
+# %%
+
+# 3 10 10
+# 0 1 3
+# 1 3 16
+# 2 2 34
+# 13 13 40
+# 5 5 47
+# great!
