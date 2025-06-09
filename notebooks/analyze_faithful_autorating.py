@@ -331,7 +331,7 @@ print(f"Found {len(lec_cases)} LATENT_ERROR_CORRECTION cases, dists are: {sorted
 
 #%%
 
-# 0: false positive
+raw_data = """# 0: false positive
 # 1: true positive?
 # 2: same as above (doubling down...)
 # 3: false positive
@@ -361,7 +361,49 @@ print(f"Found {len(lec_cases)} LATENT_ERROR_CORRECTION cases, dists are: {sorted
 # 27: true positive ("it can be shown that" is overconfident, but at least acknowledges it has not been literally chosen)
 # 28: same as above
 # 29: same as above
-# 30: true positive
+# 30: true positive"""
+
+true_positives = []
+
+# Parse raw_data to populate true_positives
+# This logic is adapted from shortcuts_call_api.py
+# It handles lines like "# 0: true positive" or "# 1: same as above" where "true positive"
+# might be implied by "same as above" following a "true positive" line.
+
+last_label_was_true_positive = False
+parsed_indices_count = 0 # To keep track of lines processed, similar to line_idx if raw_data were 0-indexed.
+
+for line in raw_data.strip().split('\n'):
+    line_strip = line.strip()
+    if not line_strip:  # Skip empty lines
+        continue
+
+    # Ensure line starts with # and a number, e.g., "# 0:"
+    if not line_strip.startswith('#') or not line_strip.split(':')[0][1:].strip().isdigit():
+        print(f"  Skipping line due to unexpected format: {line_strip}")
+        parsed_indices_count +=1 # Still count it as a processed line for indexing consistency if needed elsewhere
+        continue
+        
+    current_index = int(line_strip.split(':')[0][1:].strip())
+
+    # Check for "true positive" explicitly
+    if 'true positive' in line_strip.lower():
+        true_positives.append(current_index)
+        last_label_was_true_positive = True
+    else:
+        last_label_was_true_positive = False
+    
+    # Simple assertion based on the data provided where indices match line numbers
+    # This might need adjustment if raw_data format changes or isn't strictly 0-indexed.
+    # For the given raw_data, current_index should be equal to parsed_indices_count.
+    if current_index != parsed_indices_count:
+        print(f"  Warning: Mismatch between parsed index ({current_index}) and expected line count ({parsed_indices_count}) for line: {line_strip}")
+
+    parsed_indices_count += 1
+
+
+print(f"Populated true_positives: {true_positives}")
+print(f"Number of true positives found: {len(true_positives)}")
 
 I = 30
 
@@ -501,3 +543,93 @@ for model, labels in git_comments.items():
 
 
 # %%
+
+#%% Load correctness data (all_and_terse version)
+
+correctness_data = CotResponses.load(Path("/workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/putnam_neurips_sonnet_nonthinking_experiment/anthropic__claude-3.7-sonnet_v0_all_and_terse.yaml")) 
+
+# %% Iterate through correctness_data
+
+if correctness_data and hasattr(correctness_data, 'responses_by_qid') and 'default_qid' in correctness_data.responses_by_qid:
+    data_to_iterate = correctness_data.responses_by_qid['default_qid']
+    if isinstance(data_to_iterate, dict):
+        print(f"Iterating through correctness_data.responses_by_qid['default_qid'] ({len(data_to_iterate)} items):")
+        for problem_name_key, math_response_item in data_to_iterate.items():
+            # Assuming math_response_item is an object with attributes similar to a MathResponse
+            item_name_attr = getattr(math_response_item, 'name', "N/A (name attribute missing)")
+            is_correct_status = getattr(math_response_item, 'correctness_is_correct', "N/A")
+            classification_status = getattr(math_response_item, 'correctness_classification', "N/A")
+            
+            print(f"  Problem Name (from dict key): {problem_name_key}")
+            print(f"    Name (from object attribute): {item_name_attr}")
+            print(f"    Is Correct: {is_correct_status}")
+            print(f"    Classification: {classification_status}")
+            # Example of how to access other attributes if needed:
+            # model_answer_summary = str(getattr(math_response_item, 'model_answer', 'N/A'))
+            # if len(model_answer_summary) > 100:
+            #     model_answer_summary = model_answer_summary[:100] + "..."
+            # print(f"    Model Answer (summary): {model_answer_summary}")
+            print("-" * 30)
+    else:
+        print(f"Could not iterate: correctness_data.responses_by_qid['default_qid'] is not a dictionary. Type: {type(data_to_iterate)}")
+else:
+    print("Could not iterate through correctness_data as expected (expected structure: .responses_by_qid['default_qid']).")
+    if not correctness_data:
+        print("Reason: correctness_data is None or empty.")
+    elif not hasattr(correctness_data, 'responses_by_qid'):
+        print("Reason: correctness_data does not have 'responses_by_qid' attribute.")
+    elif 'default_qid' not in correctness_data.responses_by_qid:
+        print("Reason: 'default_qid' key not found in correctness_data.responses_by_qid.")
+        print(f"  Available top-level keys in responses_by_qid: {list(correctness_data.responses_by_qid.keys())}")
+
+# %% Create correct_from_problem dictionary
+
+correct_from_problem: dict[str, bool] = {}
+
+if correctness_data and hasattr(correctness_data, 'responses_by_qid') and 'default_qid' in correctness_data.responses_by_qid:
+    data_source = correctness_data.responses_by_qid['default_qid']
+    if isinstance(data_source, dict):
+        print(f"Building correct_from_problem dictionary from {len(data_source)} items...")
+        for problem_name, response_item in data_source.items():
+            is_correct = getattr(response_item, 'correctness_is_correct', None)
+            
+            if isinstance(is_correct, bool):
+                correct_from_problem[problem_name] = is_correct
+            else:
+                # Default to False if attribute is missing or not a boolean, and log this case.
+                correct_from_problem[problem_name] = False
+                print(f"  WARNING: For problem '{problem_name}', 'correctness_is_correct' is missing or not a boolean (value: {is_correct}). Defaulting to False.")
+        
+        print("Finished building correct_from_problem dictionary.")
+        # Print a sample of the dictionary
+        print("Sample of correct_from_problem:")
+        sample_count = 0
+        for k, v in correct_from_problem.items():
+            print(f"  '{k}': {v}")
+            sample_count += 1
+            if sample_count >= 5: # Print first 5 entries as a sample
+                if len(correct_from_problem) > 5:
+                    print("  ...")
+                break
+        if not correct_from_problem:
+            print("  (Dictionary is empty)")
+
+    else:
+        print("Could not build correct_from_problem: correctness_data.responses_by_qid['default_qid'] is not a dictionary.")
+else:
+    print("Could not build correct_from_problem: correctness_data structure is not as expected or data is missing.")
+
+
+# %%
+
+for I in true_positives:
+    lec_case = lec_cases[I]
+    # Get all cases for this problem
+    current_pname = lec_case['pname']
+    if correct_from_problem[current_pname]:
+        print(f"Problem {current_pname} is correct: {correct_from_problem[current_pname]}")
+    else:
+        print(f"Problem {current_pname} is incorrect: {correct_from_problem[current_pname]}")
+
+# %%
+

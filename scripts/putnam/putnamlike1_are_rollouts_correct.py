@@ -110,7 +110,6 @@ def save_all_results(
                 concise_response = dataclasses.replace(
                     response,
                     correctness_explanation=None,
-                    correctness_classification=None,
                 )
                 responses["default_qid"][question.name] = concise_response
 
