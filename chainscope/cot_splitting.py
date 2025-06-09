@@ -179,7 +179,6 @@ async def split_cot_responses_async(
     max_parallel: int | None,
     max_new_tokens_override: int | None = None,
     prefix: int | None = None,
-    request_timeout: float | None = None,
 ) -> ctyping.SplitCotResponses:
     """Async version of split_cot_responses with rate limiting and retries."""
 
@@ -195,40 +194,40 @@ async def split_cot_responses_async(
     ) -> list[str] | None:
         qid, uuid = item
 
-        # # TODO(arthur): unfaithful-shortcuts had this stuff...
-        # # surprising that it's more rigorous and found there!
+        # TODO(arthur): unfaithful-shortcuts had this stuff...
+        # surprising that it's more rigorous and found there!
 
-        # [real_rollout] = responses.responses_by_qid[qid][uuid].model_answer
-
-        # if isinstance(response, tuple):
-        #     or_response = response[-1] or ""
-        # else:
-        #     or_response = response
-
-        # logging.info(f"Response: {or_response}")
-        # sections = parse_model_split_response(or_response)
-        # logging.info(f"Sections: {sections}")
-
-        # logging.info(f"Item: {item}")
-
-        # if len(sections) <= 2:
-        #     raise ValueError("Not enough sections.")
-
-        # if not check_steps_are_valid_split(
-        #     original_response=real_rollout,
-        #     steps=sections,
-        # ):
-        #     raise ValueError("Steps are not valid.")
-
-        # return sections
+        [real_rollout] = responses.responses_by_qid[qid][uuid].model_answer
 
         if isinstance(response, tuple):
-            or_response = response[0] or ""
+            or_response = response[-1] or ""
         else:
             or_response = response
-        logging.info(f"OR response:\n{or_response}")
+
+        logging.info(f"Response: {or_response}")
         sections = parse_model_split_response(or_response)
-        return sections  # TODO(arthur): Re-enable checking
+        logging.info(f"Sections: {sections}")
+
+        logging.info(f"Item: {item}")
+
+        if len(sections) <= 2:
+            raise ValueError("Not enough sections.")
+
+        if not check_steps_are_valid_split(
+            original_response=real_rollout,
+            steps=sections,
+        ):
+            raise ValueError("Steps are not valid.")
+
+        return sections
+
+        # if isinstance(response, tuple):
+        #     or_response = response[0] or ""
+        # else:
+        #     or_response = response
+        # logging.info(f"OR response:\n{or_response}")
+        # sections = parse_model_split_response(or_response)
+        # return sections  # TODO(arthur): Re-enable checking
 
     default_max_new_tokens = (
         hasattr(responses.sampling_params, "max_new_tokens")
@@ -245,7 +244,6 @@ async def split_cot_responses_async(
         rate_limiter=rate_limiter,
         max_retries=max_retries,
         process_response=process_response,
-        request_timeout=request_timeout,
     )
 
     # Prepare batch items
@@ -376,7 +374,6 @@ def split_cot_responses(
     max_parallel: int | None,
     max_new_tokens_override: int | None = None,
     prefix: int | None = None,
-    request_timeout: float | None = None,
 ) -> ctyping.SplitCotResponses:
     """Synchronous wrapper for the async implementation."""
     return asyncio.run(
@@ -387,6 +384,5 @@ def split_cot_responses(
             max_parallel=max_parallel,
             max_new_tokens_override=max_new_tokens_override,
             prefix=prefix,
-            request_timeout=request_timeout,
         )
     )

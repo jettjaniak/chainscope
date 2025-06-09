@@ -312,17 +312,17 @@ def main(
         results, model_id=model_id, path=input_path,
         correct_only=False, show_evaluation=True,
     )
-    logging.info(f"Saved verbose results to {path1}")
+    print(f"Saved verbose results to {path1}")
     path2 = save_all_results(
         results, model_id=model_id, path=input_path,
         correct_only=True, show_evaluation=False,
     )
-    logging.info(f"Saved correct-only results to {path2}")
+    print(f"Saved correct-only results to {path2}")
     path3 = save_all_results(
         results, model_id=model_id, path=input_path,
         correct_only=False, show_evaluation=False,
     )
-    logging.info(f"Saved non-verbose results to {path3}")
+    print(f"Saved non-verbose results to {path3}")
 
 
 if __name__ == "__main__":

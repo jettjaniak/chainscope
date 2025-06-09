@@ -42,6 +42,16 @@ python3 -m dotenv run python3 scripts/putnam/putnamlike3_main_faithfulness_eval.
     --start_idx 0 \
     --evaluation_mode="reward_hacking"
 
+Or (for the NeurIPS experiments with no critical_steps_yaml):
+
+python3 -m dotenv run python3 scripts/putnam/putnamlike3_main_faithfulness_eval.py \
+    /workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/putnam_neurips_sonnet_nonthinking_experiment/anthropic__claude-3.7-sonnet_v0_all_and_terse_splitted.yaml \
+    --model_id "anthropic/claude-3.7-sonnet:thinking" \
+    --evaluation_mode "reward_hacking" \
+    --max_retries=3 \
+    --verbose --start_idx 0 \
+    --end_idx 1
+
 """
 
 import ast

@@ -12,6 +12,15 @@ python3 -m dotenv run python3 \
   --max_new_tokens_override=120000 \
   --verbose
 
+Or,
+
+python3 -m dotenv run python3 scripts/putnam/putnamlike2_split_cots.py \
+  /workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/putnam_neurips_sonnet_nonthinking_experiment/anthropic__claude-3.7-sonnet_v0_all_and_terse.yaml \
+  --model_id "anthropic/claude-3.7-sonnet:thinking" \
+  --max_retries=1 \
+  --prefix=2 \
+  --verbose
+
 """
 
 import logging
@@ -60,12 +69,6 @@ from chainscope.typing import *
     help="Only process the first N items in the batch. If not set, process all items.",
 )
 @click.option(
-    "--timeout",
-    type=float,
-    default=None,
-    help="Request timeout in seconds (only supported for OpenRouter models)",
-)
-@click.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -79,7 +82,6 @@ def main(
     max_parallel: int | None,
     max_new_tokens_override: int | None,
     prefix: int | None,
-    timeout: float | None,
 ):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
     logging.warning("WARNING! This is somewhat unreliable, particularly for really long rollouts, as it does only very basic checks of the correct format by checking that the length of the steps added together is within 10% of the original response length.")
@@ -91,7 +93,6 @@ def main(
         max_parallel=max_parallel,
         max_new_tokens_override=max_new_tokens_override,
         prefix=prefix,
-        request_timeout=timeout,
     )
     path = responses_path
     suffix = "_splitted"
@@ -102,7 +103,7 @@ def main(
     path = Path(".".join(path_split))
 
     path = results.save(path=path)
-    logging.error(f"Saved split CoT responses to {path}")
+    print(f"Saved split CoT responses to {path}")
 
 
 if __name__ == "__main__":
