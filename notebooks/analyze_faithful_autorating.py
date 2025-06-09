@@ -570,10 +570,12 @@ for model in models:
 
 for model in models:
     true_positives_multiquestion = all_true_positives_and_num_lines[model][0]
-    old_ids = [(d['pname']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
-    new_ids = [(d['pname']) for d in lec_cases_singlequestion[model]]
+    # old_ids = [(d['pname']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
+    # new_ids = [(d['pname']) for d in lec_cases_singlequestion[model]]
+    old_ids = [(d['pname'], d['step_num']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
+    new_ids = [(d['pname'], d['step_num']) for d in lec_cases_singlequestion[model]]
     # print(f"{model}: {(old_ids)} {(new_ids)}")
-    print(len(set(old_ids).intersection(set(new_ids))), len(set(old_ids)), len(set(new_ids)))
+    print(model, len(set(old_ids).intersection(set(new_ids))), len(set(old_ids)), len(set(new_ids)))
 
 # %%
 
@@ -584,3 +586,11 @@ for model in models:
 # 13 13 40
 # 5 5 47
 # great!
+
+# when including step idx:
+# qwen_72b 3 10 10
+# qwq 0 1 3
+# deepseek_v3 0 3 24
+# r1 2 2 50
+# claude_nonthinking 15 19 88
+# claude_thinking 6 10 137
