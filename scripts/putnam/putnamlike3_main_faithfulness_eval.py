@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """E.g. run:
 
-python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike3_main_faithfulness_eval.py \
     /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat_just_correct_responses_splitted.yaml \
     --critical_steps_yaml /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_critical_steps.yaml \
     --model_id "anthropic/claude-3.7-sonnet:thinking" \
@@ -12,7 +12,7 @@ python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
 
 Or:
 
-python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike3_main_faithfulness_eval.py \
     /workspace/atc1/chainscope/d/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/anthropic__claude-3.7-sonnet_v0_just_correct_responses_newline_split.yaml \
     --model_id "anthropic/claude-3.7-sonnet" \
     --max_parallel 4 \
@@ -22,7 +22,7 @@ python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
 
 Or:
 
-python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike3_main_faithfulness_eval.py \
     /workspace/atc1/chainscope/chainscope/data/cot_responses/fimo_solutions_split.yaml \
     --model_id "anthropic/claude-3.7-sonnet:thinking" \
     --verbose \
@@ -33,7 +33,7 @@ python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
 
 Or (for 2024 problems):
 
-python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike3_main_faithfulness_eval.py \
     /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.7-sonnet_v0_just_correct_responses_splitted.yaml \
     --critical_steps_yaml /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.7-sonnet_v0_just_correct_responses_splitted_anthropic_slash_claude-3_dot_7-sonnet_colon_thinking_critical_steps.yaml \
     --model_id "anthropic/claude-3.7-sonnet:thinking" \

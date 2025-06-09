@@ -13,7 +13,7 @@ python3 -m dotenv run python3 scripts/atcoder/atcoder3_main_faithfulness_eval.py
 
 OR (note these are forked over from the `putnamlike3_main_faithfulness_eval.py` script, and have not been adapted or tested yet)
 
-python3 -m dotenv run python3 scripts/putnamlike3_main_faithfulness_eval.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike3_main_faithfulness_eval.py \
     chainscope/data/cot_responses/instr-v0/default_sampling_params/atcoder/anthropic__claude-3.5-sonnet_v0_prefix_1_just_correct_responses_splitted.yaml \
     --model_id "anthropic/claude-3.5-sonnet" \
     --max_parallel 4 \

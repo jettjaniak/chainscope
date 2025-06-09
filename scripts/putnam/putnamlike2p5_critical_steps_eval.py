@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """E.g. run:
 
-python3 -m dotenv run python3 scripts/putnamlike2p5_critical_steps_eval.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike2p5_critical_steps_eval.py \
     /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.5-sonnet_v1_prefix_1_just_correct_responses_splitted.yaml \
     --model_id "anthropic/claude-3.7-sonnet:thinking" \
     --verbose \

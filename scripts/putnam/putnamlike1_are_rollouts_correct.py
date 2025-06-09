@@ -2,7 +2,7 @@
 
 """E.g. run:
 
-python3 -m dotenv run python3 scripts/putnamlike1_are_rollouts_correct.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike1_are_rollouts_correct.py \
     /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/deepseek-chat.yaml \
     --model_id "anthropic/claude-3.5-sonnet" \
     --verbose \
@@ -10,9 +10,18 @@ python3 -m dotenv run python3 scripts/putnamlike1_are_rollouts_correct.py \
 
 Or (for 2024 problems):
 
-python3 -m dotenv run python3 scripts/putnamlike1_are_rollouts_correct.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike1_are_rollouts_correct.py \
     /workspace/atc1/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/ten_putnam_2024_problems/anthropic__claude-3.7-sonnet_v0.yaml \
-    --model_id "anthropic/claude-3.5-sonnet" \
+    --model_id "anthropic/claude-3.7-sonnet" \
+    --verbose
+
+Or (for the specific NeurIPS Sonnet non-thinking experiment):
+
+DO NOT SUBMIT--this one is currently failing...
+
+python3 -m dotenv run python3 scripts/putnam/putnamlike1_are_rollouts_correct.py \
+    /workspace/faith/chainscope/chainscope/data/cot_responses/instr-v0/default_sampling_params/putnam_neurips_sonnet_nonthinking_experiment/anthropic__claude-3.7-sonnet_v0.yaml \
+    --model_id "anthropic/claude-3.7-sonnet" \
     --verbose
 """
 

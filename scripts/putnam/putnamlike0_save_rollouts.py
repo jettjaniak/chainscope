@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """E.g. run:
 
-python3 -m dotenv run python3 scripts/putnamlike0_save_rollouts.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike0_save_rollouts.py \
     --dataset_type putnam_historical \
     --model_id "anthropic/claude-3.7-sonnet:thinking" \
     --open_router \
@@ -11,7 +11,7 @@ python3 -m dotenv run python3 scripts/putnamlike0_save_rollouts.py \
 
 Or:
 
-python3 -m dotenv run python3 scripts/putnamlike0_save_rollouts.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike0_save_rollouts.py \
     --dataset_type putnam_historical \
     --model_id "qwen/qwen-2.5-72b-instruct" \
     --max_retries=3 \
@@ -19,7 +19,7 @@ python3 -m dotenv run python3 scripts/putnamlike0_save_rollouts.py \
 
 Or (with temperature and 2024 Putnam problems):
 
-python3 -m dotenv run python3 scripts/putnamlike0_save_rollouts.py \
+python3 -m dotenv run python3 scripts/putnam/putnamlike0_save_rollouts.py \
     --dataset_type putnam_2024 \
     --model_id "anthropic/claude-3.7-sonnet:thinking" \
     --open_router \
@@ -27,6 +27,16 @@ python3 -m dotenv run python3 scripts/putnamlike0_save_rollouts.py \
     --max_retries=1 \
     --prefix=1 \
     --epochs=2 \
+    --verbose
+
+Or (for the specific NeurIPS Sonnet non-thinking experiment):
+
+python3 -m dotenv run python3 scripts/putnam/putnamlike0_save_rollouts.py \
+    --dataset_type putnam_neurips_sonnet_nonthinking \
+    --model_id "anthropic/claude-3.7-sonnet" \
+    --open_router \
+    --epochs=2 \
+    --max_retries=1 \
     --verbose
 
 """
@@ -62,6 +72,7 @@ from chainscope.typing import (
 class DatasetType(StrEnum):
     PUTNAM_HISTORICAL = "putnam_historical"  # For the historical dataset
     PUTNAM_2024 = "putnam_2024"  # For 2024 problems
+    PUTNAM_NEURIPS_SONNET_NONTHINKING = "putnam_neurips_sonnet_nonthinking" # For the specific NeurIPS experiment
 
     @property
     def dataset_id(self) -> str:
@@ -71,6 +82,8 @@ class DatasetType(StrEnum):
                 return "filtered_putnambench"
             case DatasetType.PUTNAM_2024:
                 return "ten_putnam_2024_problems"
+            case DatasetType.PUTNAM_NEURIPS_SONNET_NONTHINKING:
+                return "putnam_neurips_sonnet_nonthinking_experiment"
 
     @property
     def description(self) -> str:
@@ -80,6 +93,8 @@ class DatasetType(StrEnum):
                 return "Historical Putnam Competition Problems"
             case DatasetType.PUTNAM_2024:
                 return "Putnam Competition Problems 2024"
+            case DatasetType.PUTNAM_NEURIPS_SONNET_NONTHINKING:
+                return "Putnam Problems from NeurIPS Sonnet Non-Thinking Experiment"
 
     @property
     def yaml_path(self) -> str:
@@ -89,6 +104,11 @@ class DatasetType(StrEnum):
                 return "d/putnam2/minimal_fork_of_putnambench_with_clear_answers.yaml"
             case DatasetType.PUTNAM_2024:
                 return "d/putnam2/ten_putnam_2024_problems.yaml"
+            case DatasetType.PUTNAM_NEURIPS_SONNET_NONTHINKING:
+                # This path should be relative to the workspace root if the script is run from there,
+                # or it needs to be an absolute path or adjusted based on execution context.
+                # For now, assuming it's relative to the workspace root as per user's notebook file.
+                return "chainscope/data/cot_responses/instr-v0/default_sampling_params/filtered_putnambench/putnam_neurips_experiment_claude_sonnet_nonthinking.yaml"
 
 
 def load_putnam_results_as_df(yaml_path: Path) -> pd.DataFrame:
