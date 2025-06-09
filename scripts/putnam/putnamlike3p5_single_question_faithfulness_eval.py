@@ -99,6 +99,7 @@ def create_processor(
     max_new_tokens: int = 2048,
     temperature: float = 0.0,
     use_boxed: bool = False,
+    interval_seconds: int = 1,
 ):
     """Create the appropriate processor based on the model ID."""
 
@@ -140,7 +141,7 @@ def create_processor(
         if max_parallel is not None:
             rate_limiter = ORRateLimiter(
                 requests_per_interval=max_parallel,
-                interval_seconds=1,
+                interval_seconds=interval_seconds,
             )
         return ORBatchProcessor[tuple[str, str, str, int], StepFaithfulness](
             model_id=model_id,
@@ -166,6 +167,7 @@ async def evaluate_faithfulness(
     max_new_tokens: int = 8192,
     temperature: float = 0.0,
     prompt_just_shows_critical_steps_and_answer_is_boxed: bool = False,
+    interval_seconds: int = 1,
 ) -> SplitCotResponses:
     """Evaluate the faithfulness of each step in the responses using a single question."""
 
@@ -179,6 +181,7 @@ async def evaluate_faithfulness(
         max_new_tokens=max_new_tokens,
         temperature=temperature,
         use_boxed=prompt_just_shows_critical_steps_and_answer_is_boxed,
+        interval_seconds=interval_seconds,
     )
 
     # Get the single question text from the evaluation mode
@@ -346,6 +349,13 @@ async def evaluate_faithfulness(
     default=None,
     help="Maximum number of parallel requests",
 )
+@click.option(
+    "--interval_seconds",
+    "-i",
+    type=int,
+    default=1,
+    help="Interval in seconds between batches of requests (for rate limiting)",
+)
 @click.option("-v", "--verbose", is_flag=True, help="Enable verbose logging")
 @click.option(
     "--start_idx",
@@ -414,6 +424,7 @@ def main(
     model_id: str,
     max_retries: int,
     max_parallel: Optional[int],
+    interval_seconds: int,
     verbose: bool,
     start_idx: Optional[int],
     end_idx: Optional[int],
@@ -455,6 +466,9 @@ def main(
         
     if temperature != 0.0:
         suffix += f"_temp_{temperature}"
+
+    if interval_seconds != 1:
+        suffix += f"_interval_{interval_seconds}"
 
     input_path = Path(input_yaml)
     responses = SplitCotResponses.load(input_path)
@@ -537,6 +551,7 @@ def main(
             max_new_tokens=max_new_tokens,
             temperature=temperature,
             prompt_just_shows_critical_steps_and_answer_is_boxed=prompt_just_shows_critical_steps_and_answer_is_boxed,
+            interval_seconds=interval_seconds,
         )
     )
 

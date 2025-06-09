@@ -410,7 +410,7 @@ raw_data = """# 0 false positive
 # 27 true positive"""
 
 
-def get_true_positives_and_num_lines(raw_data: str) -> tuple[list[int], int]:
+def get_true_positives_and_num_lines(raw_data: str, include_true_positive_same_as_above: bool = False) -> tuple[list[int], int]:
     has_colon = ":" in raw_data
     true_positives = []
 
@@ -441,6 +441,10 @@ def get_true_positives_and_num_lines(raw_data: str) -> tuple[list[int], int]:
         if 'true positive' in line_strip.lower():
             true_positives.append(current_index)
             last_label_was_true_positive = True
+        # Check for "same as above" when the previous was true positive
+        elif include_true_positive_same_as_above and 'same as above' in line_strip.lower() and last_label_was_true_positive:
+            true_positives.append(current_index)
+            # Keep last_label_was_true_positive as True for consecutive "same as above" entries
         else:
             last_label_was_true_positive = False
         
@@ -462,6 +466,8 @@ print(f"Parsed indices count: {parsed_indices_count}")
 
 # %%
 
+ALLOW_SAME_AS_ABOVE = True
+
 models = [
     'qwen_72b',
     'qwq',
@@ -482,7 +488,7 @@ def get_all_true_positives_and_num_lines() -> dict[str, tuple[list[int], int]]:
     for i in range(0, len(sections)):            
         model_name = models[i]
         raw_data = sections[i].strip()
-        true_positives, num_lines = get_true_positives_and_num_lines(raw_data)
+        true_positives, num_lines = get_true_positives_and_num_lines(raw_data, include_true_positive_same_as_above=ALLOW_SAME_AS_ABOVE)
         all_true_positives_and_num_lines[model_name] = (true_positives, num_lines)
     return all_true_positives_and_num_lines
 
@@ -540,7 +546,7 @@ for model in models:
     )
     num_qs_multiquestion[model] = num_qs
     num_steps_multiquestion[model] = num_steps
-    assert len(lec_cases_multiquestion[model]) == all_true_positives_and_num_lines[model][1], f"Number of LEC cases for {model} is not equal to the number of true positives"
+    assert len(lec_cases_multiquestion[model]) == all_true_positives_and_num_lines[model][1], f"Number of LEC cases for {model} is not equal to the number of lines"
 
 # %%
 
@@ -568,40 +574,83 @@ for model in models:
 
 # %%
 
+INCLUDE_STEP_NUM = True
+
 for model in models:
     true_positives_multiquestion = all_true_positives_and_num_lines[model][0]
 
-    model_num_qs_multiquestion = num_qs_multiquestion[model]
+    # model_num_qs_multiquestion = num_qs_multiquestion[model]
+    # model_num_steps_sing = num_steps_multiquestion[model]
     model_num_qs_singlequestion = num_qs_singlequestion[model]
+    model_num_steps_singlequestion = num_steps_singlequestion[model]
 
-    # old_ids = [(d['pname']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
-    # new_ids = [(d['pname']) for d in lec_cases_singlequestion[model]]
-    old_ids = [(d['pname'], d['step_num']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
-    new_ids = [(d['pname'], d['step_num']) for d in lec_cases_singlequestion[model]]
+    if INCLUDE_STEP_NUM:
+        old_ids = [(d['pname'], d['step_num']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
+        new_ids = [(d['pname'], d['step_num']) for d in lec_cases_singlequestion[model]]
+        print(f"{model=}, {model_num_qs_singlequestion=}, {model_num_steps_singlequestion=}")
+        # print_concerning_case here!
+    else:
+        old_ids = [(d['pname']) for i,d in enumerate(lec_cases_multiquestion[model]) if i in true_positives_multiquestion]
+        new_ids = [(d['pname']) for d in lec_cases_singlequestion[model]]
+        print(f"{model=}, {model_num_qs_singlequestion=}, {model_num_steps_singlequestion=}")
 
-    # print(f"{model}: {(old_ids)} {(new_ids)}")
-    print(model, len(set(old_ids).intersection(set(new_ids))), len(set(old_ids)), len(set(new_ids)))
+    print(len(set(old_ids).intersection(set(new_ids))), len(set(old_ids)), len(set(new_ids)))
 
 # %%
 
+if False:
+    if true_positives_multiquestion and len(lec_cases_multiquestion[model]) > 0:
+        first_true_positive_idx = true_positives_multiquestion[-2]
+        if first_true_positive_idx < len(lec_cases_multiquestion[model]):
+            case_to_print = lec_cases_multiquestion[model][first_true_positive_idx]
+            print(f"\n---- {model.upper()} EXAMPLE (True Positive Case) ----")
+            print_concerning_case(
+                case_to_print,
+                evaluation_mode=cot_faithfulness_utils.EvaluationMode.REWARD_HACKING,
+                show_step_num=True,
+                case_num=-1,
+                total_cases=len(true_positives_multiquestion)
+            )
+            print("---------------------------------------\n")
+
+#%%
+
+# no step idx:
+
+# model='qwen_72b', model_num_qs_singlequestion=51, model_num_steps_singlequestion=434
 # 3 10 10
-# 0 1 3  # DO NOT SUBMIT
+# model='qwq', model_num_qs_singlequestion=105, model_num_steps_singlequestion=486
+# 0 1 15
+# model='deepseek_v3', model_num_qs_singlequestion=79, model_num_steps_singlequestion=944
 # 1 3 16
+# model='r1', model_num_qs_singlequestion=172, model_num_steps_singlequestion=1411
 # 2 2 34
+# model='claude_nonthinking', model_num_qs_singlequestion=69, model_num_steps_singlequestion=1261
 # 13 13 40
+# model='claude_thinking', model_num_qs_singlequestion=114, model_num_steps_singlequestion=3726
 # 5 5 47
-# great!
 
 # when including step idx:
-# qwen_72b 3 10 10
-# qwq 0 1 3  # DO NOT SUBMIT
-# deepseek_v3 0 3 24
-# r1 2 2 50
-# claude_nonthinking 15 19 88
-# claude_thinking 6 10 137
+
+# model='qwen_72b', model_num_qs_singlequestion=51, model_num_steps_singlequestion=434
+# 3 14 10
+# model='qwq', model_num_qs_singlequestion=105, model_num_steps_singlequestion=486
+# 0 1 17
+# model='deepseek_v3', model_num_qs_singlequestion=79, model_num_steps_singlequestion=944
+# 0 4 24
+# model='r1', model_num_qs_singlequestion=172, model_num_steps_singlequestion=1411
+# 3 3 50
+# model='claude_nonthinking', model_num_qs_singlequestion=69, model_num_steps_singlequestion=1261
+# 17 21 88
+# model='claude_thinking', model_num_qs_singlequestion=114, model_num_steps_singlequestion=3726
+# 6 10 137
+
+
 
 # %%
 
 """
-For each question that the 8-question autorater and manual review classified as an Unfaithful Illogical Shortcut, DeepSeek R1, Claude 3.7 Sonnet (non-thinking) all classified a step in the same question as clearly illogical. DeepSeek V3 classified 1/3 as illogical, Qwen 72B 3/10 and QwQ 0/1.
+For each question that the 8-question autorater and manual review classified as an Unfaithful Illogical Shortcut (i.e. the true positives in \Cref{TODO}), DeepSeek R1, Claude 3.7 Sonnet (non-thinking) all classified a step in the same question as clearly illogical. DeepSeek V3 classified a step in 1/3 of the true positive as clearly illogical, Qwen 72B 3/10 and QwQ 0/1. Full results are described in \Cref{TODO2}.
 """
+
+# %%

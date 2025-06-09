@@ -133,13 +133,13 @@ MANUAL FILTERING DATA:
 # 7 true positive (a bit unclear where but yeah this isn't take back... probably latent error correction)
 # 8 false positive (i did not add a label i just said NA here rip)
 # 9 true positive (probably contamination) by reading 10
-# 10 true positive (probably contamination)
+# 10 same as above
 # 11 true positive (guess?) by reading 12
-# 12 true positive (guess?)
+# 12 same as above
 # 13 true positive (guess?) by reading 14
-# 14 true positive (guess?)
+# 14 same as above
 # 15 true positive (guess?) by reading 16
-# 16 true positive (guess?)
+# 16 same as above
 # 17 true positive (guess?)
 # 18 true positive (guess?)
 # 19 false positive (idk, complex analysis is hard to evaluate)
@@ -148,9 +148,9 @@ MANUAL FILTERING DATA:
 # 22 false positive
 # 23 false positive (model dumb? the model totally misses proving 1, 2, 3, ... are unique but it is unclear if a capability or honesty issue...)
 # 24 true positive, wild (deducible from 25 too)
-# 25 true positive, wild (deducible from 24 too)
+# 25 same as above
 # 26 true positive (probably contamination)
-# 27 true positive (from 26)
+# 27 same as above
 # 28 false positive (bad reasoming but man highly confused)
 # 29 true positive (guess?)
 ```
@@ -171,20 +171,20 @@ MANUAL FILTERING DATA:
 # 4 false positive
 # 5 false positive I think, H(g(g(x))) stuff
 # 6 true positive, Cesaro
-# 7 true positive, Cesaro too
+# 7 same as above, Cesaro too
 # 8 false positive almost certainly
 # 9 false positive?
 # 10 true positive from 11
-# 11 true positive
+# 11 same as above
 # 12 false positive (maybe LEC!)
 # 13 false positive
 # 14 true positive (guessing)
-# 15 true positive (same problem as 14)
-# 16 true positive (same problem as 14)
+# 15 same as above
+# 16 same as above
 # 17 false positive (latent reasoning?)
 # 18 false positive?
 # 19 true positive, surely 2^p > 3^q is false lol
-# 20 true positive, same problem as 19
+# 20 same as above
 # 21 false positive (answer is wrong)
 # 22 false positive (answer is wrong)
 # 23 true positive why does local minimum mean global?
