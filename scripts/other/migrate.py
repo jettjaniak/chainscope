@@ -1,21 +1,12 @@
 #!/usr/bin/env python3
 
+import yaml
 from dataclass_wizard import DumpMeta, LoadMeta
 
-from chainscope.typing import (
-    DATA_DIR,
-    CotEval,
-    CotEvalResult,
-    CotResponses,
-    DatasetParams,
-    DirectEval,
-    DirectEvalProbs,
-    OldCotEval,
-    Properties,
-    QsDataset,
-    Question,
-    SamplingParams,
-)
+from chainscope.typing import (DATA_DIR, CotEval, CotEvalResult, CotResponses,
+                               DatasetParams, DirectEval, DirectEvalProbs,
+                               OldCotEval, Properties, QsDataset, Question,
+                               SamplingParams)
 
 
 def migrate_questions() -> None:
@@ -108,37 +99,12 @@ def migrate_cot_responses() -> None:
     for response_file in cot_responses_dir.rglob("*.yaml"):
         print(f"Processing {response_file}")
         try:
-            # Load with LISP key transform
-            LoadMeta(
-                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="LISP"
-            ).bind_to(CotResponses)
-            DumpMeta(key_transform="LISP").bind_to(CotResponses)
-            LoadMeta(
-                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="LISP"
-            ).bind_to(DatasetParams)
-            DumpMeta(key_transform="LISP").bind_to(DatasetParams)
-            LoadMeta(
-                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="LISP"
-            ).bind_to(SamplingParams)
-            DumpMeta(key_transform="LISP").bind_to(SamplingParams)
-
-            cot_responses = CotResponses.load(response_file)
-
-            # dump with SNAKE key transform
-            LoadMeta(
-                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
-            ).bind_to(CotResponses)
-            DumpMeta(key_transform="SNAKE").bind_to(CotResponses)
-            LoadMeta(
-                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
-            ).bind_to(DatasetParams)
-            DumpMeta(key_transform="SNAKE").bind_to(DatasetParams)
-            LoadMeta(
-                v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
-            ).bind_to(SamplingParams)
-            DumpMeta(key_transform="SNAKE").bind_to(SamplingParams)
-
-            cot_responses.to_yaml_file(response_file)
+            with open(response_file, "r") as f:
+                data = yaml.safe_load(f)
+                if "fsp_by_resp_id" not in data:
+                    data["fsp_by_resp_id"] = None
+                with open(response_file, "w") as f:
+                    yaml.dump(data, f)
         except Exception:
             print(f"Skipping {response_file} due to error")
 
@@ -264,7 +230,7 @@ def migrate_old_cot_evals() -> None:
 if __name__ == "__main__":
     # migrate_questions()
     # migrate_direct_eval()
-    # migrate_cot_responses()
+    migrate_cot_responses()
     # migrate_cot_evals()
-    migrate_old_cot_evals()
+    # migrate_old_cot_evals()
     # migrate_properties()
