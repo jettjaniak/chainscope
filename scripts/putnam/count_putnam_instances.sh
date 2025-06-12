@@ -1,0 +1,1 @@
+python3 -c "import yaml; f=open('chainscope/data/cot_responses/instr-v0/T0.0_P1.0_M32768/filtered_putnambench/Qwen__QwQ-32B-Preview_v0.yaml'); d=yaml.safe_load(f); print(sum(len(v) for v in d['responses_by_qid'].values()))"

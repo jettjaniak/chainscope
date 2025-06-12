@@ -1,0 +1,1 @@
+for f in chainscope/data/cot_responses/instr-wm/T0.7_P0.9_M2000/gt_NO_1/wm-{book,movie}-{length,release}_gt_NO_1_*_non-ambiguous-obscure-or-close-call-2/qwen__qwq-32b-preview.yaml; do echo -n "$f: "; python3 -c "import yaml; f=open('$f'); d=yaml.safe_load(f); print(sum(len(v) for v in d['responses_by_qid'].values()))"; done
