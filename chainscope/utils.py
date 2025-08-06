@@ -39,13 +39,13 @@ MODELS_MAP = {
     "O1P": "openai/o1-preview",
     "O1": "openai/o1",
     # Gemini
-    "GF1.5": "google/gemini-flash-1.5-8b",
+    "GF1.5": "google/gemini-flash-1.5",
     "GF2": "google/gemini-2.0-flash-exp:free",
     "GF2T": "google/gemini-2.0-flash-thinking-exp:free",
-    "GF2.5": "google/gemini-2.5-flash-preview",
-    "GF2.5T": "google/gemini-2.5-flash-preview:thinking",
+    "GF2.5": "google/gemini-2.5-flash",
+    "GF2.5T": "google/gemini-2.5-flash:thinking",
     "GP1.5": "google/gemini-pro-1.5",
-    "GP2.5": "google/gemini-2.5-pro-preview",
+    "GP2.5": "google/gemini-2.5-pro",
     # Anthropic
     "C3H": "anthropic/claude-3-haiku",
     "C3.5H": "anthropic/claude-3.5-haiku",
