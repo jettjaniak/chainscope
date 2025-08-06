@@ -231,11 +231,14 @@ def submit(
             )
             if results:
                 # Create and save CotResponses
+                new_responses: list[tuple[QuestionResponseId, str, str | None]] = [
+                    (q_resp_id, response, None) for q_resp_id, response in results
+                ]
                 cot_responses = create_cot_responses(
                     responses_by_qid=existing_responses.responses_by_qid
                     if existing_responses
                     else None,
-                    new_responses=results,
+                    new_responses=new_responses,
                     model_id=model_id,
                     instr_id=instr_id,
                     ds_params=ds_params,
@@ -505,11 +508,14 @@ def process_batch(batch_path: Path, verbose: bool):
             existing_responses = CotResponses.load(response_path)
             logging.warning(f"Loaded existing responses from {response_path}")
 
+        new_responses: list[tuple[QuestionResponseId, str, str | None]] = [
+            (q_resp_id, response, None) for q_resp_id, response in results
+        ]
         cot_responses = create_cot_responses(
             responses_by_qid=existing_responses.responses_by_qid
             if existing_responses
             else None,
-            new_responses=results,
+            new_responses=new_responses,
             model_id=batch_info.evaluated_model_id,
             instr_id=batch_info.instr_id,
             ds_params=ds_params,
