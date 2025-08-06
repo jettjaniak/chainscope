@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -30,141 +31,30 @@ ANTHROPIC_MODEL_ALIASES = {
 }
 
 
+# Hard limit of maximum requests per minute to prevent excessive API usage
+MAX_ANTHROPIC_REQUESTS_LIMIT = 100
+
 MAX_THINKING_TIMEOUT = 5 * 60  # 5 minutes
 
 
 @dataclass
-class AnthropicLimits:
-    requests_limit: int
-    requests_remaining: int
-    requests_reset: str
-    tokens_limit: int
-    tokens_remaining: int
-    tokens_reset: str
-    input_tokens_limit: int
-    input_tokens_remaining: int
-    input_tokens_reset: str
-    output_tokens_limit: int
-    output_tokens_remaining: int
-    output_tokens_reset: str
-    retry_after: float | None = None
-    org_tpm_remaining: int = 80000  # Organization tokens per minute limit
-    org_tpm_reset: str = ""  # When the org TPM limit resets
-
-
-def get_anthropic_limits() -> AnthropicLimits:
-    """Extract rate limits from Anthropic API response headers."""
-    client = Anthropic()
-    response = client.messages.with_raw_response.create(
-        model="claude-3-5-sonnet-20240620",
-        messages=[{"role": "user", "content": "hi"}],
-        max_tokens=1,
-    )
-    return AnthropicLimits(
-        requests_limit=int(
-            response.headers.get("anthropic-ratelimit-requests-limit", 0)
-        ),
-        requests_remaining=int(
-            response.headers.get("anthropic-ratelimit-requests-remaining", 0)
-        ),
-        requests_reset=response.headers.get("anthropic-ratelimit-requests-reset", ""),
-        tokens_limit=int(response.headers.get("anthropic-ratelimit-tokens-limit", 0)),
-        tokens_remaining=int(
-            response.headers.get("anthropic-ratelimit-tokens-remaining", 0)
-        ),
-        tokens_reset=response.headers.get("anthropic-ratelimit-tokens-reset", ""),
-        input_tokens_limit=int(
-            response.headers.get("anthropic-ratelimit-input-tokens-limit", 0)
-        ),
-        input_tokens_remaining=int(
-            response.headers.get("anthropic-ratelimit-input-tokens-remaining", 0)
-        ),
-        input_tokens_reset=response.headers.get(
-            "anthropic-ratelimit-input-tokens-reset", ""
-        ),
-        output_tokens_limit=int(
-            response.headers.get("anthropic-ratelimit-output-tokens-limit", 0)
-        ),
-        output_tokens_remaining=int(
-            response.headers.get("anthropic-ratelimit-output-tokens-remaining", 0)
-        ),
-        output_tokens_reset=response.headers.get(
-            "anthropic-ratelimit-output-tokens-reset", ""
-        ),
-        retry_after=float(response.headers.get("retry-after", 0))
-        if "retry-after" in response.headers
-        else None,
-        org_tpm_remaining=int(
-            response.headers.get("anthropic-ratelimit-org-tpm-remaining", 80000)
-        ),
-        org_tpm_reset=response.headers.get("anthropic-ratelimit-org-tpm-reset", ""),
-    )
-
-
-@dataclass
 class ANRateLimiter:
-    requests_per_interval: int
-    tokens_per_interval: int
-    interval_seconds: int
-    input_tokens: float = field(init=False)
-    output_tokens: float = field(init=False)
-    requests: float = field(init=False)
-    last_update: float = field(init=False)
-    _lock: asyncio.Lock = field(init=False)
-    client: Anthropic = field(default_factory=Anthropic)
-    org_tpm_limit: int = 80000
-    org_tpm_usage: float = field(init=False)
-    org_tpm_last_update: float = field(init=False)
+    """A simple rate limiter that uses a semaphore to limit concurrent requests."""
+
+    _semaphore: asyncio.Semaphore = field(init=False)
 
     def __post_init__(self):
-        self.input_tokens = self.tokens_per_interval
-        self.output_tokens = self.tokens_per_interval
-        self.requests = self.requests_per_interval
-        self.last_update = time.time()
-        self._lock = asyncio.Lock()
-        self.org_tpm_usage = 0
-        self.org_tpm_last_update = time.time()
-
+        self._semaphore = asyncio.Semaphore(MAX_ANTHROPIC_REQUESTS_LIMIT)
         logging.info(
-            f"ANRateLimiter initialized with {self.requests_per_interval} requests, "
-            f"{self.tokens_per_interval} tokens per {self.interval_seconds} seconds, "
-            f"and org TPM limit of {self.org_tpm_limit}"
+            f"ANRateLimiter initialized with limit of {MAX_ANTHROPIC_REQUESTS_LIMIT} "
+            "parallel requests"
         )
 
-    async def acquire(self, prompt: str, model: str):
-        async with self._lock:
-            # Everything else was too complicated to implement
-            await asyncio.sleep(4)
+    async def acquire(self):
+        await self._semaphore.acquire()
 
-    def update_token_usage(self, output_tokens: int):
-        """Update output token count after receiving a response"""
-        self.output_tokens = max(0, self.output_tokens - output_tokens)
-        # Update org TPM usage with actual tokens used
-        now = time.time()
-        time_passed = now - self.org_tpm_last_update
-        self.org_tpm_usage = max(
-            0,
-            self.org_tpm_usage * (1 - time_passed / 60),  # Decay over 1 minute
-        )
-        self.org_tpm_usage += output_tokens
-        self.org_tpm_last_update = now
-
-    async def acquire_with_backoff(self, prompt: str, model: str, max_retries: int = 3):
-        """Acquire rate limit with exponential backoff retry logic"""
-        import random  # Add at top of file if not already present
-
-        for attempt in range(max_retries):
-            try:
-                await self.acquire(prompt, model)
-                return
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
-                wait_time = (2**attempt) + random.uniform(0, 1)
-                logging.warning(
-                    f"Rate limit acquisition failed, retrying in {wait_time:.2f}s: {str(e)}"
-                )
-                await asyncio.sleep(wait_time)
+    def release(self):
+        self._semaphore.release()
 
 
 def is_anthropic_thinking_model(model_id: str) -> bool:
@@ -240,14 +130,13 @@ async def generate_an_response_async(
     model_id = ANTHROPIC_MODEL_ALIASES[model_id]
 
     for attempt in range(max_retries):
+        if rate_limiter:
+            await rate_limiter.acquire()
         try:
             if attempt > 0:
                 logging.info(
                     f"Retry attempt {attempt} of {max_retries} for generating a response"
                 )
-
-            if rate_limiter:
-                await rate_limiter.acquire_with_backoff(prompt, model_id)
 
             create_params = {
                 "model": model_id,
@@ -272,10 +161,6 @@ async def generate_an_response_async(
 
             # Use acreate instead of create for async operation
             an_response = await client.messages.create(**create_params)
-
-            if rate_limiter:
-                logging.info(f"Got usage: {an_response.usage}")
-                rate_limiter.update_token_usage(an_response.usage.output_tokens)
 
             if (
                 not an_response
@@ -322,7 +207,7 @@ async def generate_an_response_async(
             continue
 
         except Exception as e:
-            if attempt == max_retries:
+            if attempt == max_retries -1:
                 logging.warning(
                     f"Failed to process response after {max_retries} retries "
                     f"for model {model_id}: {str(e)}"
@@ -332,6 +217,9 @@ async def generate_an_response_async(
                 f"Error on attempt {attempt + 1} for model {model_id}: {str(e)}, retrying..."
             )
             continue
+        finally:
+            if rate_limiter:
+                rate_limiter.release()
 
     return None
 
@@ -390,12 +278,7 @@ class ANBatchProcessor(BatchProcessor[BatchItem, BatchResult]):
             return []
 
         if self.rate_limiter is None:
-            limits = get_anthropic_limits()
-            self.rate_limiter = ANRateLimiter(
-                requests_per_interval=limits.requests_limit,
-                tokens_per_interval=limits.tokens_limit,
-                interval_seconds=60,
-            )
+            self.rate_limiter = ANRateLimiter()
 
         async def process_single(
             item: BatchItem, prompt: str
