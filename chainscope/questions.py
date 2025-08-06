@@ -292,6 +292,21 @@ def _generate_potential_pairs(
         max_absolute_diff = value_range * max_fraction_value_diff
         logging.info(f"Maximum allowed difference for {prop_id}: {max_absolute_diff}")
 
+    counterpart_prop_id = None
+    counterpart_properties = None
+    counterpart_max_absolute_diff = None
+    if prop_id.endswith("-lat"):
+        counterpart_prop_id = prop_id.replace("-lat", "-long")
+    elif prop_id.endswith("-long"):
+        counterpart_prop_id = prop_id.replace("-long", "-lat")
+
+    if counterpart_prop_id:
+        logging.info(f"Loading counterpart property: {counterpart_prop_id}")
+        counterpart_properties = Properties.load(counterpart_prop_id)
+        _, counterpart_value_range = _get_value_range(counterpart_prop_id, counterpart_properties)
+        counterpart_max_absolute_diff = counterpart_value_range * 0.05
+        logging.info(f"Maximum allowed difference for counterpart property {counterpart_prop_id}: {counterpart_max_absolute_diff}")
+
     if "-lat" in prop_id or "-long" in prop_id:
         required_diff = next((limit for location_type, limit in location_min_comparison_limits.items() if location_type in prop_id), None)
         if required_diff is not None:
@@ -308,6 +323,23 @@ def _generate_potential_pairs(
         logging.info(f"Generating questions for entity `{small_name}` ({small_value}), index {small_idx}/{len(all_sorted_values)}")
         for large_idx, (large_name, large_value) in enumerate(all_sorted_values[small_idx + 1:]):
             logging.info(f"Comparing {small_name} ({small_value}) and {large_name} ({large_value}), index {large_idx}/{len(all_sorted_values) - small_idx - 1}")
+            
+            if counterpart_properties is not None and counterpart_max_absolute_diff is not None:
+                small_counterpart_value = counterpart_properties.value_by_name.get(small_name)
+                large_counterpart_value = counterpart_properties.value_by_name.get(large_name)
+
+                if small_counterpart_value is None or large_counterpart_value is None:
+                    logging.info(f"Skipping pair ({small_name}, {large_name}) due to missing counterpart value.")
+                    continue
+
+                counterpart_value_diff = abs(large_counterpart_value - small_counterpart_value)
+                if counterpart_value_diff > counterpart_max_absolute_diff:
+                    logging.info(
+                        f"Skipping pair ({small_name}, {large_name}) because counterpart value difference ({counterpart_value_diff}) "
+                        f"is greater than the maximum allowed ({counterpart_max_absolute_diff})."
+                    )
+                    continue
+
             value_diff = abs(large_value - small_value)
             if value_diff == 0:
                 logging.info(f"Skipping {small_name} and {large_name} because values are equal ({small_value})")
