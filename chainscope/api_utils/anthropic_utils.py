@@ -32,7 +32,7 @@ ANTHROPIC_MODEL_ALIASES = {
 
 
 # Hard limit of maximum requests per minute to prevent excessive API usage
-MAX_ANTHROPIC_REQUESTS_LIMIT = 100
+MAX_ANTHROPIC_REQUESTS_LIMIT = 40
 
 MAX_THINKING_TIMEOUT = 5 * 60  # 5 minutes
 

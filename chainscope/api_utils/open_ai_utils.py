@@ -2,15 +2,12 @@ import asyncio
 import json
 import logging
 import os
-import random
 import tempfile
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable
 
 import openai
-import requests
 from openai.types.chat.chat_completion_message import Annotation
 from tqdm.asyncio import tqdm
 
@@ -19,191 +16,27 @@ from chainscope.api_utils.batch_processor import (BatchItem, BatchProcessor,
 from chainscope.typing import *
 
 # Hard limit of maximum requests per minute to prevent excessive API usage
-MAX_OPEN_AI_REQUESTS_LIMIT = 200
-
-
-@dataclass
-class OpenAILimits:
-    requests_per_interval: int
-    tokens_per_interval: int
-    remaining_requests: int
-    remaining_tokens: int
-    requests_reset_seconds: float
-    tokens_reset_seconds: float
+MAX_OPEN_AI_REQUESTS_LIMIT = 100
 
 
 @dataclass
 class OARateLimiter:
-    requests_per_interval: int
-    interval_seconds: int
-    tokens_per_interval: int
-    tokens: float = field(init=False)
-    request_tokens: float = field(init=False)
-    last_update: float = field(init=False)
-    _lock: asyncio.Lock = field(init=False)
+    """A simple rate limiter that uses a semaphore to limit concurrent requests."""
+
+    _semaphore: asyncio.Semaphore = field(init=False)
 
     def __post_init__(self):
-        self.tokens = self.tokens_per_interval
-        self.request_tokens = self.requests_per_interval
-        self.last_update = time.time()
-        self._lock = asyncio.Lock()
+        self._semaphore = asyncio.Semaphore(MAX_OPEN_AI_REQUESTS_LIMIT)
+        logging.info(
+            f"OARateLimiter initialized with limit of {MAX_OPEN_AI_REQUESTS_LIMIT} "
+            "parallel requests"
+        )
 
     async def acquire(self):
-        async with self._lock:
-            now = time.time()
-            time_passed = now - self.last_update
+        await self._semaphore.acquire()
 
-            # Add a minimum time check to prevent excessive updates
-            if time_passed < 0.001:  # 1ms minimum
-                time_passed = 0.001
-
-            # Replenish tokens based on time passed
-            self.tokens = min(
-                self.tokens_per_interval,
-                self.tokens
-                + (time_passed * self.tokens_per_interval / self.interval_seconds),
-            )
-            self.request_tokens = min(
-                self.requests_per_interval,
-                self.request_tokens
-                + (time_passed * self.requests_per_interval / self.interval_seconds),
-            )
-
-            # Calculate wait time if either token type is depleted
-            if self.tokens < 1 or self.request_tokens < 1:
-                tokens_wait = (
-                    0
-                    if self.tokens >= 1
-                    else (
-                        (1 - self.tokens)
-                        * self.interval_seconds
-                        / self.tokens_per_interval
-                    )
-                )
-                requests_wait = (
-                    0
-                    if self.request_tokens >= 1
-                    else (
-                        (1 - self.request_tokens)
-                        * self.interval_seconds
-                        / self.requests_per_interval
-                    )
-                )
-                wait_time = max(tokens_wait, requests_wait)
-
-                # Add a small buffer to prevent edge cases
-                wait_time *= 1.1
-
-                logging.info(f"Rate limit reached. Waiting {wait_time:.2f} seconds...")
-                await asyncio.sleep(wait_time)
-
-                # Recalculate tokens after waiting
-                now = time.time()
-                time_passed = now - self.last_update
-                self.tokens = min(
-                    self.tokens_per_interval,
-                    self.tokens
-                    + (time_passed * self.tokens_per_interval / self.interval_seconds),
-                )
-                self.request_tokens = min(
-                    self.requests_per_interval,
-                    self.request_tokens
-                    + (
-                        time_passed * self.requests_per_interval / self.interval_seconds
-                    ),
-                )
-
-            self.tokens = max(0, self.tokens - 1)
-            self.request_tokens = max(0, self.request_tokens - 1)
-            self.last_update = now
-
-    async def acquire_with_backoff(self, max_retries=3):
-        for attempt in range(max_retries):
-            try:
-                await self.acquire()
-                return
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
-                wait_time = (2**attempt) + random.uniform(0, 1)
-                logging.warning(
-                    f"Rate limit acquisition failed, retrying in {wait_time:.2f}s: {str(e)}"
-                )
-                await asyncio.sleep(wait_time)
-
-
-def parse_time_to_seconds(time_str: str) -> float:
-    """Convert time string like '1s', '6m0s', or '6ms' to seconds."""
-    if not time_str:
-        return 0.0
-
-    total_seconds = 0.0
-    current_num = ""
-
-    i = 0
-    while i < len(time_str):
-        if time_str[i].isdigit():
-            current_num += time_str[i]
-            i += 1
-        elif time_str[i : i + 2] == "ms":
-            if current_num:
-                total_seconds += float(current_num) / 1000
-            current_num = ""
-            i += 2
-        elif time_str[i] == "m" and (i + 1 >= len(time_str) or time_str[i + 1] != "s"):
-            if current_num:
-                total_seconds += float(current_num) * 60
-            current_num = ""
-            i += 1
-        elif time_str[i] == "s":
-            if current_num:
-                total_seconds += float(current_num)
-            current_num = ""
-            i += 1
-        else:
-            i += 1
-
-    return total_seconds
-
-
-def get_openai_limits() -> OpenAILimits:
-    """Get rate limits from OpenAI API headers."""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY is not set")
-
-    # Make a minimal API call to get the headers
-    response = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "gpt-3.5-turbo",
-            "messages": [{"role": "user", "content": "hi"}],
-            "max_tokens": 1,
-        },
-    )
-
-    if response.status_code != 200:
-        raise ValueError(f"Failed to get OpenAI limits: {response.text}")
-
-    headers = response.headers
-    logging.info(f"OpenAI headers: {headers}")
-
-    return OpenAILimits(
-        requests_per_interval=min(
-            int(headers["x-ratelimit-limit-requests"]), MAX_OPEN_AI_REQUESTS_LIMIT
-        ),
-        tokens_per_interval=int(headers["x-ratelimit-limit-tokens"]),
-        remaining_requests=int(headers["x-ratelimit-remaining-requests"]),
-        remaining_tokens=int(headers["x-ratelimit-remaining-tokens"]),
-        requests_reset_seconds=parse_time_to_seconds(
-            headers["x-ratelimit-reset-requests"]
-        ),
-        tokens_reset_seconds=parse_time_to_seconds(headers["x-ratelimit-reset-tokens"]),
-    )
+    def release(self):
+        self._semaphore.release()
 
 
 def generate_oa_web_search_response_sync(
@@ -325,6 +158,7 @@ async def generate_oa_response_async(
     max_new_tokens: int,
     max_retries: int,
     get_result_from_response: Callable[[str], Any | None],
+    rate_limiter: OARateLimiter | None = None,
 ) -> Any | None:
     """Generate a response from an OpenAI model.
 
@@ -337,6 +171,7 @@ async def generate_oa_response_async(
         max_retries: Maximum number of retry attempts for each model
         get_result_from_response: Callback that processes the model response and returns
             either a valid result or None if the response should be retried
+        rate_limiter: An optional rate limiter to control concurrent requests.
 
     Returns:
         Processed result or None if all attempts failed
@@ -346,6 +181,8 @@ async def generate_oa_response_async(
     for oa_model_id in oa_model_ids:
         oa_model_id = oa_model_id.split("/")[-1]
         for attempt in range(max_retries):
+            if rate_limiter:
+                await rate_limiter.acquire()
             try:
                 if attempt > 0:
                     logging.info(f"Retry attempt {attempt} of {max_retries}")
@@ -389,7 +226,7 @@ async def generate_oa_response_async(
                 continue
 
             except Exception as e:
-                if attempt == max_retries:
+                if attempt == max_retries -1:
                     logging.warning(
                         f"Failed to process response after {max_retries} retries for model {oa_model_id}: {str(e)}"
                     )
@@ -398,6 +235,9 @@ async def generate_oa_response_async(
                     f"Error on attempt {attempt + 1} for model {oa_model_id}: {str(e)}, retrying..."
                 )
                 continue
+            finally:
+                if rate_limiter:
+                    rate_limiter.release()
 
     return None
 
@@ -453,23 +293,11 @@ class OABatchProcessor(BatchProcessor[BatchItem, BatchResult]):
             return []
 
         if self.rate_limiter is None:
-            # If no rate limiter is provided, use the default limits in our account
-            limits = get_openai_limits()
-            logging.info(f"Using OpenAI limits: {limits}")
-
-            # Use 60 seconds as the default interval
-            interval_seconds = 60
-            self.rate_limiter = OARateLimiter(
-                requests_per_interval=limits.requests_per_interval,
-                tokens_per_interval=limits.tokens_per_interval,
-                interval_seconds=interval_seconds,
-            )
+            self.rate_limiter = OARateLimiter()
 
         async def process_single(
             item: BatchItem, prompt: str
         ) -> tuple[BatchItem, BatchResult | None]:
-            assert self.rate_limiter is not None
-            await self.rate_limiter.acquire_with_backoff()
             assert self.max_new_tokens is not None
             result = await generate_oa_response_async(
                 prompt=prompt,
@@ -481,6 +309,7 @@ class OABatchProcessor(BatchProcessor[BatchItem, BatchResult]):
                 get_result_from_response=lambda response: self.process_response(
                     response, item
                 ),
+                rate_limiter=self.rate_limiter
             )
             return (item, result)
 
