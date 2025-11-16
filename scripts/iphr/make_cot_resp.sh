@@ -95,7 +95,7 @@ run_local() {
 # -------- configuration blocks --------
 run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4OM GPT4O
 run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.7S
-run or "$REGULAR_SAMPLE_ARGS"        GP1.5 GP2.5
+run or "$REGULAR_SAMPLE_ARGS"        GP2.5
 
 # run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
 # run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4O GPT4OM
