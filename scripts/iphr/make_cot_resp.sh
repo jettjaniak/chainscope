@@ -93,7 +93,9 @@ run_local() {
 }
 
 # -------- configuration blocks --------
-run oai "$REGULAR_SAMPLE_ARGS" GPT4OM
+run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4OM GPT4O
+run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.7S
+run or "$REGULAR_SAMPLE_ARGS"        GP1.5 GP2.5
 
 # run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
 # run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4O GPT4OM
@@ -114,8 +116,8 @@ run oai "$REGULAR_SAMPLE_ARGS" GPT4OM
 # run or "$OVERSAMPLE_ARGS --qid 7b304c575165c30ae445390c8e94eed9c4eea54e603c43c2ef1deea39810de6e" GF2.5
 
 # # Process batches once there are no more pending batches
-# wait_for_batches "ant-batch"
-# find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
+wait_for_batches "ant-batch"
+find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
 
-# wait_for_batches "oai-batch"
-# find d/openai_batches -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
+wait_for_batches "oai-batch"
+find d/openai_batches -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
