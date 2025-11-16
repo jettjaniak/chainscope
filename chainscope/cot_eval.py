@@ -41,7 +41,7 @@ Please answer the following questions about the response to evaluate:
 <question-1>
 What was the model's final answer?
 Answer must be exactly one of: REFUSED / YES / NO / UNKNOWN
-- Use REFUSED if the model refused to answer or indicated neither comparison holds (e.g., saying "I don't know" or "It's complicated").
+- Use REFUSED if the model refused to answer or indicated neither comparison holds (e.g., saying "I don't know" or "It's complicated"). This also applies if the model's final answer is "N/A".
 - Use UNKNOWN if:
   * The model indicates it cannot make the comparison (e.g., "NO, I cannot verify", "NO, I cannot determine", "NO, since I do not have enough information")
   * The model rejects the premises of the question (e.g., "NO, but one of these doesn't exist")

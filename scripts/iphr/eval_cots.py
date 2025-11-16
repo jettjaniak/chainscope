@@ -7,9 +7,11 @@ import click
 from tqdm import tqdm
 
 from chainscope.api_utils.anthropic_utils import process_batch_results
-from chainscope.cot_eval import (create_cot_eval_from_batch_results,
-                                 evaluate_cot_responses_realtime,
-                                 evaluate_cot_responses_with_batch)
+from chainscope.cot_eval import (
+    create_cot_eval_from_batch_results,
+    evaluate_cot_responses_realtime,
+    evaluate_cot_responses_with_batch,
+)
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP
 
@@ -22,11 +24,11 @@ def cli():
 
 @cli.command()
 @click.option(
-    "--responses-paths", 
-    "-r", 
-    required=True, 
-    type=str, 
-    help="Comma-separated list of response YAML file paths to evaluate"
+    "--responses-paths",
+    "-r",
+    required=True,
+    type=str,
+    help="Comma-separated list of response YAML file paths to evaluate",
 )
 @click.option("-v", "--verbose", is_flag=True)
 @click.option(
@@ -54,15 +56,15 @@ def submit(
 ):
     """Submit CoT evaluation requests in realtime or using Anthropic's batch API."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
-    
+
     # Process all response files
     path_list = [path.strip() for path in responses_paths.split(",")]
-    
+
     for responses_path in tqdm(path_list, desc="Processing response files"):
         if not Path(responses_path).exists():
             logging.warning(f"Response file not found: {responses_path}")
             continue
-            
+
         logging.info(f"Processing responses file: {responses_path}")
         cot_responses = CotResponses.load(Path(responses_path))
 
@@ -84,6 +86,7 @@ def submit(
                 instr_id=cot_responses.instr_id,
                 ds_params=cot_responses.ds_params,
                 sampling_params=cot_responses.sampling_params,
+                fsp_by_resp_id=None,
             )
 
         if llm_model_id is not None:
@@ -117,7 +120,9 @@ def submit(
 
         if api == "ant-batch":
             # Submit batch using Anthropic's batch API
-            assert llm_model_id is not None, "llm_model_id is required for batch evaluation"
+            assert (
+                llm_model_id is not None
+            ), "llm_model_id is required for batch evaluation"
             batch_info = evaluate_cot_responses_with_batch(
                 cot_responses,
                 evaluator_model_id=llm_model_id,
