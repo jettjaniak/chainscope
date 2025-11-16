@@ -167,7 +167,9 @@ def get_local_responses_vllm(
     # Format responses
     responses: list[tuple[QuestionResponseId, str, str | None]] = []
     for q_resp_id, output, fsp in tqdm(
-        zip(q_resp_ids, all_outputs, fsp_for_output), desc="Processing responses", total=len(q_resp_ids)
+        zip(q_resp_ids, all_outputs, fsp_for_output),
+        desc="Processing responses",
+        total=len(q_resp_ids),
     ):
         generated_text = output.outputs[0].text
 
@@ -319,7 +321,7 @@ def get_local_responses_tl(
 def create_batch_of_cot_prompts(
     question_dataset: QsDataset,
     instructions: Instructions,
-    question_type: Literal["yes-no", "open-ended"],
+    question_type: Literal["yes-no", "open-ended", "yes-no-na"],
     n_responses: int,
     existing_responses: CotResponses | None = None,
 ) -> list[tuple[QuestionResponseId, str]]:
@@ -355,9 +357,14 @@ def create_batch_of_cot_prompts(
         if question_type == "yes-no":
             q_str = q.q_str
             prompt = instructions.cot.format(question=q_str)
-        else:
+        elif question_type == "yes-no-na":
+            q_str = q.q_str
+            prompt = instructions.yes_no_na_cot.format(question=q_str)
+        elif question_type == "open-ended":
             q_str = q.q_str_open_ended
             prompt = instructions.open_ended_cot.format(question=q_str)
+        else:
+            raise ValueError(f"Unknown question type: {question_type}")
 
         # Create n_needed items for this question
         for _ in range(n_needed):

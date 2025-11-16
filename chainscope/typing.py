@@ -45,6 +45,7 @@ DumpMeta(key_transform="SNAKE").bind_to(Properties)
 @dataclass
 class Instructions(YAMLWizard):
     cot: str
+    yes_no_na_cot: str
     direct: str
     open_ended_cot: str
 
@@ -213,15 +214,24 @@ class DatasetParams(YAMLWizard):
 
     @classmethod
     def from_id(cls, dataset_id: str) -> "DatasetParams":
-        prop_id, comparison, answer, max_comparisons, uuid, suffix = None, None, None, None, None, None
+        prop_id, comparison, answer, max_comparisons, uuid, suffix = (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
         if len(dataset_id.split("_")) == 5:
             prop_id, comparison, answer, max_comparisons, uuid = dataset_id.split("_")
             suffix = None
         elif len(dataset_id.split("_")) == 6:
-            prop_id, comparison, answer, max_comparisons, uuid, suffix = dataset_id.split("_")
+            prop_id, comparison, answer, max_comparisons, uuid, suffix = (
+                dataset_id.split("_")
+            )
         else:
             raise ValueError(f"Invalid dataset_id: {dataset_id}")
-        
+
         assert comparison in ["gt", "lt"]
         assert answer in ["YES", "NO"]
         assert max_comparisons is not None
@@ -233,10 +243,12 @@ class DatasetParams(YAMLWizard):
             parent_dir = DATA_DIR / "questions" / pre_id
             dataset_paths = list(parent_dir.glob(f"{dataset_id}.yaml"))
             if len(dataset_paths) != 1:
-                raise ValueError(f"Unable to resolve dataset_id with wildcard in UUID: {dataset_id}. Found {len(dataset_paths)} files: {dataset_paths}")
+                raise ValueError(
+                    f"Unable to resolve dataset_id with wildcard in UUID: {dataset_id}. Found {len(dataset_paths)} files: {dataset_paths}"
+                )
             dataset_path = dataset_paths[0]
             uuid = dataset_path.stem.split("_")[4]
-        
+
         return cls(
             prop_id=prop_id,
             comparison=comparison,  # type: ignore
@@ -337,7 +349,9 @@ class QsDataset(YAMLWizard):
     def load(cls, dataset_id: str) -> "QsDataset":
         params = DatasetParams.from_id(dataset_id)
         qs_dataset = params.load_qs_dataset()
-        assert qs_dataset.params == params, f"params: {params}, qs_dataset.params: {qs_dataset.params}"
+        assert (
+            qs_dataset.params == params
+        ), f"params: {params}, qs_dataset.params: {qs_dataset.params}"
         return qs_dataset
 
     @classmethod
@@ -355,7 +369,7 @@ class QsDataset(YAMLWizard):
             f"{self.params.qs_dataset_path}\n"
         )
         return self.params.qs_dataset_path
-    
+
     def get_reversed_dataset_id(self) -> str:
         reversed_dataset_params = DatasetParams(
             prop_id=self.params.prop_id,
@@ -1335,15 +1349,18 @@ class RAGSource:
     content: str | None
     relevant_snippet: str | None
 
+
 LoadMeta(
     v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
 ).bind_to(RAGSource)
 DumpMeta(key_transform="SNAKE").bind_to(RAGSource)
 
+
 @dataclass
 class RAGValue:
     value: str
     source: RAGSource
+
 
 LoadMeta(
     v1=True, v1_unsafe_parse_dataclass_in_union=True, key_transform="SNAKE"
@@ -1354,6 +1371,7 @@ DumpMeta(key_transform="SNAKE").bind_to(RAGValue)
 @dataclass
 class PropRAGEval(YAMLWizard):
     """Results from evaluating properties using RAG."""
+
     values_by_entity_name: dict[str, list[RAGValue]]
     model_id: str
     sampling_params: SamplingParams
@@ -1400,34 +1418,65 @@ class PotentialQuestionPair:
 @dataclass
 class UnfaithfulnessResponseAnalysis(YAMLWizard):
     """Analysis of a single response in the unfaithfulness pattern evaluation."""
+
     confidence: int | None  # 1-10 score
     key_steps: str | None  # Reasoning chain with arrows
     answer_flipping_analysis: str | None  # Detailed analysis of answer flipping
-    answer_flipping_classification: Literal["YES", "NO", "UNCLEAR", "FAILED_EVAL"]  # Classification of answer flipping
-    lack_of_information: Literal["YES", "NO", "FAILED_EVAL"]  # Whether response acknowledges lack of information
-    evidence_of_unfaithfulness: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]]  # List of patterns this response is evidence of
+    answer_flipping_classification: Literal[
+        "YES", "NO", "UNCLEAR", "FAILED_EVAL"
+    ]  # Classification of answer flipping
+    lack_of_information: Literal[
+        "YES", "NO", "FAILED_EVAL"
+    ]  # Whether response acknowledges lack of information
+    evidence_of_unfaithfulness: list[
+        Literal[
+            "fact-manipulation",
+            "argument-switching",
+            "answer-flipping",
+            "other",
+            "none",
+        ]
+    ]  # List of patterns this response is evidence of
 
 
 @dataclass
 class UnfaithfulnessQuestionAnalysis(YAMLWizard):
     """Analysis of responses to a single question in the unfaithfulness pattern evaluation."""
+
     responses: dict[str, UnfaithfulnessResponseAnalysis]  # response_id -> analysis
 
 
 @dataclass
 class UnfaithfulnessFullAnalysis(YAMLWizard):
     """Complete analysis of unfaithfulness patterns across both questions."""
+
     first_impressions: str | None = None  # Brief overview of reasoning patterns
-    q1_analysis: UnfaithfulnessQuestionAnalysis | None = None  # Analysis of Q1 responses
-    q2_analysis: UnfaithfulnessQuestionAnalysis | None = None  # Analysis of Q2 responses
+    q1_analysis: UnfaithfulnessQuestionAnalysis | None = (
+        None  # Analysis of Q1 responses
+    )
+    q2_analysis: UnfaithfulnessQuestionAnalysis | None = (
+        None  # Analysis of Q2 responses
+    )
     summary: str | None = None  # Key reasoning pattern analysis
     unfaithfulness_analysis: str | None = None  # Detailed unfaithfulness analysis
-    categorization_for_pair: list[Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"]] | None = None  # High-level unfaithfulness patterns across the two questions
+    categorization_for_pair: (
+        list[
+            Literal[
+                "fact-manipulation",
+                "argument-switching",
+                "answer-flipping",
+                "other",
+                "none",
+            ]
+        ]
+        | None
+    ) = None  # High-level unfaithfulness patterns across the two questions
 
 
 @dataclass
 class UnfaithfulnessPatternEval(YAMLWizard):
     """Results from evaluating unfaithfulness patterns in model responses."""
+
     # qid -> analysis
     pattern_analysis_by_qid: dict[str, UnfaithfulnessFullAnalysis]
     model_id: str
@@ -1441,22 +1490,40 @@ class UnfaithfulnessPatternEval(YAMLWizard):
         prop_id_with_suffix = self.prop_id
         if self.dataset_suffix:
             prop_id_with_suffix = f"{self.prop_id}_{self.dataset_suffix}"
-        directory = DATA_DIR / "unfaithfulness_pattern_eval" / self.sampling_params.id / prop_id_with_suffix
+        directory = (
+            DATA_DIR
+            / "unfaithfulness_pattern_eval"
+            / self.sampling_params.id
+            / prop_id_with_suffix
+        )
         path = get_path(directory, self.model_id)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.to_yaml_file(path)
         return path
 
     @classmethod
-    def load(cls, model_id: str, prop_id: str, dataset_suffix: str | None = None, sampling_params: SamplingParams | None = None) -> "UnfaithfulnessPatternEval":
-        prop_id_with_suffix = f"{prop_id}_{dataset_suffix}" if dataset_suffix else prop_id
+    def load(
+        cls,
+        model_id: str,
+        prop_id: str,
+        dataset_suffix: str | None = None,
+        sampling_params: SamplingParams | None = None,
+    ) -> "UnfaithfulnessPatternEval":
+        prop_id_with_suffix = (
+            f"{prop_id}_{dataset_suffix}" if dataset_suffix else prop_id
+        )
         if sampling_params is None:
             sampling_params = SamplingParams(
                 temperature=0.0,
                 top_p=0.9,
                 max_new_tokens=8000,
             )
-        directory = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id / prop_id_with_suffix
+        directory = (
+            DATA_DIR
+            / "unfaithfulness_pattern_eval"
+            / sampling_params.id
+            / prop_id_with_suffix
+        )
         model_id = model_id.split("/")[-1]
         path = get_path(directory, model_id)
         return cls.load_from_path(path)
@@ -1492,6 +1559,7 @@ DumpMeta(key_transform="SNAKE").bind_to(UnfaithfulnessFullAnalysis)
 @dataclass
 class UnfaithfulnessPairsDatasetResponse(YAMLWizard):
     """A single response in the unfaithfulness dataset."""
+
     response: str
     result: Literal["YES", "NO", "UNKNOWN"] | None
     final_answer: Literal["REFUSED", "YES", "NO", "UNKNOWN", "FAILED_EVAL"] | None
@@ -1503,6 +1571,7 @@ class UnfaithfulnessPairsDatasetResponse(YAMLWizard):
 @dataclass
 class UnfaithfulnessPairsMetadata(YAMLWizard):
     """Metadata for a question pair in the unfaithfulness dataset."""
+
     prop_id: str
     comparison: Literal["gt", "lt"]
     dataset_id: str
@@ -1531,6 +1600,7 @@ class UnfaithfulnessPairsMetadata(YAMLWizard):
 @dataclass
 class UnfaithfulnessPairsDatasetQuestion(YAMLWizard):
     """A question with its faithful and unfaithful responses."""
+
     prompt: str
     faithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse]
     unfaithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse]
@@ -1541,6 +1611,7 @@ class UnfaithfulnessPairsDatasetQuestion(YAMLWizard):
 @dataclass
 class UnfaithfulnessPairsDataset(YAMLWizard):
     """Dataset of potentially unfaithful responses by comparing accuracies of reversed questions."""
+
     questions_by_qid: dict[str, UnfaithfulnessPairsDatasetQuestion]
     model_id: str
     prop_id: str
@@ -1564,23 +1635,27 @@ class UnfaithfulnessPairsDataset(YAMLWizard):
         path.parent.mkdir(parents=True, exist_ok=True)
         self.to_yaml_file(path)
         return path
-    
+
     @staticmethod
-    def get_path_for_model_and_dataset(model_id: str, prop_id: str, dataset_suffix: str | None = None) -> Path:
+    def get_path_for_model_and_dataset(
+        model_id: str, prop_id: str, dataset_suffix: str | None = None
+    ) -> Path:
         model_file_name = model_id.split("/")[-1]
         file_id = prop_id
         if dataset_suffix:
             file_id = f"{prop_id}_{dataset_suffix}"
         return DATA_DIR / "faithfulness" / model_file_name / f"{file_id}.yaml"
-    
+
     @classmethod
-    def load(cls, model_id: str, prop_id: str, dataset_suffix: str | None = None) -> "UnfaithfulnessPairsDataset":
+    def load(
+        cls, model_id: str, prop_id: str, dataset_suffix: str | None = None
+    ) -> "UnfaithfulnessPairsDataset":
         """Load an unfaithfulness dataset from disk."""
         path = cls.get_path_for_model_and_dataset(model_id, prop_id, dataset_suffix)
         dataset = cls.from_yaml_file(path)
         assert isinstance(dataset, cls)
         return dataset
-    
+
     @classmethod
     def load_from_path(cls, path: Path) -> "UnfaithfulnessPairsDataset":
         """Load an unfaithfulness dataset from a path."""

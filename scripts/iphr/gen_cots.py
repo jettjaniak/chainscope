@@ -5,20 +5,22 @@ import logging
 from pathlib import Path
 
 import click
-import pandas as pd
-import yaml
 
-from chainscope.api_utils.anthropic_utils import \
-    process_batch_results as process_anthropic_batch_results
+from chainscope.api_utils.anthropic_utils import (
+    process_batch_results as process_anthropic_batch_results,
+)
 from chainscope.api_utils.anthropic_utils import submit_anthropic_batch
 from chainscope.api_utils.common import get_responses_async
-from chainscope.api_utils.open_ai_utils import \
-    process_batch_results as process_openai_batch_results
+from chainscope.api_utils.open_ai_utils import (
+    process_batch_results as process_openai_batch_results,
+)
 from chainscope.api_utils.open_ai_utils import submit_openai_batch
-from chainscope.cot_generation import (create_batch_of_cot_prompts,
-                                       create_cot_responses,
-                                       get_local_responses_tl,
-                                       get_local_responses_vllm)
+from chainscope.cot_generation import (
+    create_batch_of_cot_prompts,
+    create_cot_responses,
+    get_local_responses_tl,
+    get_local_responses_vllm,
+)
 from chainscope.typing import *
 from chainscope.utils import MODELS_MAP
 
@@ -31,7 +33,13 @@ def cli():
 
 @cli.command()
 @click.option("-n", "--n-responses", type=int, required=True)
-@click.option("-d", "--dataset-ids", type=str, required=True, help="Comma-separated list of dataset IDs")
+@click.option(
+    "-d",
+    "--dataset-ids",
+    type=str,
+    required=True,
+    help="Comma-separated list of dataset IDs",
+)
 @click.option("-m", "--model-id", type=str, required=True)
 @click.option("-i", "--instr-id", type=str, required=True)
 @click.option("-t", "--temperature", type=float, default=0.7)
@@ -39,9 +47,7 @@ def cli():
 @click.option("--max-new-tokens", type=int, default=2_000)
 @click.option(
     "--api",
-    type=click.Choice(
-        ["ant-batch", "oai-batch", "ant", "oai", "or", "ds"]
-    ),
+    type=click.Choice(["ant-batch", "oai-batch", "ant", "oai", "or", "ds"]),
     required=True,
     help="API to use for generation",
 )
@@ -64,6 +70,12 @@ def cli():
     type=str,
     help="Only generate CoTs for a specific question ID",
 )
+@click.option(
+    "--question-type",
+    type=click.Choice(["yes-no", "open-ended", "yes-no-na"]),
+    default="yes-no",
+    help="Type of questions to generate responses for",
+)
 def submit(
     n_responses: int,
     dataset_ids: str,
@@ -78,6 +90,7 @@ def submit(
     verbose: bool,
     unfaithful_only: bool,
     qid: str | None,
+    question_type: Literal["yes-no", "open-ended", "yes-no-na"],
 ):
     """Submit CoT generation requests in realtime or using batch APIs."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -93,7 +106,7 @@ def submit(
 
     # Process all datasets
     dataset_id_list = [ds.strip() for ds in dataset_ids.split(",")]
-    
+
     for dataset_id in dataset_id_list:
         if dataset_id.startswith("wm-"):
             assert instr_id == "instr-wm"
@@ -115,7 +128,9 @@ def submit(
                 faithfulness_file_name = f"{ds_params.prop_id}_{ds_params.suffix}.yaml"
             faithfulness_path = faithfulness_dir / faithfulness_file_name
             if not faithfulness_path.exists():
-                logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}")
+                logging.warning(
+                    f"No faithfulness data found for model {model_id} on dataset {dataset_id}"
+                )
                 continue
 
             try:
@@ -125,7 +140,9 @@ def submit(
                     dataset_suffix=ds_params.suffix,
                 )
             except Exception as e:
-                logging.error(f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}: {e}")
+                logging.error(
+                    f"Unable to load faithfulness data for model {model_id} on dataset {dataset_id}: {e}"
+                )
                 continue
 
         # Try to load existing responses
@@ -143,7 +160,9 @@ def submit(
                 f"No existing responses found at {response_path}, starting fresh"
             )
             if unfaithful_only:
-                logging.warning(f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}")
+                logging.warning(
+                    f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}"
+                )
                 continue
 
         instructions = Instructions.load(instr_id)
@@ -151,7 +170,7 @@ def submit(
         batch_of_cot_prompts = create_batch_of_cot_prompts(
             question_dataset=question_dataset,
             instructions=instructions,
-            question_type="yes-no",
+            question_type=question_type,
             n_responses=n_responses,
             existing_responses=existing_responses,
         )
@@ -170,7 +189,9 @@ def submit(
                 if q_resp_id.qid == qid_filter
             ]
             if not batch_of_cot_prompts:
-                logging.warning(f"No prompts found for qid {qid_filter} in dataset {dataset_id}")
+                logging.warning(
+                    f"No prompts found for qid {qid_filter} in dataset {dataset_id}"
+                )
                 continue
             logging.info(f"Filtered to prompts for qid {qid_filter}")
 
@@ -178,12 +199,16 @@ def submit(
         if faithfulness_data is not None:
             # Collect all unfaithful question IDs
             unfaithful_qids = set()
-            logging.info(f"Filtering to {len(faithfulness_data.questions_by_qid)} unfaithful pairs")
+            logging.info(
+                f"Filtering to {len(faithfulness_data.questions_by_qid)} unfaithful pairs"
+            )
             for qid, question in faithfulness_data.questions_by_qid.items():
                 if question.metadata is not None:
                     unfaithful_qids.add(qid)
                     unfaithful_qids.add(question.metadata.reversed_q_id)
-            logging.info(f"Found {len(unfaithful_qids)} question IDs after filtering by faithfulness")
+            logging.info(
+                f"Found {len(unfaithful_qids)} question IDs after filtering by faithfulness"
+            )
 
             # Filter prompts to only include unfaithful pairs
             batch_of_cot_prompts = [
@@ -192,7 +217,9 @@ def submit(
                 if q_resp_id.qid in unfaithful_qids
             ]
 
-        logging.info(f"Number of prompts to process for dataset {dataset_id}: {len(batch_of_cot_prompts)}")
+        logging.info(
+            f"Number of prompts to process for dataset {dataset_id}: {len(batch_of_cot_prompts)}"
+        )
 
         if api in ["ant-batch", "oai-batch"]:
             # Submit batch using appropriate API
@@ -249,7 +276,13 @@ def submit(
 
 @cli.command()
 @click.option("-n", "--n-responses", type=int, required=True)
-@click.option("-d", "--dataset-ids", type=str, required=True, help="Comma-separated list of dataset IDs")
+@click.option(
+    "-d",
+    "--dataset-ids",
+    type=str,
+    required=True,
+    help="Comma-separated list of dataset IDs",
+)
 @click.option("-m", "--model-id", type=str, required=True)
 @click.option("-i", "--instr-id", type=str, required=True)
 @click.option("-t", "--temperature", type=float, default=0.7)
@@ -292,6 +325,12 @@ def submit(
     is_flag=True,
     help="Only generate CoTs for unfaithful pairs identified in faithfulness YAMLs",
 )
+@click.option(
+    "--question-type",
+    type=click.Choice(["yes-no", "open-ended", "yes-no-na"]),
+    default="yes-no",
+    help="Type of questions to generate responses for",
+)
 def local(
     n_responses: int,
     dataset_ids: str,
@@ -308,6 +347,7 @@ def local(
     test: bool,
     verbose: bool,
     unfaithful_only: bool,
+    question_type: Literal["yes-no", "open-ended", "yes-no-na"],
 ):
     """Generate CoT responses using local models."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -346,7 +386,9 @@ def local(
                 )
                 faithfulness_data_by_dataset[dataset_id] = faithfulness_data
             except Exception as e:
-                logging.warning(f"No faithfulness data found for model {model_id} on dataset {dataset_id}: {e}")
+                logging.warning(
+                    f"No faithfulness data found for model {model_id} on dataset {dataset_id}: {e}"
+                )
                 continue
 
         if not faithfulness_data_by_dataset:
@@ -379,7 +421,9 @@ def local(
                 f"No existing responses found at {response_path}, starting fresh"
             )
             if unfaithful_only:
-                raise ValueError(f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}")
+                raise ValueError(
+                    f"Unfaithful pairs requested but no existing responses found for model {model_id} on dataset {dataset_id}"
+                )
 
         existing_responses_list.append(existing_responses)
 
@@ -388,7 +432,7 @@ def local(
         batch_of_cot_prompts = create_batch_of_cot_prompts(
             question_dataset=question_dataset,
             instructions=instructions,
-            question_type="yes-no",
+            question_type=question_type,
             n_responses=n_responses,
             existing_responses=existing_responses,
         )
@@ -452,7 +496,9 @@ def local(
 
     if results:
         # Group results by dataset
-        results_by_dataset: dict[str, list[tuple[QuestionResponseId, str, str | None]]] = {}
+        results_by_dataset: dict[
+            str, list[tuple[QuestionResponseId, str, str | None]]
+        ] = {}
         for q_resp_id, response, fsp in results:
             dataset_id = qid_to_dataset[q_resp_id.qid]
             if dataset_id not in results_by_dataset:

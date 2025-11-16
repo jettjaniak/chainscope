@@ -6,7 +6,7 @@ QUESTIONS_DIR="d/questions"
 PREFIX="" # filter for dataset prefix (e.g. "wm-song-release")
 SUFFIX="non-ambiguous-hard-2"      # filter for dataset suffix (e.g. "non-ambiguous-hard-2")
 COMMON_ARGS=(-i instr-wm)                     # shared gen_cots flags
-REGULAR_SAMPLE_ARGS="-n 10"
+REGULAR_SAMPLE_ARGS="-n 10 --question-type yes-no-na --test"
 OVERSAMPLE_ARGS="-n 100 --unfaithful-only"
 
 wait_for_batches() {
@@ -93,27 +93,29 @@ run_local() {
 }
 
 # -------- configuration blocks --------
-run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
-run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4O GPT4OM
-run oai "$REGULAR_SAMPLE_ARGS"       GPT4OL
-run or "$REGULAR_SAMPLE_ARGS"        GF2.5 GP2.5 QwQ DSV3 DSR1 GP1.5 L70
-run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp meta-llama/Llama-3.3-70B-Instruct" meta-llama/Llama-3.1-70B
-run_local vllm "$REGULAR_SAMPLE_ARGS" google/gemma-2-2b-it
-run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp google/gemma-2-2b-it" google/gemma-2-2b
+run oai "$REGULAR_SAMPLE_ARGS" GPT4OM
 
-# Oversample the CoT responses for pairs showing unfaithfulness in some models
-run ant-batch "$OVERSAMPLE_ARGS" C3.6S C3.7S_1K C3.7S C3.7S_64K
-run oai-batch "$OVERSAMPLE_ARGS" GPT4O
-run oai "$OVERSAMPLE_ARGS"       GPT4OL
-run or "$OVERSAMPLE_ARGS"        GP2.5 DSR1
+# run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
+# run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4O GPT4OM
+# run oai "$REGULAR_SAMPLE_ARGS"       GPT4OL
+# run or "$REGULAR_SAMPLE_ARGS"        GF2.5 GP2.5 QwQ DSV3 DSR1 GP1.5 L70
+# run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp meta-llama/Llama-3.3-70B-Instruct" meta-llama/Llama-3.1-70B
+# run_local vllm "$REGULAR_SAMPLE_ARGS" google/gemma-2-2b-it
+# run_local vllm "$REGULAR_SAMPLE_ARGS --model-id-for-fsp google/gemma-2-2b-it" google/gemma-2-2b
 
-# Oversample the CoT responses for main fig
-run or "$OVERSAMPLE_ARGS --qid 12710e0d6df3c7e0f6dea6df753b6ce8a21d13e186e431e5e68b7798a55c44b0" GF2.5
-run or "$OVERSAMPLE_ARGS --qid 7b304c575165c30ae445390c8e94eed9c4eea54e603c43c2ef1deea39810de6e" GF2.5
+# # Oversample the CoT responses for pairs showing unfaithfulness in some models
+# run ant-batch "$OVERSAMPLE_ARGS" C3.6S C3.7S_1K C3.7S C3.7S_64K
+# run oai-batch "$OVERSAMPLE_ARGS" GPT4O
+# run oai "$OVERSAMPLE_ARGS"       GPT4OL
+# run or "$OVERSAMPLE_ARGS"        GP2.5 DSR1
 
-# Process batches once there are no more pending batches
-wait_for_batches "ant-batch"
-find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
+# # Oversample the CoT responses for main fig
+# run or "$OVERSAMPLE_ARGS --qid 12710e0d6df3c7e0f6dea6df753b6ce8a21d13e186e431e5e68b7798a55c44b0" GF2.5
+# run or "$OVERSAMPLE_ARGS --qid 7b304c575165c30ae445390c8e94eed9c4eea54e603c43c2ef1deea39810de6e" GF2.5
 
-wait_for_batches "oai-batch"
-find d/openai_batches -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
+# # Process batches once there are no more pending batches
+# wait_for_batches "ant-batch"
+# find d/anthropic_batches/ -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
+
+# wait_for_batches "oai-batch"
+# find d/openai_batches -name "*.yaml" -exec python ./scripts/iphr/gen_cots.py  process-batch {} \;
