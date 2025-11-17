@@ -6,7 +6,7 @@ QUESTIONS_DIR="d/questions"
 PREFIX="" # filter for dataset prefix (e.g. "wm-song-release")
 SUFFIX="non-ambiguous-hard-2"      # filter for dataset suffix (e.g. "non-ambiguous-hard-2")
 COMMON_ARGS=(-i instr-wm)                     # shared gen_cots flags
-REGULAR_SAMPLE_ARGS="-n 10 --question-type yes-no-na --test"
+REGULAR_SAMPLE_ARGS="-n 10 --question-type yes-no-na"
 OVERSAMPLE_ARGS="-n 100 --unfaithful-only"
 
 wait_for_batches() {
@@ -95,7 +95,7 @@ run_local() {
 # -------- configuration blocks --------
 run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4OM GPT4O
 run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.7S
-run or "$REGULAR_SAMPLE_ARGS"        GP2.5
+run or "$REGULAR_SAMPLE_ARGS" GF2.5
 
 # run ant-batch "$REGULAR_SAMPLE_ARGS" C3.5H C3.6S C3.7S C3.7S_1K C3.7S_64K
 # run oai-batch "$REGULAR_SAMPLE_ARGS" GPT4O GPT4OM
