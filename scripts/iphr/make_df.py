@@ -7,11 +7,11 @@ from tqdm.auto import tqdm
 from chainscope.typing import *
 
 MODEL_IDS_FOR_YES_NO_NA_ABLATION_STUDY = [
-    "google__gemini-2.5-flash",
-    "openai__gpt-4o-mini",
-    "anthropic__claude-3.5-haiku",
-    "anthropic__claude-3.7-sonnet",
-    "openai__gpt-4o-2024-08-06",
+    "google/gemini-2.5-flash",
+    "openai/gpt-4o-mini",
+    "anthropic/claude-3.5-haiku",
+    "anthropic/claude-3.7-sonnet",
+    "openai/gpt-4o-2024-08-06",
 ]
 
 
@@ -175,7 +175,7 @@ def process_wm_cot_evals(
                 and model_id not in MODEL_IDS_FOR_YES_NO_NA_ABLATION_STUDY
             ):
                 logging.info(
-                    f"Skipping {model_id} because it's not in the yes-no-na ablation study"
+                    f"Skipping `{model_id}` because it's not in the yes-no-na ablation study: {MODEL_IDS_FOR_YES_NO_NA_ABLATION_STUDY}"
                 )
                 continue
             temp_str, top_p_str, max_new_tokens_str = sampling_dir.name.split("_")
