@@ -6,6 +6,14 @@ from tqdm.auto import tqdm
 
 from chainscope.typing import *
 
+MODEL_IDS_FOR_YES_NO_NA_ABLATION_STUDY = [
+    "google__gemini-2.5-flash",
+    "openai__gpt-4o-mini",
+    "anthropic__claude-3.5-haiku",
+    "anthropic__claude-3.7-sonnet",
+    "openai__gpt-4o-2024-08-06",
+]
+
 
 def get_dataset_ids(instr_id: str) -> set[str]:
     """Get all unique dataset IDs present in both cot_eval and direct_eval directories."""
@@ -85,7 +93,9 @@ def analyze_cot_eval(
         if isinstance(cot_eval, CotEval):
             yes_count = sum(1 for r in eval_results.values() if r.result == "YES")
             no_count = sum(1 for r in eval_results.values() if r.result == "NO")
-            unknown_count = sum(1 for r in eval_results.values() if r.result == "UNKNOWN")
+            unknown_count = sum(
+                1 for r in eval_results.values() if r.result == "UNKNOWN"
+            )
         else:
             yes_count = sum(1 for r in eval_results.values() if r == "YES")
             no_count = sum(1 for r in eval_results.values() if r == "NO")
@@ -129,7 +139,11 @@ def analyze_cot_eval(
     return results
 
 
-def process_wm_cot_evals(dataset_pattern: str | None = None, out_path: str | None = None):
+def process_wm_cot_evals(
+    dataset_pattern: str | None = None,
+    out_path: str | None = None,
+    question_type: Literal["yes-no-na", "yes-no"] = "yes-no",
+):
     """Process CoT evaluations for the WM instruction."""
     if out_path is None:
         out_path = DATA_DIR / "df-wm.pkl"
@@ -141,9 +155,11 @@ def process_wm_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
     dataset_ids = get_dataset_ids(instr_id)
     for dataset_id in tqdm(dataset_ids):
         if dataset_pattern and dataset_pattern not in dataset_id:
-            logging.info(f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}")
+            logging.info(
+                f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}"
+            )
             continue
-        
+
         ds_params = DatasetParams.from_id(dataset_id)
 
         # Process CoT evaluations
@@ -154,6 +170,14 @@ def process_wm_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
             sampling_dir = model_file.parent.parent.parent
             instr_id = sampling_dir.parent.name
             model_id = model_file.stem.replace("__", "/")
+            if (
+                question_type == "yes-no-na"
+                and model_id not in MODEL_IDS_FOR_YES_NO_NA_ABLATION_STUDY
+            ):
+                logging.info(
+                    f"Skipping {model_id} because it's not in the yes-no-na ablation study"
+                )
+                continue
             temp_str, top_p_str, max_new_tokens_str = sampling_dir.name.split("_")
             sampling_params = SamplingParams(
                 temperature=float(temp_str[1:]),
@@ -172,7 +196,9 @@ def process_wm_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
     print("\nColumns:", ", ".join(df.columns))
 
 
-def process_v0_cot_evals(dataset_pattern: str | None = None, out_path: str | None = None):
+def process_v0_cot_evals(
+    dataset_pattern: str | None = None, out_path: str | None = None
+):
     """Process CoT evaluations for the V0 instruction."""
     if out_path is None:
         out_path = DATA_DIR / "df.pkl"
@@ -183,9 +209,11 @@ def process_v0_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
     dataset_ids = get_dataset_ids(instr_id)
     for dataset_id in tqdm(dataset_ids):
         if dataset_pattern and dataset_pattern not in dataset_id:
-            logging.info(f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}")
+            logging.info(
+                f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}"
+            )
             continue
-        
+
         ds_params = DatasetParams.from_id(dataset_id)
 
         # # Process direct evaluations
@@ -246,16 +274,30 @@ def process_v0_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
     help="Output path to save the DataFrame",
 )
 @click.option(
+    "--question-type",
+    "-q",
+    type=click.Choice(["yes-no-na", "yes-no"], case_sensitive=False),
+    default="yes-no",
+    help="Question type to process",
+)
+@click.option(
     "--verbose",
     "-v",
     is_flag=True,
     help="Verbose logging",
 )
-def main(instr_id: str, dataset_pattern: str | None = None, out_path: str | None = None, verbose: bool = False):
+def main(
+    instr_id: str,
+    question_type: Literal["yes-no-na", "yes-no"],
+    dataset_pattern: str | None = None,
+    out_path: str | None = None,
+    verbose: bool = False,
+):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
     if instr_id == "instr-wm":
-        process_wm_cot_evals(dataset_pattern, out_path)
+        process_wm_cot_evals(dataset_pattern, out_path, question_type)
     elif instr_id == "instr-v0":
+        assert question_type == "yes-no", "Only yes-no questions are supported for V0"
         process_v0_cot_evals(dataset_pattern, out_path)
     else:
         raise click.BadParameter(f"Invalid instruction ID: {instr_id}")
