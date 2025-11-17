@@ -45,8 +45,7 @@ run() {
     ./scripts/iphr/eval_cots.py submit \
         --responses-paths "${response_files_str}" \
         -m "${EVAL_MODEL}" \
-        --api "${api}" \
-        --test
+        --api "${api}"
   done
 }
 
