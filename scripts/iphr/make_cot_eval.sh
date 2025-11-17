@@ -51,7 +51,7 @@ run() {
 }
 
 # -------- configuration blocks --------
-run ant-batch "google__gemini-2.5-pro" "openai__gpt-4o-mini"  "anthropic__claude-3.5-haiku" "anthropic__claude-3.7-sonnet" "openai__gpt-4o-2024-08-06" "google__gemini-pro-1.5"
+run ant-batch "google__gemini-2.5-flash" "openai__gpt-4o-mini"  "anthropic__claude-3.5-haiku" "anthropic__claude-3.7-sonnet" "openai__gpt-4o-2024-08-06"
 
 # run ant-batch "google__gemma-2-2b" "google__gemma-2-2b-it" "google__gemini-2.5-pro-preview" "google__gemini-2.5-flash-preview" "meta-llama__Llama-3.1-70B" "qwen__qwq-32b" "openai__gpt-4o-mini"  "anthropic__claude-3.5-haiku" "anthropic__claude-3.6-sonnet" "anthropic__claude-3.7-sonnet" "anthropic__claude-3.7-sonnet_1k" "openai__gpt-4o-2024-08-06" "openai__chatgpt-4o-latest" "deepseek__deepseek-chat" "deepseek__deepseek-r1" "google__gemini-pro-1.5" "meta-llama__Llama-3.3-70B-Instruct" "google__gemma-2b-it" "anthropic__claude-3.7-sonnet_64k"
 
