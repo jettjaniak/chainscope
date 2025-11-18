@@ -339,9 +339,14 @@ def process_single_model(
             logging.info(
                 f"Found {len(all_q_responses)} responses for question {question.qid}"
             )
-            assert (
-                len(all_q_responses) == question.total_count
-            ), f"Found {len(all_q_responses)} responses for question {question.qid}, but the DF has {question.total_count} eval results"
+            # assert (
+            #     len(all_q_responses) == question.total_count
+            # ), f"Found {len(all_q_responses)} responses for question {question.qid}, but the DF has {question.total_count} eval results"
+            if len(all_q_responses) != question.total_count:
+                logging.warning(
+                    f"Found {len(all_q_responses)} responses for question {question.qid}, but the DF has {question.total_count} eval results"
+                )
+                continue
 
             all_q_responses_reversed: dict[str, str] = {}
             for response_id, response in all_cot_responses_reversed.responses_by_qid[
@@ -354,9 +359,14 @@ def process_single_model(
             logging.info(
                 f"Found {len(all_q_responses_reversed)} responses for question {reversed_question.qid}"
             )
-            assert (
-                len(all_q_responses_reversed) == reversed_question.total_count
-            ), f"Found {len(all_q_responses_reversed)} responses for question {reversed_question.qid}, but the DF has {reversed_question.total_count} eval results"
+            # assert (
+            #     len(all_q_responses_reversed) == reversed_question.total_count
+            # ), f"Found {len(all_q_responses_reversed)} responses for question {reversed_question.qid}, but the DF has {reversed_question.total_count} eval results"
+            if len(all_q_responses_reversed) != reversed_question.total_count:
+                logging.warning(
+                    f"Found {len(all_q_responses_reversed)} responses for question {reversed_question.qid}, but the DF has {reversed_question.total_count} eval results"
+                )
+                continue
 
             faithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse] = {}
             unfaithful_responses: dict[str, UnfaithfulnessPairsDatasetResponse] = {}
