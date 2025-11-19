@@ -6,11 +6,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import yaml
 
 from chainscope.typing import *
-from chainscope.utils import (MODELS_MAP, get_model_display_name,
-                              get_model_family, sort_models)
+from chainscope.utils import (
+    MODELS_MAP,
+    get_model_display_name,
+    get_model_family,
+    sort_models,
+)
 
 # df = pd.read_pickle(DATA_DIR / "df.pkl")
 # filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
@@ -21,6 +24,10 @@ df = pd.read_pickle(df_path)
 
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
+# Remove 'google/gemma-2-2b' and 'google/gemma-2b-it' and 'google/gemma-2-2b-it' from df
+df = df[df.model_id != "google/gemma-2b-it"]
+df = df[df.model_id != "google/gemma-2-2b"]
+df = df[df.model_id != "google/gemma-2-2b-it"]
 
 n_pairs = 4892
 
@@ -733,8 +740,12 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         "meta-llama/Llama-3.3-70B-Instruct",
         "qwen/qwq-32b",
     ]
-    assert all(model_id in df["model_id"].unique().tolist() for model_id in sorted_model_ids), f"All models in sorted_model_ids must be in df. Got: {df['model_id'].unique().tolist()}"
-    assert all(model_id in sorted_model_ids for model_id in df["model_id"].unique().tolist()), f"All models in df must be in sorted_model_ids. Got: {df['model_id'].unique().tolist()}"
+    assert all(
+        model_id in df["model_id"].unique().tolist() for model_id in sorted_model_ids
+    ), f"All models in sorted_model_ids must be in df. Got: {df['model_id'].unique().tolist()}"
+    assert all(
+        model_id in sorted_model_ids for model_id in df["model_id"].unique().tolist()
+    ), f"All models in df must be in sorted_model_ids. Got: {df['model_id'].unique().tolist()}"
 
     # Load faithfulness data for each model
     results = []
@@ -823,6 +834,19 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         # Calculate percentage
         percentage = float((unfaithful_count / n_pairs) * 100)
 
+        # Calculate 95% bootstrap CI
+        rng = np.random.default_rng(42)
+        population = np.zeros(n_pairs)
+        population[:unfaithful_count] = 1
+
+        # Bootstrap resampling
+        n_bootstraps = 2000
+        indices = rng.integers(0, n_pairs, size=(n_bootstraps, n_pairs))
+        bootstrap_means = population[indices].mean(axis=1)
+
+        ci_low = np.percentile(bootstrap_means, 2.5) * 100
+        ci_high = np.percentile(bootstrap_means, 97.5) * 100
+
         # Correct special case for Sonnet 3.5
         if model_id == "claude-3-5-sonnet-20241022":
             model_id = "anthropic/claude-3.5-sonnet"
@@ -850,7 +874,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
             model_name = "DeepSeek V3"
         elif "gemini" in model_id.lower():
             model_name = "Gemini "
-            
+
             if "1.5" in model_id.lower():
                 model_name = model_name + " 1.5"
             elif "2.5" in model_id.lower():
@@ -860,7 +884,7 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
                 model_name = model_name + " Pro"
             elif "flash" in model_id.lower():
                 model_name = model_name + " Flash"
-            
+
         elif "llama-3.3-70b-instruct" in model_id.lower():
             model_name = "Llama 3.3 70B It"
         elif "gpt-4" in model_id.lower():
@@ -880,6 +904,8 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
                 "vendor": vendor,
                 "unfaithful_count": unfaithful_count,
                 "percentage": percentage,
+                "ci_low": ci_low,
+                "ci_high": ci_high,
             }
         )
 
@@ -890,9 +916,20 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     # Create DataFrame and ensure numeric types
     plot_data = pd.DataFrame(results)
     plot_data["percentage"] = pd.to_numeric(plot_data["percentage"])
+    plot_data["ci_low"] = pd.to_numeric(plot_data["ci_low"])
+    plot_data["ci_high"] = pd.to_numeric(plot_data["ci_high"])
 
     # Use white background
     plt.style.use("seaborn-v0_8-white")
+
+    # Print CI values
+    print("\nConfidence Intervals for Unfaithfulness Rates:")
+    print(f"{'Model':<30} | {'Rate':<8} | {'95% CI Low':<10} | {'95% CI High':<10}")
+    print("-" * 70)
+    for row in plot_data.itertuples():
+        print(
+            f"{row.xtick:<30} | {row.percentage:.2f}%   | {row.ci_low:.2f}%      | {row.ci_high:.2f}%"
+        )
 
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -909,14 +946,22 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
 
     for i, row in enumerate(plot_data.itertuples()):
         color = vendor_colors[row.vendor]
+
+        # Error for this specific bar
+        # yerr expects [[lower], [upper]]
+        bar_yerr = [[row.percentage - row.ci_low], [row.ci_high - row.percentage]]
+
         bar = ax.bar(
             x_positions[i],
             row.percentage,
             width,
+            yerr=bar_yerr,
+            capsize=3,
             color=color,
             alpha=0.8,
             edgecolor="black",
             linewidth=1,
+            error_kw={"linewidth": 1, "color": "black"},
         )
 
         # Add to legend only if we haven't seen this vendor yet
@@ -943,21 +988,23 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
     )
 
     # Add percentage labels on top of bars
-    def add_labels(position, value):
+    def add_labels(position, height, label_value):
         ax.text(
             position,
-            value,
-            f"{value:.2f}%",
+            height + 0.2,
+            f"{label_value:.2f}%",
             ha="center",
             va="bottom",
             fontsize=16,
         )
 
     for i, row in enumerate(plot_data.itertuples()):
-        add_labels(x_positions[i], row.percentage)
+        add_labels(x_positions[i], row.ci_high, row.percentage)
 
     # Set xticks at the bar positions
-    plt.xticks(x_positions, [r["xtick"] for r in results], rotation=45, ha="right", fontsize=16)
+    plt.xticks(
+        x_positions, [r["xtick"] for r in results], rotation=45, ha="right", fontsize=16
+    )
 
     # Add small ticks at the center of bars
     ax.tick_params(axis="x", which="major", length=4, width=2)
@@ -970,10 +1017,9 @@ def save_iphr_plot(df: pd.DataFrame, save_dir: Path) -> None:
         ylabel = "Hard Qs Unfaithfulness (%)"
         plt.ylabel(ylabel, fontsize=24, labelpad=10)
 
-    
     plt.xlabel("Model", fontsize=24, labelpad=10)
-    plt.ylim(0, 15)  # Increased upper limit slightly to fit labels
-    plt.yticks(np.arange(1, 15, 1), fontsize=16)
+    plt.ylim(0, 17)  # Increased upper limit slightly to fit labels
+    plt.yticks(np.arange(0, 18, 2), fontsize=16)
 
     # Add grid for better readability
     ax.yaxis.grid(True, linestyle="--", alpha=0.7)
@@ -1100,9 +1146,36 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
         },
     ]
 
+    rng = np.random.default_rng(42)
     for row in data:
-        row["thinking_shortcut_rate"] = row["thinking_n"] / row["thinking_total_correct"] * 100
-        row["non_thinking_shortcut_rate"] = row["non_thinking_n"] / row["non_thinking_total_correct"] * 100
+        row["thinking_shortcut_rate"] = (
+            row["thinking_n"] / row["thinking_total_correct"] * 100
+        )
+        row["non_thinking_shortcut_rate"] = (
+            row["non_thinking_n"] / row["non_thinking_total_correct"] * 100
+        )
+
+        # Calculate CIs for thinking
+        pop_thinking = np.zeros(row["thinking_total_correct"])
+        pop_thinking[: row["thinking_n"]] = 1
+        indices_thinking = rng.integers(
+            0, row["thinking_total_correct"], size=(2000, row["thinking_total_correct"])
+        )
+        means_thinking = pop_thinking[indices_thinking].mean(axis=1) * 100
+        row["thinking_ci_low"] = np.percentile(means_thinking, 2.5)
+        row["thinking_ci_high"] = np.percentile(means_thinking, 97.5)
+
+        # Calculate CIs for non-thinking
+        pop_non = np.zeros(row["non_thinking_total_correct"])
+        pop_non[: row["non_thinking_n"]] = 1
+        indices_non = rng.integers(
+            0,
+            row["non_thinking_total_correct"],
+            size=(2000, row["non_thinking_total_correct"]),
+        )
+        means_non = pop_non[indices_non].mean(axis=1) * 100
+        row["non_thinking_ci_low"] = np.percentile(means_non, 2.5)
+        row["non_thinking_ci_high"] = np.percentile(means_non, 97.5)
 
     # Define vendor colors
     vendor_colors = {
@@ -1113,6 +1186,22 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
 
     # Create DataFrame
     plot_data = pd.DataFrame(data)
+
+    # Print CI values for reproducibility
+    print("\nConfidence Intervals for Unfaithful Shortcuts:")
+    print(
+        f"{'Model':<12} | {'Type':<13} | {'Rate':<8} | {'95% CI Low':<10} | {'95% CI High':<10}"
+    )
+    print("-" * 70)
+    for row in plot_data.itertuples():
+        print(
+            f"{row.model:<12} | {'Thinking':<13} | {row.thinking_shortcut_rate:>6.2f}% | "
+            f"{row.thinking_ci_low:>8.2f}% | {row.thinking_ci_high:>9.2f}%"
+        )
+        print(
+            f"{row.model:<12} | {'Non-thinking':<13} | {row.non_thinking_shortcut_rate:>6.2f}% | "
+            f"{row.non_thinking_ci_low:>8.2f}% | {row.non_thinking_ci_high:>9.2f}%"
+        )
 
     # Use white background
     plt.style.use("seaborn-v0_8-white")
@@ -1136,16 +1225,33 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     separator = 0.02
     x = np.arange(len(plot_data))
 
+    # Prepare error bars
+    thinking_yerr = np.array(
+        [
+            plot_data["thinking_shortcut_rate"] - plot_data["thinking_ci_low"],
+            plot_data["thinking_ci_high"] - plot_data["thinking_shortcut_rate"],
+        ]
+    )
+    non_thinking_yerr = np.array(
+        [
+            plot_data["non_thinking_shortcut_rate"] - plot_data["non_thinking_ci_low"],
+            plot_data["non_thinking_ci_high"] - plot_data["non_thinking_shortcut_rate"],
+        ]
+    )
+
     # Create bars with solid fill for thinking
     thinking_bars = ax.bar(
         x - width / 2 - separator,
         plot_data["thinking_shortcut_rate"],
         width,
+        yerr=thinking_yerr,
+        capsize=5,
         label="Thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
         edgecolor="black",
         linewidth=2,
         alpha=1.0,
+        error_kw={"linewidth": 1, "color": "black"},
     )
 
     # Create bars with hatching for non-thinking
@@ -1154,12 +1260,15 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
         x + width / 2 + separator,
         plot_data["non_thinking_shortcut_rate"],
         width,
+        yerr=non_thinking_yerr,
+        capsize=5,
         label="Non-thinking",
         color=[vendor_colors[vendor] for vendor in plot_data["vendor"]],
         edgecolor=None,
         linewidth=1,
         alpha=0.6,
         zorder=0,
+        error_kw={"linewidth": 1, "color": "black"},
     )
     # Draw hatch
     ax.bar(
@@ -1187,28 +1296,31 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
         zorder=2,
     )
 
-    # Add value labels on top of bars
-    def add_value_label(bars, ns):
+    # Add value labels on top of bars and n below bars
+    def add_value_label(bars, ns, yerrs):
         for idx, rect in enumerate(bars):
             height = rect.get_height()
+            upper_error = yerrs[1][idx]
+            # Percentage on top
             ax.text(
                 rect.get_x() + rect.get_width() / 2.0,
-                height,
+                height + upper_error + 0.5,
                 f"{height:.1f}%\n(n={ns[idx]})",
                 ha="center",
                 va="bottom",
                 fontsize=16,
             )
 
-    add_value_label(thinking_bars, plot_data["thinking_n"])
-    add_value_label(non_thinking_bars, plot_data["non_thinking_n"])
+    add_value_label(thinking_bars, plot_data["thinking_n"], thinking_yerr)
+    add_value_label(non_thinking_bars, plot_data["non_thinking_n"], non_thinking_yerr)
 
     # Customize the plot
     ax.set_ylabel("Unfaithfulness Rate (%)", fontsize=20, labelpad=10)
-    plt.xlabel("Model", fontsize=24, labelpad=10)
-    plt.ylim(0, 28)  # Increased upper limit slightly to fit labels
-    ax.set_xticks(x)
-    ax.set_xticklabels(plot_data["model"], rotation=0)
+    plt.xlabel("Models", fontsize=24, labelpad=10)
+    plt.ylim(0, 35)
+
+    # Remove x-ticks labels but keep the axis line
+    ax.set_xticks([])
 
     # Add grid for better readability
     ax.yaxis.grid(True, linestyle="--", alpha=0.7)
@@ -1218,23 +1330,30 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     ax.spines["top"].set_visible(True)
     ax.spines["right"].set_visible(True)
 
-    # Create custom legend handles with hatching patterns
+    # Create custom legend handles
     from matplotlib.patches import Patch
 
     legend_elements = [
-        Patch(facecolor="white", edgecolor="black", label="Thinking model", alpha=0.8),
+        # Color coding
+        Patch(
+            facecolor=vendor_colors["anthropic"], edgecolor="black", label="Anthropic"
+        ),
+        Patch(facecolor=vendor_colors["deepseek"], edgecolor="black", label="DeepSeek"),
+        Patch(facecolor=vendor_colors["qwen"], edgecolor="black", label="Qwen"),
+        # Style coding
+        Patch(facecolor="white", edgecolor="black", label="Thinking model", alpha=1.0),
         Patch(
             facecolor="white",
             edgecolor="black",
             label="Non-thinking model with CoT",
-            alpha=0.8,
+            alpha=1.0,
             hatch=hatch_pattern,
             linewidth=1,
         ),
     ]
 
-    # Add legend with custom handles
-    ax.legend(handles=legend_elements, loc="upper left", frameon=True, fontsize=16)
+    # Add legend inside the plot
+    ax.legend(handles=legend_elements, loc="upper right", frameon=True, fontsize=16)
 
     # Adjust layout
     plt.tight_layout()
@@ -1244,7 +1363,9 @@ def save_unfaithful_shortcuts_plot(save_dir: Path) -> None:
     plt.show()
     plt.close()
 
+
 # %%
+
 
 def save_oversampling_plot(df: pd.DataFrame, save_dir: Path) -> None:
     # Data for unfaithfulness retention percentages
@@ -1256,7 +1377,7 @@ def save_oversampling_plot(df: pd.DataFrame, save_dir: Path) -> None:
         "DeepSeek R1",
         "ChatGPT-4o",
         "GPT-4o Aug '24",
-        "Gemini 2.5 Pro"
+        "Gemini 2.5 Pro",
     ]
 
     # Define model to vendor mapping
@@ -1268,7 +1389,7 @@ def save_oversampling_plot(df: pd.DataFrame, save_dir: Path) -> None:
         "Sonnet 3.7 1k": "anthropic",
         "Sonnet 3.7 64k": "anthropic",
         "DeepSeek R1": "deepseek",
-        "Gemini 2.5 Pro": "google"
+        "Gemini 2.5 Pro": "google",
     }
 
     # Define vendor colors (from plots_for_writeup.py)
@@ -1285,28 +1406,62 @@ def save_oversampling_plot(df: pd.DataFrame, save_dir: Path) -> None:
     retention_percentages = [
         54.55,  # Sonnet 3.5 v2
         70.00,  # Sonnet 3.7
-        100.00, # Sonnet 3.7 1k
+        100.00,  # Sonnet 3.7 1k
         75.00,  # Sonnet 3.7 64k
         72.22,  # DeepSeek R1
         68.18,  # ChatGPT-4o
         72.22,  # GPT-4o Aug '24
-        100.00  # Gemini 2.5 Pro
+        100.00,  # Gemini 2.5 Pro
     ]
 
     # Totals after oversampling for each model
     new_totals = [
         12,  # Sonnet 3.5 v2
         63,  # Sonnet 3.7
-        2,   # Sonnet 3.7 1k
-        9,   # Sonnet 3.7 64k
+        2,  # Sonnet 3.7 1k
+        9,  # Sonnet 3.7 64k
         13,  # DeepSeek R1
         15,  # ChatGPT-4o
         13,  # GPT-4o Aug '24
-        7    # Gemini 2.5 Pro
+        7,  # Gemini 2.5 Pro
     ]
 
     # Calculate average (not shown in the plot but reported)
     average = np.mean(retention_percentages)  # 76.52%
+
+    # Compute confidence intervals via bootstrap resampling, mirroring save_iphr_plot
+    rng = np.random.default_rng(42)
+    n_bootstraps = 2000
+    ci_low_list: list[float] = []
+    ci_high_list: list[float] = []
+    successes_list: list[int] = []
+    totals_list: list[int] = []
+
+    print("\nConfidence Intervals for Oversampling Retention:")
+    print(
+        f"{'Model':<15} | {'Retention (%)':<14} | {'95% CI Low':<12} | {'95% CI High':<12}"
+    )
+    print("-" * 70)
+
+    for pct, kept in zip(retention_percentages, new_totals):
+        # Infer the original number of unfaithful pairs before oversampling.
+        original_total = int(round(kept / (pct / 100.0)))
+        totals_list.append(original_total)
+        successes_list.append(kept)
+
+        population = np.zeros(original_total)
+        population[:kept] = 1
+        indices = rng.integers(0, original_total, size=(n_bootstraps, original_total))
+        bootstrap_means = population[indices].mean(axis=1) * 100
+
+        ci_low = float(np.percentile(bootstrap_means, 2.5))
+        ci_high = float(np.percentile(bootstrap_means, 97.5))
+        ci_low_list.append(ci_low)
+        ci_high_list.append(ci_high)
+
+        print(
+            f"{models[len(ci_low_list) - 1]:<15} | {pct:>11.2f}%   | {ci_low:>8.2f}%   | {ci_high:>8.2f}%"
+        )
 
     # Create the bar chart
     plt.style.use("seaborn-v0_8-white")
@@ -1321,9 +1476,22 @@ def save_oversampling_plot(df: pd.DataFrame, save_dir: Path) -> None:
     for i, model in enumerate(models):
         vendor = model_vendors[model]
         color = vendor_colors[vendor]
-        bar = plt.bar(i, retention_percentages[i], color=color, edgecolor="black", linewidth=1, alpha=0.8)
+        bar = plt.bar(
+            i,
+            retention_percentages[i],
+            color=color,
+            edgecolor="black",
+            linewidth=1,
+            alpha=0.8,
+            yerr=[
+                [retention_percentages[i] - ci_low_list[i]],
+                [ci_high_list[i] - retention_percentages[i]],
+            ],
+            capsize=4,
+            error_kw={"linewidth": 1, "color": "black"},
+        )
         bars.append(bar)
-        
+
         # Add to legend only if we haven't seen this vendor yet
         if vendor not in seen_vendors:
             # Map vendor names to display names
@@ -1339,37 +1507,55 @@ def save_oversampling_plot(df: pd.DataFrame, save_dir: Path) -> None:
             seen_vendors.add(vendor)
 
     # Add labels and title
-    plt.xlabel('Model', fontsize=18)
-    plt.ylabel('Unfaithfulness Retention\nAfter Oversampling (%)', fontsize=18)
+    plt.xlabel("Model", fontsize=18)
+    plt.ylabel("Unfaithfulness Retention\nAfter Oversampling (%)", fontsize=18)
 
-    # Add value labels on top of bars
+    # Add value labels on top of bars (above the CI)
     for i, bar in enumerate(bars):
         height = float(retention_percentages[i])
-        plt.text(i, height + 1, f'{height:.2f}%\nn={new_totals[i]}', ha='center', va='bottom', fontsize=12)
+        plt.text(
+            i,
+            ci_high_list[i] + 1,
+            f"{height:.2f}%\nn={new_totals[i]}",
+            ha="center",
+            va="bottom",
+            fontsize=12,
+        )
 
     # Add horizontal line at average
-    plt.axhline(y=float(average), color='red', linestyle='--', alpha=0.7)
-    plt.text(-0.5, float(average)+2, f'Average: {average:.2f}%', color='red')
+    plt.axhline(y=float(average), color="red", linestyle="--", alpha=0.7)
 
     # Add legend
+    # Add dashed-line proxy for the average to the legend
+    from matplotlib.lines import Line2D
+
+    average_handle = Line2D(
+        [0],
+        [0],
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Avg. ({average:.2f}%)",
+    )
+
     plt.legend(
-        [h[0] for h in legend_handles],
-        [h[1] for h in legend_handles],
+        [h[0] for h in legend_handles] + [average_handle],
+        [h[1] for h in legend_handles] + [average_handle.get_label()],
         loc="upper left",
         bbox_to_anchor=(1.0, 1.0),
         frameon=True,
-        fontsize=16
+        fontsize=16,
     )
 
     # Rotate x-axis labels for better readability
-    plt.xticks(range(len(models)), models, rotation=45, ha='right', fontsize=16)
+    plt.xticks(range(len(models)), models, rotation=45, ha="right", fontsize=16)
 
     # y-limits
     plt.ylim(0, 115)
     plt.yticks(np.arange(0, 110, 10), fontsize=16)
 
     # Add grid for better readability
-    plt.grid(axis='y', linestyle='--', alpha=0.3)
+    plt.grid(axis="y", linestyle="--", alpha=0.3)
     plt.gca().set_axisbelow(True)
 
     # Adjust layout
