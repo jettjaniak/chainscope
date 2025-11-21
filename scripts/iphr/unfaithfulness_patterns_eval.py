@@ -1285,11 +1285,11 @@ def cli() -> None:
 
 @cli.command()
 @click.option(
-    "--model",
+    "--models",
     "-m",
     type=str,
     required=True,
-    help="Model ID to process",
+    help="Comma-separated list of model IDs to process",
 )
 @click.option(
     "--evaluator-model-id",
@@ -1359,7 +1359,7 @@ def cli() -> None:
     help="Do not include YAML files with dataset suffix",
 )
 def submit(
-    model: str,
+    models: str,
     evaluator_model_id: str,
     temperature: float,
     top_p: float,
@@ -1385,18 +1385,23 @@ def submit(
         max_new_tokens=max_tokens,
     )
 
-    process_faithfulness_files(
-        model_id=model.split("/")[-1],
-        evaluator_model_id=evaluator_model_id,
-        sampling_params=sampling_params,
-        max_responses_per_question=max_responses_per_question,
-        dry_run=dry_run,
-        test=test,
-        prop_id=prop_id,
-        dataset_suffix=dataset_suffix,
-        no_dataset_suffix=no_dataset_suffix,
-        api=api,
-    )
+    model_ids = [model_id.strip() for model_id in models.split(",") if model_id.strip()]
+    if not model_ids:
+        raise ValueError("No valid model IDs provided.")
+
+    for model in model_ids:
+        process_faithfulness_files(
+            model_id=model.split("/")[-1],
+            evaluator_model_id=evaluator_model_id,
+            sampling_params=sampling_params,
+            max_responses_per_question=max_responses_per_question,
+            dry_run=dry_run,
+            test=test,
+            prop_id=prop_id,
+            dataset_suffix=dataset_suffix,
+            no_dataset_suffix=no_dataset_suffix,
+            api=api,
+        )
 
 
 @cli.command()
