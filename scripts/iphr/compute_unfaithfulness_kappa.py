@@ -281,7 +281,9 @@ def _compute_counts(
 
 
 @beartype
-def compute_binary_kappa(human_labels: list[int], llm_labels: list[int]) -> float:
+def compute_binary_metrics(
+    human_labels: list[int], llm_labels: list[int]
+) -> dict[str, float | int | None]:
     tp, tn, fp, fn = _compute_counts(human_labels, llm_labels)
     total = tp + tn + fp + fn
     assert total > 0
@@ -296,7 +298,27 @@ def compute_binary_kappa(human_labels: list[int], llm_labels: list[int]) -> floa
     if abs(1.0 - pe) < 1e-9:
         raise ValueError("Cannot compute κ because expected agreement is 1.0")
 
-    return (po - pe) / (1.0 - pe)
+    kappa = (po - pe) / (1.0 - pe)
+    precision = tp / (tp + fp) if (tp + fp) > 0 else None
+    recall = tp / (tp + fn) if (tp + fn) > 0 else None
+    if precision is None or recall is None or precision + recall == 0:
+        f1: float | None = None
+    else:
+        f1 = 2 * precision * recall / (precision + recall)
+
+    return {
+        "kappa": kappa,
+        "tp": tp,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "n_pairs": total,
+        "human_positive": tp + fn,
+        "llm_positive": tp + fp,
+    }
 
 
 @beartype
@@ -304,8 +326,7 @@ def compute_kappa(
     annotations: list[ManualAnnotation],
     pattern_lookup: dict[tuple[str, str], set[str]],
 ) -> tuple[
-    dict[str, float],
-    dict[str, dict[str, int]],
+    dict[str, dict[str, float | int | None]],
     int,
     int,
     list[tuple[str, str]],
@@ -340,8 +361,7 @@ def compute_kappa(
             human_labels[target].append(human)
             llm_labels[target].append(llm)
 
-    kappas: dict[str, float] = {}
-    counts: dict[str, dict[str, int]] = {}
+    metrics_by_category: dict[str, dict[str, float | int | None]] = {}
 
     for target in TARGET_CATEGORIES:
         labels_human = human_labels[target]
@@ -349,17 +369,10 @@ def compute_kappa(
         if not labels_human:
             continue
 
-        kappa = compute_binary_kappa(labels_human, labels_llm)
-        kappas[target] = kappa
-        counts[target] = {
-            "n_pairs": len(labels_human),
-            "human_positive": sum(labels_human),
-            "llm_positive": sum(labels_llm),
-        }
+        metrics_by_category[target] = compute_binary_metrics(labels_human, labels_llm)
 
     return (
-        kappas,
-        counts,
+        metrics_by_category,
         considered_pairs,
         missing_pairs,
         missing_examples,
@@ -436,15 +449,14 @@ def main(
     click.echo()
 
     (
-        kappas,
-        counts,
+        metrics_by_category,
         considered_pairs,
         missing_pairs,
         missing_examples,
         per_model_overlap,
     ) = compute_kappa(manual_annotations, pattern_lookup)
 
-    if not kappas:
+    if not metrics_by_category:
         if missing_examples:
             click.echo("Sample pairs missing LLM pattern analysis (model_id :: qid):")
             for model_id, qid in missing_examples:
@@ -484,14 +496,31 @@ def main(
 
     click.echo("Cohen's κ per category:")
     for target in TARGET_CATEGORIES:
-        if target not in kappas:
+        metrics = metrics_by_category.get(target)
+        if not metrics:
             click.echo(f"- {target}: no overlapping annotations")
             continue
 
-        stats = counts[target]
         click.echo(
-            f"- {target}: κ = {kappas[target]:.3f} "
-            f"(n={stats['n_pairs']}, human+= {stats['human_positive']}, llm+= {stats['llm_positive']})"
+            f"- {target}: κ = {metrics['kappa']:.3f} "
+            f"(n={metrics['n_pairs']}, human+= {metrics['human_positive']}, "
+            f"llm+= {metrics['llm_positive']})"
+        )
+        precision = (
+            f"{metrics['precision']:.3f}"
+            if isinstance(metrics["precision"], float)
+            else "N/A"
+        )
+        recall = (
+            f"{metrics['recall']:.3f}"
+            if isinstance(metrics["recall"], float)
+            else "N/A"
+        )
+        f1 = f"{metrics['f1']:.3f}" if isinstance(metrics["f1"], float) else "N/A"
+        click.echo(
+            f"  tp={metrics['tp']}, tn={metrics['tn']}, "
+            f"fp={metrics['fp']}, fn={metrics['fn']}, "
+            f"precision={precision}, recall={recall}, f1={f1}"
         )
 
 
