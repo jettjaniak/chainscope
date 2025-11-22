@@ -4,7 +4,7 @@
 import logging
 import random
 from collections import defaultdict
-from typing import Literal
+from typing import Literal, cast
 
 import click
 import numpy as np
@@ -609,11 +609,16 @@ def save_by_prop_id(
     help="Instruction ID to process",
 )
 @click.option(
-    "--df-path",
-    "-d",
+    "--dataset-suffix",
+    "-s",
     type=str,
     default=None,
-    help="Path to the DataFrame to process. If not provided, the default path will be used.",
+    help=(
+        "Dataset suffix to process (e.g., 'non_ambiguous_hard_2'). "
+        "For instr-wm, accepted values: "
+        "non_ambiguous_hard_2, non_ambiguous_hard, non_ambiguous, non_ambiguous_hard_3, or omit for base. "
+        "Must be omitted for instr-v0."
+    ),
 )
 @click.option(
     "--verbose",
@@ -635,7 +640,7 @@ def main(
     model: str | None,
     exclude_metadata: bool,
     instr_id: str,
-    df_path: str | None,
+    dataset_suffix: str | None,
     verbose: bool,
     no_oversampling: bool,
 ) -> None:
@@ -646,21 +651,51 @@ def main(
     random.seed(43)
     np.random.seed(43)
 
-    # Load data
-    if instr_id == "instr-wm":
-        if df_path is None:
-            df_path = DATA_DIR / "df-wm.pkl"
-        assert df_path is not None
-        logging.info(f"Loading data from {df_path}")
-        df = pd.read_pickle(df_path)
-    elif instr_id == "instr-v0":
-        if df_path is None:
-            df_path = DATA_DIR / "df.pkl"
-        assert df_path is not None
-        logging.info(f"Loading data from {df_path}")
-        df = pd.read_pickle(df_path)
+    # Resolve dataframe path and canonical suffix
+    df_path: Path
+    canonical_suffix: str | None
+    if instr_id == "instr-v0":
+        if dataset_suffix is not None:
+            raise click.BadParameter(
+                "dataset_suffix must be omitted when instr-id is instr-v0"
+            )
+        df_path = DATA_DIR / "df.pkl"
+        canonical_suffix = None
+    elif instr_id == "instr-wm":
+        suffix_key = (
+            None if dataset_suffix is None else dataset_suffix.replace("-", "_")
+        )
+        suffix_map: dict[str | None, tuple[str, str | None]] = {
+            None: ("df-wm.pkl", None),
+            "non_ambiguous": ("df-wm-non-ambiguous.pkl", "non-ambiguous"),
+            "non_ambiguous_hard": (
+                "df-wm-non-ambiguous-hard.pkl",
+                "non-ambiguous-hard",
+            ),
+            "non_ambiguous_hard_2": (
+                "df-wm-non-ambiguous-hard-2.pkl",
+                "non-ambiguous-hard-2",
+            ),
+            "non_ambiguous_hard_3": (
+                "df-wm-non-ambiguous-hard-3.pkl",
+                "non-ambiguous-hard-3",
+            ),
+        }
+        if suffix_key not in suffix_map:
+            valid = ", ".join(k for k in suffix_map.keys() if k is not None)
+            raise click.BadParameter(
+                f"Unsupported dataset_suffix '{dataset_suffix}'. Valid options: {valid}."
+            )
+        df_filename, canonical_suffix = suffix_map[suffix_key]
+        df_path = DATA_DIR / df_filename
     else:
         raise click.BadParameter(f"Invalid instruction ID: {instr_id}")
+
+    logging.info(f"Loading data from {df_path}")
+    df_loaded = pd.read_pickle(df_path)
+    if not isinstance(df_loaded, pd.DataFrame):
+        raise RuntimeError(f"Expected DataFrame in {df_path}, found {type(df_loaded)}")
+    df = cast(pd.DataFrame, df_loaded).copy()
 
     logging.info(f"Loaded {len(df)} datapoints")
 
@@ -668,6 +703,20 @@ def main(
     df = df[df["mode"] == "cot"]
 
     logging.info(f"Filtered to {len(df)} CoT datapoints")
+
+    # Filter by dataset suffix if requested
+    if canonical_suffix is None:
+        if "dataset_suffix" in df.columns:
+            df = df[df["dataset_suffix"].isna()]
+    else:
+        if "dataset_suffix" not in df.columns:
+            raise click.BadParameter(
+                "Underlying dataframe does not contain dataset_suffix information."
+            )
+        df = df[df["dataset_suffix"] == canonical_suffix]
+    logging.info(
+        f"Filtered to {len(df)} datapoints matching dataset_suffix={canonical_suffix}"
+    )
 
     all_model_ids = sort_models(df["model_id"].unique().tolist())
     logging.info(f"Available models: {all_model_ids}")
