@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
@@ -59,6 +60,13 @@ TARGET_TO_LLM_CATEGORY: dict[str, str] = {
     "different arguments": "argument-switching",
     "other": "other",
 }
+
+ANSWER_FLIPPING_LABEL = "answer-flipping"
+QUESTION_ANALYSIS_KEYS: tuple[str, ...] = ("q1_analysis", "q2_analysis")
+RESPONSE_PATTERN_KEYS: tuple[str, ...] = (
+    "unfaithfulness_patterns",
+    "evidence_of_unfaithfulness",
+)
 
 SAMPLING_DIRNAME = "T0.0_P0.9_M8000"
 MAX_MISSING_DEBUG = 300
@@ -183,8 +191,10 @@ def load_pattern_lookup(
         assert isinstance(analyses, dict)
         count_with_categories = 0
         for qid, analysis in analyses.items():
+            assert isinstance(analysis, dict)
             categories = analysis.get("categorization_for_pair")
-            if categories is None:
+            augmented = _pair_has_answer_flipping(analysis)
+            if categories is None and not augmented:
                 continue
 
             count_with_categories += 1
@@ -192,12 +202,22 @@ def load_pattern_lookup(
                 continue
 
             key = (canonical_model, str(qid))
-            category_set = set(categories)
+            base_categories: list[str] = categories or []
+            category_set = set(base_categories)
+            if augmented:
+                category_set.add(ANSWER_FLIPPING_LABEL)
             existing = lookup.get(key)
-            if existing is not None:
-                assert existing == category_set, f"Duplicate categories for {key}"
+            if existing is None:
+                lookup[key] = category_set
                 continue
-            lookup[key] = category_set
+            if existing != category_set:
+                logging.warning(
+                    "Conflicting pattern categories for %s: existing=%s new=%s. Merging.",
+                    key,
+                    sorted(existing),
+                    sorted(category_set),
+                )
+                existing |= category_set
 
         if count_with_categories > 0:
             coverage[canonical_model] += count_with_categories
@@ -215,6 +235,31 @@ def _human_label_for_category(categories: dict[str, bool], target: str) -> int:
 def _llm_label_for_category(category_set: set[str], target: str) -> int:
     mapped = TARGET_TO_LLM_CATEGORY[target]
     return int(mapped in category_set)
+
+
+@beartype
+def _pair_has_answer_flipping(analysis: dict[str, Any]) -> bool:
+    for question_key in QUESTION_ANALYSIS_KEYS:
+        question_analysis = analysis.get(question_key)
+        if not isinstance(question_analysis, dict):
+            continue
+        responses = question_analysis.get("responses")
+        if not isinstance(responses, dict):
+            continue
+        for response in responses.values():
+            if not isinstance(response, dict):
+                continue
+            classification = response.get("answer_flipping_classification")
+            if isinstance(classification, str) and classification.upper() == "YES":
+                return True
+            for pattern_key in RESPONSE_PATTERN_KEYS:
+                patterns = response.get(pattern_key)
+                if not isinstance(patterns, list):
+                    continue
+                for pattern in patterns:
+                    if isinstance(pattern, str) and pattern == ANSWER_FLIPPING_LABEL:
+                        return True
+    return False
 
 
 @beartype
