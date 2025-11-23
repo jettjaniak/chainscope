@@ -16,6 +16,7 @@ from chainscope import DATA_DIR
 from chainscope.typing import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 Label = Literal["e", "n", "y", "r", "u"]
+NormalizedLabel = Literal["e", "n", "y", "ru"]
 ResponseKey = tuple[Path, str, str]
 
 COT_EVAL_DIR = DATA_DIR / "cot_eval"
@@ -57,6 +58,13 @@ class SelectedResponse:
     response: str
     metadata: ManualFileMetadata
     auto_label: Label
+
+
+@beartype
+def _normalized_label(label: Label) -> NormalizedLabel:
+    if label in {"r", "u"}:
+        return "ru"
+    return cast(NormalizedLabel, label)
 
 
 @beartype
@@ -337,10 +345,10 @@ def resolve_selected_response(
 def compute_kappa(
     manual_data: dict[Path, ManualFileData],
     eval_cache: dict[Path, CotEval],
-) -> tuple[float, int, dict[Label, int], dict[Label, int]]:
+) -> tuple[float, int, dict[NormalizedLabel, int], dict[NormalizedLabel, int]]:
     manual_labels: list[Label] = []
     auto_labels: list[Label] = []
-    label_order: tuple[Label, ...] = ("e", "n", "y", "r", "u")
+    label_order: tuple[NormalizedLabel, ...] = ("e", "n", "y", "ru")
     for eval_path, manual_entry in tqdm(
         manual_data.items(),
         total=len(manual_data),
@@ -362,13 +370,15 @@ def compute_kappa(
     if not manual_labels:
         raise ValueError("No manual annotations recorded; cannot compute κ.")
     total = len(manual_labels)
-    manual_counts: dict[Label, int] = {label: 0 for label in label_order}
-    auto_counts: dict[Label, int] = {label: 0 for label in label_order}
+    manual_counts: dict[NormalizedLabel, int] = {label: 0 for label in label_order}
+    auto_counts: dict[NormalizedLabel, int] = {label: 0 for label in label_order}
     match = 0
     for manual_label, auto_label in zip(manual_labels, auto_labels, strict=True):
-        manual_counts[manual_label] += 1
-        auto_counts[auto_label] += 1
-        if manual_label == auto_label:
+        normalized_manual = _normalized_label(manual_label)
+        normalized_auto = _normalized_label(auto_label)
+        manual_counts[normalized_manual] += 1
+        auto_counts[normalized_auto] += 1
+        if normalized_manual == normalized_auto:
             match += 1
     observed = match / total
     expected = 0.0
@@ -381,13 +391,14 @@ def compute_kappa(
 
 
 @beartype
-def format_label(label: Label) -> str:
-    mapping: dict[Label, str] = {
+def format_label(label: Literal["e", "n", "y", "r", "u", "ru"]) -> str:
+    mapping: dict[str, str] = {
         "e": "NO (equal values)",
         "n": "NO",
         "y": "YES",
         "r": "REFUSED",
         "u": "UNKNOWN",
+        "ru": "REFUSED/UNKNOWN",
     }
     return mapping[label]
 
@@ -516,8 +527,8 @@ def main(
     click.echo("\n" + "-" * 80)
     click.echo(f"Cohen's κ across {total} annotations: {kappa:.3f}")
     click.echo("Label counts (manual vs automatic):")
-    for label_key in ("y", "n", "e", "r", "u"):
-        label = cast(Label, label_key)
+    for label_key in ("y", "n", "e", "ru"):
+        label = cast(Literal["e", "n", "y", "ru"], label_key)
         click.echo(
             f"- {format_label(label)}: manual={manual_counts[label]} auto={auto_counts[label]}"
         )
