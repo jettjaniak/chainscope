@@ -466,6 +466,16 @@ def _plot_label_distribution(
     assert manual_err.shape == (2, len(visible_labels))
     assert auto_err.shape == (2, len(visible_labels))
     plt.style.use("seaborn-v0_8-white")
+    plt.rcParams.update(
+        {
+            "font.size": 18,
+            "axes.labelsize": 18,
+            "axes.titlesize": 18,
+            "xtick.labelsize": 18,
+            "ytick.labelsize": 18,
+            "legend.fontsize": 18,
+        }
+    )
     fig, ax = plt.subplots(figsize=(9, 6))
     positions = np.arange(len(visible_labels))
     width = 0.38
@@ -494,9 +504,9 @@ def _plot_label_distribution(
     ax.set_xticks(positions)
     ax.set_xticklabels([format_label(label) for label in visible_labels])
     ax.set_ylabel("Proportion of responses")
-    ax.set_ylim(0.0, 1.02)
+    ax.set_ylim(0.0, 0.6)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5)
-    ax.legend()
+    ax.legend(fontsize=18)
     for idx, bar in enumerate(manual_bars):
         height = bar.get_height()
         upper_error = float(manual_err[1, idx])
@@ -507,7 +517,7 @@ def _plot_label_distribution(
             f"{manual_counts[visible_labels[idx]]}",
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=16,
         )
     for idx, bar in enumerate(auto_bars):
         height = bar.get_height()
@@ -519,7 +529,7 @@ def _plot_label_distribution(
             f"{auto_counts[visible_labels[idx]]}",
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=16,
         )
     plt.tight_layout()
     fig.savefig(output_path, bbox_inches="tight")

@@ -494,6 +494,16 @@ def _plot_f1_scores(
         ]
     )
     plt.style.use("seaborn-v0_8-white")
+    plt.rcParams.update(
+        {
+            "font.size": 18,
+            "axes.labelsize": 18,
+            "axes.titlesize": 18,
+            "xtick.labelsize": 18,
+            "ytick.labelsize": 18,
+            "legend.fontsize": 18,
+        }
+    )
     fig, ax = plt.subplots(figsize=(8, 5))
     positions = np.arange(len(categories))
     bars = ax.bar(
@@ -516,7 +526,7 @@ def _plot_f1_scores(
         ha="right",
     )
     ax.set_ylabel("F1 score")
-    ax.set_ylim(0.0, 1.02)
+    ax.set_ylim(0.0, 1.05)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5)
     for idx, bar in enumerate(bars):
         height = bar.get_height()
@@ -528,7 +538,7 @@ def _plot_f1_scores(
             f"{values[idx]:.2f}",
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=16,
         )
     plt.tight_layout()
     fig.savefig(output_path, bbox_inches="tight")
