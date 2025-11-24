@@ -42,6 +42,10 @@ TARGET_CATEGORIES: tuple[str, ...] = (
     "other",
 )
 
+UNION_TARGET: str = "any-pair-level-pattern"
+
+TARGET_CATEGORIES = (*TARGET_CATEGORIES, UNION_TARGET)
+
 TARGET_TO_HUMAN_CATEGORIES: dict[str, tuple[str, ...]] = {
     "answer flipping": ("answer flipping",),
     "fact manipulation": ("fact manipulation",),
@@ -52,6 +56,7 @@ TARGET_TO_HUMAN_CATEGORIES: dict[str, tuple[str, ...]] = {
         "missing step",
         "other",
     ),
+    UNION_TARGET: ("fact manipulation", "different arguments", "other"),
 }
 
 TARGET_TO_LLM_CATEGORY: dict[str, str] = {
@@ -233,6 +238,13 @@ def _human_label_for_category(categories: dict[str, bool], target: str) -> int:
 
 @beartype
 def _llm_label_for_category(category_set: set[str], target: str) -> int:
+    if target == UNION_TARGET:
+        return int(
+            any(
+                label in category_set
+                for label in ("fact-manipulation", "argument-switching", "other")
+            )
+        )
     mapped = TARGET_TO_LLM_CATEGORY[target]
     return int(mapped in category_set)
 
@@ -327,6 +339,7 @@ def compute_kappa(
     pattern_lookup: dict[tuple[str, str], set[str]],
 ) -> tuple[
     dict[str, dict[str, float | int | None]],
+    dict[str, dict[str, list[tuple[str, str]]]],
     int,
     int,
     list[tuple[str, str]],
@@ -334,6 +347,9 @@ def compute_kappa(
 ]:
     human_labels: dict[str, list[int]] = {target: [] for target in TARGET_CATEGORIES}
     llm_labels: dict[str, list[int]] = {target: [] for target in TARGET_CATEGORIES}
+    label_records: dict[str, list[tuple[str, str, int, int]]] = {
+        target: [] for target in TARGET_CATEGORIES
+    }
 
     missing_pairs = 0
     considered_pairs = 0
@@ -360,8 +376,14 @@ def compute_kappa(
             llm = _llm_label_for_category(category_set, target)
             human_labels[target].append(human)
             llm_labels[target].append(llm)
+            label_records[target].append(
+                (annotation.model_id, annotation.qid, human, llm)
+            )
 
     metrics_by_category: dict[str, dict[str, float | int | None]] = {}
+    examples_by_category: dict[str, dict[str, list[tuple[str, str]]]] = {
+        target: {"fp": [], "fn": []} for target in TARGET_CATEGORIES
+    }
 
     for target in TARGET_CATEGORIES:
         labels_human = human_labels[target]
@@ -371,8 +393,22 @@ def compute_kappa(
 
         metrics_by_category[target] = compute_binary_metrics(labels_human, labels_llm)
 
+        # Collect TN and FN examples (model_id, qid)
+        fp_examples: list[tuple[str, str]] = []
+        fn_examples: list[tuple[str, str]] = []
+        for model_id, qid, human, llm in label_records[target]:
+            if human == 0 and llm == 1 and len(fp_examples) < 3:
+                fp_examples.append((model_id, qid))
+            if human == 1 and llm == 0 and len(fn_examples) < 3:
+                fn_examples.append((model_id, qid))
+            if len(fp_examples) >= 3 and len(fn_examples) >= 3:
+                break
+        examples_by_category[target]["fp"] = fp_examples
+        examples_by_category[target]["fn"] = fn_examples
+
     return (
         metrics_by_category,
+        examples_by_category,
         considered_pairs,
         missing_pairs,
         missing_examples,
@@ -450,6 +486,7 @@ def main(
 
     (
         metrics_by_category,
+        examples_by_category,
         considered_pairs,
         missing_pairs,
         missing_examples,
@@ -494,15 +531,16 @@ def main(
             click.echo(f"- {model_id} :: {qid}")
         click.echo()
 
-    click.echo("Cohen's κ per category:")
+    click.echo("Results per category:")
     for target in TARGET_CATEGORIES:
         metrics = metrics_by_category.get(target)
         if not metrics:
             click.echo(f"- {target}: no overlapping annotations")
             continue
 
+        click.echo(f"- {target}")
         click.echo(
-            f"- {target}: κ = {metrics['kappa']:.3f} "
+            f"  κ = {metrics['kappa']:.3f} "
             f"(n={metrics['n_pairs']}, human+= {metrics['human_positive']}, "
             f"llm+= {metrics['llm_positive']})"
         )
@@ -522,6 +560,16 @@ def main(
             f"fp={metrics['fp']}, fn={metrics['fn']}, "
             f"precision={precision}, recall={recall}, f1={f1}"
         )
+        fp_examples = examples_by_category[target]["fp"]
+        fn_examples = examples_by_category[target]["fn"]
+        if fp_examples:
+            click.echo("    FP examples (LLM only):")
+            for model_id, qid in fp_examples:
+                click.echo(f"      - {model_id} :: {qid}")
+        if fn_examples:
+            click.echo("    FN examples (human only):")
+            for model_id, qid in fn_examples:
+                click.echo(f"      - {model_id} :: {qid}")
 
 
 if __name__ == "__main__":
