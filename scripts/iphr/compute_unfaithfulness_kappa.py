@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import click
+import matplotlib.pyplot as plt
+import numpy as np
 import yaml
 from beartype import beartype
 
@@ -75,6 +77,7 @@ RESPONSE_PATTERN_KEYS: tuple[str, ...] = (
 
 SAMPLING_DIRNAME = "T0.0_P0.9_M8000"
 MAX_MISSING_DEBUG = 300
+BOOTSTRAP_SAMPLES = 2000
 
 MODEL_ID_REMAP: dict[str, str] = {
     "gpt-4o": "gpt-4o-2024-08-06",
@@ -344,10 +347,14 @@ def compute_kappa(
     int,
     list[tuple[str, str]],
     dict[str, dict[str, int]],
+    dict[str, list[tuple[int, int]]],
 ]:
     human_labels: dict[str, list[int]] = {target: [] for target in TARGET_CATEGORIES}
     llm_labels: dict[str, list[int]] = {target: [] for target in TARGET_CATEGORIES}
     label_records: dict[str, list[tuple[str, str, int, int]]] = {
+        target: [] for target in TARGET_CATEGORIES
+    }
+    label_pairs: dict[str, list[tuple[int, int]]] = {
         target: [] for target in TARGET_CATEGORIES
     }
 
@@ -379,6 +386,7 @@ def compute_kappa(
             label_records[target].append(
                 (annotation.model_id, annotation.qid, human, llm)
             )
+            label_pairs[target].append((human, llm))
 
     metrics_by_category: dict[str, dict[str, float | int | None]] = {}
     examples_by_category: dict[str, dict[str, list[tuple[str, str]]]] = {
@@ -413,7 +421,108 @@ def compute_kappa(
         missing_pairs,
         missing_examples,
         per_model_stats,
+        label_pairs,
     )
+
+
+@beartype
+def _classification_counts(pairs: list[tuple[int, int]]) -> tuple[int, int, int]:
+    assert len(pairs) > 0
+    tp = fp = fn = 0
+    for human, llm in pairs:
+        if human == 1 and llm == 1:
+            tp += 1
+        elif human == 0 and llm == 1:
+            fp += 1
+        elif human == 1 and llm == 0:
+            fn += 1
+    return tp, fp, fn
+
+
+@beartype
+def _f1_from_counts(tp: int, fp: int, fn: int) -> float:
+    assert tp >= 0 and fp >= 0 and fn >= 0
+    if tp == 0:
+        if fp + fn == 0:
+            return 1.0
+        return 0.0
+    precision = tp / (tp + fp)
+    recall = tp / (tp + fn)
+    return (2.0 * precision * recall) / (precision + recall)
+
+
+@beartype
+def _bootstrap_f1(
+    pairs: list[tuple[int, int]],
+    n_samples: int,
+    rng: np.random.Generator,
+) -> tuple[float, float, float]:
+    assert len(pairs) > 0
+    base_tp, base_fp, base_fn = _classification_counts(pairs)
+    base_f1 = _f1_from_counts(base_tp, base_fp, base_fn)
+    if len(pairs) == 1 or n_samples == 0:
+        return base_f1, base_f1, base_f1
+    scores = np.empty(n_samples, dtype=float)
+    population_size = len(pairs)
+    for idx in range(n_samples):
+        sample_indices = rng.integers(0, population_size, size=population_size)
+        sample_pairs = [pairs[int(index)] for index in sample_indices]
+        tp, fp, fn = _classification_counts(sample_pairs)
+        scores[idx] = _f1_from_counts(tp, fp, fn)
+    lower = float(np.percentile(scores, 2.5))
+    upper = float(np.percentile(scores, 97.5))
+    return base_f1, lower, upper
+
+
+@beartype
+def _plot_f1_scores(
+    f1_stats: dict[str, tuple[float, float, float]], output_path: Path
+) -> None:
+    assert f1_stats
+    categories = [target for target in TARGET_CATEGORIES if target in f1_stats]
+    assert categories
+    values = [f1_stats[target][0] for target in categories]
+    lowers = [f1_stats[target][1] for target in categories]
+    uppers = [f1_stats[target][2] for target in categories]
+    errors = np.array(
+        [
+            [values[idx] - lowers[idx] for idx in range(len(categories))],
+            [uppers[idx] - values[idx] for idx in range(len(categories))],
+        ]
+    )
+    plt.style.use("seaborn-v0_8-white")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    positions = np.arange(len(categories))
+    bars = ax.bar(
+        positions,
+        values,
+        yerr=errors,
+        capsize=4,
+        color="#4E79A7",
+        edgecolor="black",
+        linewidth=1,
+    )
+    ax.set_xticks(positions)
+    ax.set_xticklabels(
+        [category.title() for category in categories], rotation=20, ha="right"
+    )
+    ax.set_ylabel("F1 score")
+    ax.set_ylim(0.0, 1.0)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5)
+    ax.set_title("Unfaithfulness pattern autorater: F1 with 95% CI")
+    for idx, bar in enumerate(bars):
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height + 0.02,
+            f"{values[idx]:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+    plt.tight_layout()
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
 
 
 @click.command()
@@ -440,11 +549,26 @@ def compute_kappa(
     is_flag=True,
     help="Print every manual pair that is still missing LLM pattern analysis.",
 )
+@click.option(
+    "--plot-dir",
+    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Directory to write F1 plots.",
+)
+@click.option(
+    "--bootstrap-seed",
+    type=int,
+    default=0,
+    show_default=True,
+    help="Seed used for bootstrap confidence intervals.",
+)
 def main(
     models: tuple[str, ...],
     case_studies_dir: Path,
     pattern_dir: Path,
     list_missing: bool,
+    plot_dir: Path | None,
+    bootstrap_seed: int,
 ) -> None:
     """Compute Cohen's κ between manual annotations and LLM pattern labels."""
     allow_models: set[str] | None = set(models) if models else None
@@ -491,6 +615,7 @@ def main(
         missing_pairs,
         missing_examples,
         per_model_overlap,
+        label_pairs,
     ) = compute_kappa(manual_annotations, pattern_lookup)
 
     if not metrics_by_category:
@@ -570,6 +695,22 @@ def main(
             click.echo("    FN examples (human only):")
             for model_id, qid in fn_examples:
                 click.echo(f"      - {model_id} :: {qid}")
+    if plot_dir is not None:
+        f1_stats: dict[str, tuple[float, float, float]] = {}
+        for idx, target in enumerate(TARGET_CATEGORIES):
+            pairs = label_pairs.get(target, [])
+            if not pairs:
+                continue
+            rng = np.random.default_rng(bootstrap_seed + idx)
+            mean, lower, upper = _bootstrap_f1(
+                pairs=pairs, n_samples=BOOTSTRAP_SAMPLES, rng=rng
+            )
+            f1_stats[target] = (mean, lower, upper)
+        if f1_stats:
+            plot_dir.mkdir(parents=True, exist_ok=True)
+            plot_path = plot_dir / "human_vs_llm_unf_pattern_f1_scores.pdf"
+            _plot_f1_scores(f1_stats=f1_stats, output_path=plot_path)
+            click.echo(f"Saved F1 plot to {plot_path}")
 
 
 if __name__ == "__main__":

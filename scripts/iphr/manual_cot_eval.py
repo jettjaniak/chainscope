@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Literal, cast
 
 import click
+import matplotlib.pyplot as plt
+import numpy as np
 import yaml
 from beartype import beartype
 from tqdm import tqdm
@@ -345,7 +347,7 @@ def resolve_selected_response(
 def compute_kappa(
     manual_data: dict[Path, ManualFileData],
     eval_cache: dict[Path, CotEval],
-) -> tuple[float, int, dict[NormalizedLabel, int], dict[NormalizedLabel, int]]:
+) -> tuple[float, int, dict[NormalizedLabel, int], dict[NormalizedLabel, int], int]:
     manual_labels: list[Label] = []
     auto_labels: list[Label] = []
     label_order: tuple[NormalizedLabel, ...] = ("e", "n", "y", "ru")
@@ -387,7 +389,97 @@ def compute_kappa(
     if abs(1.0 - expected) < 1e-9:
         raise ValueError("Cannot compute κ because expected agreement is 1.0")
     kappa = (observed - expected) / (1.0 - expected)
-    return kappa, total, manual_counts, auto_counts
+    return kappa, total, manual_counts, auto_counts, match
+
+
+@beartype
+def _wilson_interval(
+    successes: int, total: int, confidence: float = 0.95
+) -> tuple[float, float]:
+    assert 0 <= successes <= total
+    assert total > 0
+    assert 0.0 < confidence < 1.0
+    z = 1.959963984540054  # sqrt(2) * erfc^-1(2 * (1 - confidence))
+    phat = successes / total
+    denominator = 1.0 + (z**2) / total
+    centre = phat + (z**2) / (2.0 * total)
+    margin = z * np.sqrt((phat * (1.0 - phat) + (z**2) / (4.0 * total)) / total)
+    lower = max(0.0, (centre - margin) / denominator)
+    upper = min(1.0, (centre + margin) / denominator)
+    return lower, upper
+
+
+@beartype
+def _plot_label_distribution(
+    manual_counts: dict[NormalizedLabel, int],
+    auto_counts: dict[NormalizedLabel, int],
+    total: int,
+    output_path: Path,
+) -> None:
+    assert total > 0
+    label_order: tuple[NormalizedLabel, ...] = ("y", "n", "e", "ru")
+    manual_props = [manual_counts[label] / total for label in label_order]
+    auto_props = [auto_counts[label] / total for label in label_order]
+    manual_ci = [_wilson_interval(manual_counts[label], total) for label in label_order]
+    auto_ci = [_wilson_interval(auto_counts[label], total) for label in label_order]
+    manual_err = np.array(
+        [
+            [manual_props[idx] - manual_ci[idx][0] for idx in range(len(label_order))],
+            [manual_ci[idx][1] - manual_props[idx] for idx in range(len(label_order))],
+        ]
+    )
+    auto_err = np.array(
+        [
+            [auto_props[idx] - auto_ci[idx][0] for idx in range(len(label_order))],
+            [auto_ci[idx][1] - auto_props[idx] for idx in range(len(label_order))],
+        ]
+    )
+    plt.style.use("seaborn-v0_8-white")
+    fig, ax = plt.subplots(figsize=(9, 6))
+    positions = np.arange(len(label_order))
+    width = 0.38
+    manual_bars = ax.bar(
+        positions - width / 2.0,
+        manual_props,
+        width=width,
+        label="Human annotations",
+        yerr=manual_err,
+        capsize=4,
+        color="#4E79A7",
+        edgecolor="black",
+        linewidth=1,
+    )
+    ax.bar(
+        positions + width / 2.0,
+        auto_props,
+        width=width,
+        label="Automatic labels",
+        yerr=auto_err,
+        capsize=4,
+        color="#F28E2B",
+        edgecolor="black",
+        linewidth=1,
+    )
+    ax.set_xticks(positions)
+    ax.set_xticklabels([format_label(label) for label in label_order])
+    ax.set_ylabel("Proportion of responses")
+    ax.set_ylim(0.0, 1.0)
+    ax.yaxis.grid(True, linestyle="--", alpha=0.5)
+    ax.legend()
+    ax.set_title("Label distribution: human vs automatic CoT labels")
+    for idx, bar in enumerate(manual_bars):
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height + 0.015,
+            f"{manual_counts[label_order[idx]]}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+    plt.tight_layout()
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
 
 
 @beartype
@@ -435,12 +527,19 @@ def format_label(label: Literal["e", "n", "y", "r", "u", "ru"]) -> str:
     is_flag=True,
     help="Only compute Cohen's κ using existing annotations (skips labeling loop).",
 )
+@click.option(
+    "--plot-dir",
+    type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
+    default=None,
+    help="Directory to store reliability plots.",
+)
 def main(
     instr_id: str,
     sampling_id: str,
     dataset_suffix: str | None,
     seed: int | None,
     kappa_only: bool,
+    plot_dir: Path | None,
 ) -> None:
     """Manually evaluate CoT responses and compute agreement with automatic labels."""
     rng = random.Random(seed)
@@ -518,7 +617,7 @@ def main(
         click.echo("No annotations available; skipping κ computation.")
         return
     try:
-        kappa, total, manual_counts, auto_counts = compute_kappa(
+        kappa, total, manual_counts, auto_counts, match = compute_kappa(
             manual_data=manual_data, eval_cache=eval_cache
         )
     except ValueError as error:
@@ -532,6 +631,21 @@ def main(
         click.echo(
             f"- {format_label(label)}: manual={manual_counts[label]} auto={auto_counts[label]}"
         )
+    accuracy = match / total
+    acc_low, acc_high = _wilson_interval(match, total)
+    click.echo(
+        f"Overall accuracy: {accuracy:.3f} (95% CI {acc_low:.3f}–{acc_high:.3f})"
+    )
+    if plot_dir is not None:
+        plot_dir.mkdir(parents=True, exist_ok=True)
+        plot_path = plot_dir / "human_vs_llm_label_distribution.pdf"
+        _plot_label_distribution(
+            manual_counts=manual_counts,
+            auto_counts=auto_counts,
+            total=total,
+            output_path=plot_path,
+        )
+        click.echo(f"Saved label distribution plot to {plot_path}")
 
 
 if __name__ == "__main__":
