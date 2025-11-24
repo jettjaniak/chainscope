@@ -23,6 +23,8 @@ ResponseKey = tuple[Path, str, str]
 
 COT_EVAL_DIR = DATA_DIR / "cot_eval"
 MANUAL_DIR = DATA_DIR / "manual_cot_eval"
+PROJECT_ROOT = (DATA_DIR / ".." / "..").resolve()
+DEFAULT_PLOT_DIR = PROJECT_ROOT / "plots"
 
 
 @dataclass(frozen=True)
@@ -530,7 +532,7 @@ def format_label(label: Literal["e", "n", "y", "r", "u", "ru"]) -> str:
 @click.option(
     "--plot-dir",
     type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    default=None,
+    default=DEFAULT_PLOT_DIR,
     help="Directory to store reliability plots.",
 )
 def main(

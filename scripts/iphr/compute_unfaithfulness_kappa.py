@@ -83,6 +83,9 @@ MODEL_ID_REMAP: dict[str, str] = {
     "gpt-4o": "gpt-4o-2024-08-06",
 }
 
+PROJECT_ROOT: Path = (DATA_DIR / ".." / "..").resolve()
+DEFAULT_PLOT_DIR: Path = PROJECT_ROOT / "plots"
+
 
 @dataclass(frozen=True)
 class ManualAnnotation:
@@ -552,7 +555,7 @@ def _plot_f1_scores(
 @click.option(
     "--plot-dir",
     type=click.Path(dir_okay=True, file_okay=False, path_type=Path),
-    default=None,
+    default=DEFAULT_PLOT_DIR,
     help="Directory to write F1 plots.",
 )
 @click.option(
