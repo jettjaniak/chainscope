@@ -420,25 +420,54 @@ def _plot_label_distribution(
 ) -> None:
     assert total > 0
     label_order: tuple[NormalizedLabel, ...] = ("y", "n", "e", "ru")
-    manual_props = [manual_counts[label] / total for label in label_order]
-    auto_props = [auto_counts[label] / total for label in label_order]
-    manual_ci = [_wilson_interval(manual_counts[label], total) for label in label_order]
-    auto_ci = [_wilson_interval(auto_counts[label], total) for label in label_order]
-    manual_err = np.array(
-        [
-            [manual_props[idx] - manual_ci[idx][0] for idx in range(len(label_order))],
-            [manual_ci[idx][1] - manual_props[idx] for idx in range(len(label_order))],
-        ]
+    mask = np.array([label != "e" for label in label_order], dtype=bool)
+    visible_labels: tuple[NormalizedLabel, ...] = tuple(
+        label for label in label_order if label != "e"
     )
-    auto_err = np.array(
-        [
-            [auto_props[idx] - auto_ci[idx][0] for idx in range(len(label_order))],
-            [auto_ci[idx][1] - auto_props[idx] for idx in range(len(label_order))],
-        ]
+    assert visible_labels
+    manual_props_all = np.array(
+        [manual_counts[label] / total for label in label_order], dtype=float
     )
+    auto_props_all = np.array(
+        [auto_counts[label] / total for label in label_order], dtype=float
+    )
+    assert manual_props_all.shape == (len(label_order),)
+    assert auto_props_all.shape == (len(label_order),)
+    manual_ci_all = np.array(
+        [_wilson_interval(manual_counts[label], total) for label in label_order],
+        dtype=float,
+    )
+    auto_ci_all = np.array(
+        [_wilson_interval(auto_counts[label], total) for label in label_order],
+        dtype=float,
+    )
+    assert manual_ci_all.shape == (len(label_order), 2)
+    assert auto_ci_all.shape == (len(label_order), 2)
+    manual_props = manual_props_all[mask]
+    auto_props = auto_props_all[mask]
+    manual_err_all = np.stack(
+        (
+            manual_props_all - manual_ci_all[:, 0],
+            manual_ci_all[:, 1] - manual_props_all,
+        ),
+        axis=0,
+    )
+    auto_err_all = np.stack(
+        (
+            auto_props_all - auto_ci_all[:, 0],
+            auto_ci_all[:, 1] - auto_props_all,
+        ),
+        axis=0,
+    )
+    manual_err = manual_err_all[:, mask]
+    auto_err = auto_err_all[:, mask]
+    assert manual_props.shape == (len(visible_labels),)
+    assert auto_props.shape == (len(visible_labels),)
+    assert manual_err.shape == (2, len(visible_labels))
+    assert auto_err.shape == (2, len(visible_labels))
     plt.style.use("seaborn-v0_8-white")
     fig, ax = plt.subplots(figsize=(9, 6))
-    positions = np.arange(len(label_order))
+    positions = np.arange(len(visible_labels))
     width = 0.38
     manual_bars = ax.bar(
         positions - width / 2.0,
@@ -451,11 +480,11 @@ def _plot_label_distribution(
         edgecolor="black",
         linewidth=1,
     )
-    ax.bar(
+    auto_bars = ax.bar(
         positions + width / 2.0,
         auto_props,
         width=width,
-        label="Automatic labels",
+        label="LLM-judge labels",
         yerr=auto_err,
         capsize=4,
         color="#F28E2B",
@@ -463,18 +492,31 @@ def _plot_label_distribution(
         linewidth=1,
     )
     ax.set_xticks(positions)
-    ax.set_xticklabels([format_label(label) for label in label_order])
+    ax.set_xticklabels([format_label(label) for label in visible_labels])
     ax.set_ylabel("Proportion of responses")
-    ax.set_ylim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.02)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5)
     ax.legend()
-    ax.set_title("Label distribution: human vs automatic CoT labels")
     for idx, bar in enumerate(manual_bars):
         height = bar.get_height()
+        upper_error = float(manual_err[1, idx])
+        top_of_error_bar = height + upper_error
         ax.text(
             bar.get_x() + bar.get_width() / 2.0,
-            height + 0.015,
-            f"{manual_counts[label_order[idx]]}",
+            top_of_error_bar + 0.015,
+            f"{manual_counts[visible_labels[idx]]}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+    for idx, bar in enumerate(auto_bars):
+        height = bar.get_height()
+        upper_error = float(auto_err[1, idx])
+        top_of_error_bar = height + upper_error
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            top_of_error_bar + 0.015,
+            f"{auto_counts[visible_labels[idx]]}",
             ha="center",
             va="bottom",
             fontsize=9,

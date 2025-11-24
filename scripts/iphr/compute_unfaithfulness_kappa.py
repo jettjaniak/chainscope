@@ -505,19 +505,26 @@ def _plot_f1_scores(
         edgecolor="black",
         linewidth=1,
     )
+    label_overrides: dict[str, str] = {
+        "different arguments": "Argument Switching",
+        "any-pair-level-pattern": "Any Pair-Level Pattern",
+    }
     ax.set_xticks(positions)
     ax.set_xticklabels(
-        [category.title() for category in categories], rotation=20, ha="right"
+        [label_overrides.get(category, category.title()) for category in categories],
+        rotation=20,
+        ha="right",
     )
     ax.set_ylabel("F1 score")
-    ax.set_ylim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.02)
     ax.yaxis.grid(True, linestyle="--", alpha=0.5)
-    ax.set_title("Unfaithfulness pattern autorater: F1 with 95% CI")
     for idx, bar in enumerate(bars):
         height = bar.get_height()
+        upper_error = float(errors[1, idx])
+        top_of_error_bar = height + upper_error
         ax.text(
             bar.get_x() + bar.get_width() / 2.0,
-            height + 0.02,
+            top_of_error_bar + 0.02,
             f"{values[idx]:.2f}",
             ha="center",
             va="bottom",
