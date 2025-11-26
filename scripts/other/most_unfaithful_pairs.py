@@ -1,5 +1,4 @@
 # %%
-import json
 
 import pandas as pd
 
@@ -20,7 +19,7 @@ model_id = "meta-llama/Llama-3.3-70B-Instruct"
 # %%
 
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl.gz")
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, dataset_suffix, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 df = df[df["mode"] == "cot"]
@@ -40,6 +39,7 @@ for row in df.itertuples():
     prop_ids_with_suffix.add(prop_id)
 
 print(f"Number of unique prop_ids with suffix: {len(prop_ids_with_suffix)}")
+
 
 # %%
 # Function to load responses and eval for a row
@@ -118,6 +118,7 @@ def load_responses_and_eval(
         expected_answer,
     )
 
+
 # %%
 # Load IPHR faithfulness data
 
@@ -135,33 +136,39 @@ for file in faithfulness_files:
     if prop_id_with_suffix not in prop_ids_with_suffix:
         print(f"Skipping {prop_id_with_suffix} because it is not in the df")
         continue
-    
+
     if prop_id_with_suffix not in _faithfulness_cache:
         try:
-            _faithfulness_cache[prop_id_with_suffix] = UnfaithfulnessPairsDataset.load_from_path(file)
+            _faithfulness_cache[prop_id_with_suffix] = (
+                UnfaithfulnessPairsDataset.load_from_path(file)
+            )
         except Exception as e:
             print(f"Error loading unfaithfulness dataset in file {file}: {e}")
             raise e
-    
+
     dataset = _faithfulness_cache[prop_id_with_suffix]
     for qid, question in dataset.questions_by_qid.items():
         if question.metadata is None:
             continue
-            
+
         unfaithful_q_ids.append(qid)
         unfaithful_q_ids.append(question.metadata.reversed_q_id)
 
         # print(f"qid: {qid}, reversed_q_id: {question.metadata.reversed_q_id} from {prop_id_with_suffix}")
-        
+
         p_correct_by_qid[qid] = question.metadata.p_correct
-        p_correct_by_qid[question.metadata.reversed_q_id] = question.metadata.reversed_q_p_correct
-        
+        p_correct_by_qid[question.metadata.reversed_q_id] = (
+            question.metadata.reversed_q_p_correct
+        )
+
         reversed_q_ids[qid] = question.metadata.reversed_q_id
         reversed_q_ids[question.metadata.reversed_q_id] = qid
-        
+
         prop_ids_with_suffix_in_faithfulness.add(prop_id_with_suffix)
 
-print(f"Number of prop_ids_with_suffix in faithfulness: {len(prop_ids_with_suffix_in_faithfulness)}")
+print(
+    f"Number of prop_ids_with_suffix in faithfulness: {len(prop_ids_with_suffix_in_faithfulness)}"
+)
 print(prop_ids_with_suffix_in_faithfulness)
 
 # %%
@@ -178,12 +185,22 @@ model_name = model_id.split("/")[-1]
 pattern_evals: dict[str, UnfaithfulnessPatternEval] = {}
 for prop_id_with_suffix in prop_ids_with_suffix_in_faithfulness:
     try:
-        eval_path = DATA_DIR / "unfaithfulness_pattern_eval" / sampling_params.id / prop_id_with_suffix / f"{model_name}.yaml"
+        eval_path = (
+            DATA_DIR
+            / "unfaithfulness_pattern_eval"
+            / sampling_params.id
+            / prop_id_with_suffix
+            / f"{model_name}.yaml"
+        )
         if eval_path.exists():
-            pattern_evals[prop_id_with_suffix] = UnfaithfulnessPatternEval.load_from_path(eval_path)
+            pattern_evals[prop_id_with_suffix] = (
+                UnfaithfulnessPatternEval.load_from_path(eval_path)
+            )
             print(f"Loaded pattern evaluation for {prop_id_with_suffix}")
         else:
-            print(f"No pattern evaluation found for {prop_id_with_suffix} in path {eval_path}")
+            print(
+                f"No pattern evaluation found for {prop_id_with_suffix} in path {eval_path}"
+            )
     except Exception as e:
         print(f"Error loading pattern evaluation for {prop_id_with_suffix}: {e}")
 
@@ -203,7 +220,12 @@ print(f"P_correct (reversed): {p_correct_by_qid[reversed_q_ids[unfaithful_q_ids[
 
 # %%
 
-filter_unfaithfulness_pattern: Literal["fact-manipulation", "argument-switching", "answer-flipping", "other", "none"] | None = "answer-flipping"
+filter_unfaithfulness_pattern: (
+    Literal[
+        "fact-manipulation", "argument-switching", "answer-flipping", "other", "none"
+    ]
+    | None
+) = "answer-flipping"
 only_one_unfaithfulness_pattern = True
 
 # Find the pair of unfaithful qs with largest difference in p_correct
@@ -222,12 +244,12 @@ for qid in unfaithful_q_ids:
         dataset_id = df.loc[df["qid"] == qid, "dataset_id"].values[0]
         prop_id = df.loc[df["qid"] == qid, "prop_id"].values[0]
         dataset_suffix = df.loc[df["qid"] == qid, "dataset_suffix"].values[0]
-        
+
         # Construct prop_id_with_suffix
         prop_id_with_suffix = f"{prop_id}"
         if dataset_suffix is not None:
             prop_id_with_suffix = f"{prop_id_with_suffix}_{dataset_suffix}"
-        
+
         # Check if this pair matches the filter pattern
         matches_filter = True
         q1_answer_flipping_count = 0
@@ -238,29 +260,44 @@ for qid in unfaithful_q_ids:
                 pattern_eval = pattern_evals[prop_id_with_suffix]
 
                 # assert that it does not happen that both qid and rev_q_id are in unfaithfulness pattern analysis
-                assert qid not in pattern_eval.pattern_analysis_by_qid or rev_q_id not in pattern_eval.pattern_analysis_by_qid, "qid and rev_q_id are in the same pattern analysis"
+                assert (
+                    qid not in pattern_eval.pattern_analysis_by_qid
+                    or rev_q_id not in pattern_eval.pattern_analysis_by_qid
+                ), "qid and rev_q_id are in the same pattern analysis"
 
                 pattern_analysis = None
                 if qid in pattern_eval.pattern_analysis_by_qid:
                     pattern_analysis = pattern_eval.pattern_analysis_by_qid[qid]
                 elif rev_q_id in pattern_eval.pattern_analysis_by_qid:
                     pattern_analysis = pattern_eval.pattern_analysis_by_qid[rev_q_id]
-                
+
                 if pattern_analysis is not None:
                     # Special handling for answer-flipping, which is tracked at response level
                     if filter_unfaithfulness_pattern == "answer-flipping":
-                        # Check if any response in q1 or q2 has answer flipping                        
+                        # Check if any response in q1 or q2 has answer flipping
                         # Check q1 responses
                         if pattern_analysis.q1_analysis:
-                            for resp_id, resp_analysis in pattern_analysis.q1_analysis.responses.items():
-                                if resp_analysis.answer_flipping_classification == "YES":
+                            for (
+                                resp_id,
+                                resp_analysis,
+                            ) in pattern_analysis.q1_analysis.responses.items():
+                                if (
+                                    resp_analysis.answer_flipping_classification
+                                    == "YES"
+                                ):
                                     q1_answer_flipping_count += 1
                                     matches_filter = True
-                        
+
                         # Check q2 responses if we haven't found answer flipping yet
                         if pattern_analysis.q2_analysis:
-                            for resp_id, resp_analysis in pattern_analysis.q2_analysis.responses.items():
-                                if resp_analysis.answer_flipping_classification == "YES":
+                            for (
+                                resp_id,
+                                resp_analysis,
+                            ) in pattern_analysis.q2_analysis.responses.items():
+                                if (
+                                    resp_analysis.answer_flipping_classification
+                                    == "YES"
+                                ):
                                     q2_answer_flipping_count += 1
                                     matches_filter = True
 
@@ -272,14 +309,14 @@ for qid in unfaithful_q_ids:
                                 matches_filter = len(categories) == 1
                             else:
                                 matches_filter = True
-        
+
         if matches_filter:
             pair = tuple(sorted([qid, rev_q_id]))  # Sort to ensure consistent ordering
             if filter_unfaithfulness_pattern == "answer-flipping":
                 metric = abs(q1_answer_flipping_count - q2_answer_flipping_count)
             else:
                 metric = abs(p_correct_by_qid[qid] - p_correct_by_qid[rev_q_id])
-            
+
             unfaithful_qids_pairs.append((pair, metric))
             seen_pairs.add(qid)
             seen_pairs.add(rev_q_id)
@@ -328,30 +365,40 @@ for (qid1, qid2), metric in unfaithful_qids_pairs[:K]:
             pattern_analysis = pattern_eval.pattern_analysis_by_qid[qid2]
             main_qid = qid2
             reversed_qid = qid1
-        
+
         if pattern_analysis is not None:
             if pattern_analysis.q1_analysis:
-                for resp_id, resp_analysis in pattern_analysis.q1_analysis.responses.items():
+                for (
+                    resp_id,
+                    resp_analysis,
+                ) in pattern_analysis.q1_analysis.responses.items():
                     if resp_analysis.answer_flipping_classification == "YES":
                         q1_answer_flipping_count += 1
             if pattern_analysis.q2_analysis:
-                for resp_id, resp_analysis in pattern_analysis.q2_analysis.responses.items():
+                for (
+                    resp_id,
+                    resp_analysis,
+                ) in pattern_analysis.q2_analysis.responses.items():
                     if resp_analysis.answer_flipping_classification == "YES":
                         q2_answer_flipping_count += 1
         else:
-            print(f"No pattern analysis found for {qid1} {qid2} on {prop_id_with_suffix}")
+            print(
+                f"No pattern analysis found for {qid1} {qid2} on {prop_id_with_suffix}"
+            )
     else:
         print(f"No pattern eval found for {prop_id_with_suffix}")
 
-    assert main_qid is not None and reversed_qid is not None, "main_qid or reversed_qid is None"
-    
+    assert (
+        main_qid is not None and reversed_qid is not None
+    ), "main_qid or reversed_qid is None"
+
     print(f"Dataset id: {dataset_id}")
 
     q1_answer = df.loc[df["qid"] == main_qid, "answer"].values[0]
     q2_answer = df.loc[df["qid"] == reversed_qid, "answer"].values[0]
     q1_acc = p_correct_by_qid[main_qid]
     q2_acc = p_correct_by_qid[reversed_qid]
-    
+
     q1_str = df.loc[df["qid"] == main_qid, "q_str"].values[0]
     q2_str = df.loc[df["qid"] == reversed_qid, "q_str"].values[0]
     q1_prompt = wm_template.format(question=q1_str)[:-1]
@@ -362,11 +409,13 @@ for (qid1, qid2), metric in unfaithful_qids_pairs[:K]:
 
     print(f"First entity: {x_name}")
     print(f"Second entity: {y_name}")
-    
+
     # Print pattern analysis if available
     if pattern_analysis:
         if pattern_analysis.categorization_for_pair:
-            print(f"\nUnfaithfulness patterns in pair: {', '.join(pattern_analysis.categorization_for_pair)}")
+            print(
+                f"\nUnfaithfulness patterns in pair: {', '.join(pattern_analysis.categorization_for_pair)}"
+            )
 
     print(f"First prompt (qid: {main_qid}):\n")
     print(f"`{q1_prompt}`\n")

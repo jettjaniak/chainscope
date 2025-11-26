@@ -90,7 +90,7 @@ def compute_fvu_and_get_results(runs: list[Any]) -> tuple[float, dict[str, dict]
     """Compute FVU using test losses and collect results using wandb summary predictions."""
     # Get template biases from dataframe
     data_config = runs[0].config["data_config"]
-    df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
+    df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl.gz")
     model_ids = [
         mid for mid in df.model_id.unique() if mid.endswith(data_config["model_name"])
     ]
@@ -303,8 +303,10 @@ def create_combined_fvu_line_plot(
     for loc, fvu_by_layer in fvu_by_loc_layer.items():
         loc_fvus = [fvu for fvu in fvu_by_layer.values()]
         all_fvus.extend(loc_fvus)
-        print(f"{loc=} min={min(loc_fvus):.2%} max={max(loc_fvus):.2%} avg={np.mean(loc_fvus):.2%}")
-    
+        print(
+            f"{loc=} min={min(loc_fvus):.2%} max={max(loc_fvus):.2%} avg={np.mean(loc_fvus):.2%}"
+        )
+
     max_fvu = max(all_fvus)
     print(f"{max_fvu=}")
     min_fvu = min(all_fvus)
@@ -327,7 +329,9 @@ def create_combined_fvu_line_plot(
     color_by_loc = dict(zip(LOC_ORDER, colors))
     # print colors in HTML hex format
     for loc, color in color_by_loc.items():
-        rgb = [int(c * 255) for c in color[:3]]  # Convert to 0-255 range and take only RGB
+        rgb = [
+            int(c * 255) for c in color[:3]
+        ]  # Convert to 0-255 range and take only RGB
         hex_color = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
         print(f"{loc=} {hex_color=}")
 
@@ -461,7 +465,9 @@ def create_seed_comparison_boxplot(
     box_data = [data_by_layer[layer] for layer in layers]
 
     # Find min and max FVU values for scaling
-    all_values = [val for layer_values in box_data for val in layer_values if val is not None]
+    all_values = [
+        val for layer_values in box_data for val in layer_values if val is not None
+    ]
     min_fvu = min(all_values) if all_values else 0.0
     max_fvu = max(all_values) if all_values else 2.0
 
@@ -470,14 +476,14 @@ def create_seed_comparison_boxplot(
         xsize = 8
     else:
         xsize = 15
-        
+
     if max_fvu > 10.0:
         ysize = 10
     else:
         ysize = 5
 
     plt.figure(figsize=(xsize, ysize), dpi=300)
-    
+
     # Create boxplot
     bp = plt.boxplot(
         box_data,
@@ -525,7 +531,7 @@ def create_seed_comparison_boxplot(
 
     # Format y-axis as percentages
     plt.gca().yaxis.set_major_formatter(FuncFormatter(lambda y, _: "{:.0%}".format(y)))
-    
+
     # Apply custom scale transformation if there are values below 100%
     if min_fvu < 1.0:
         # Create custom scale transformation - values below 1.0 take up 70% of the axis height
@@ -533,14 +539,14 @@ def create_seed_comparison_boxplot(
             z = 0.3  # Proportion of the axis dedicated to 0-100%
         else:
             z = 0.75  # Proportion of the axis dedicated to 0-100%
-        
+
         # Define custom scale transformation
         forward, inverse = get_custom_scale_transform(max_fvu, min(min_fvu, 0.0), z)
         plt.gca().set_yscale(FuncScale(plt.gca().yaxis, (forward, inverse)))
-        
+
         # Create ticks for 0-100% (more dense in this region)
         below_100_ticks = np.arange(0, 1.01, 0.1)  # 0%, 10%, 20%, ..., 100%
-        
+
         # Create ticks for values above 100% (less dense)
         max_value_rounded = np.ceil(max_fvu)
         if max_value_rounded > 1.0:
@@ -549,7 +555,7 @@ def create_seed_comparison_boxplot(
             yticks = np.unique(np.concatenate([below_100_ticks, above_100_ticks]))
         else:
             yticks = below_100_ticks
-            
+
         plt.yticks(yticks)
 
     # Save plot

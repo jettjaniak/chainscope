@@ -17,7 +17,7 @@ model_id = "deepseek/deepseek-r1"
 
 # %%
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm.pkl.gz")
 df = df[df["mode"] == "cot"]
 
 # Filter by model

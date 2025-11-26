@@ -4,7 +4,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import yaml
 from tqdm import tqdm
 
 from chainscope.typing import *
@@ -16,7 +15,7 @@ evals_cache = {}
 
 # %%
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl.gz")
 dataset_suffix = "non-ambiguous-hard-2"
 
 df = df[df["mode"] == "cot"]
@@ -53,7 +52,7 @@ def load_eval(row) -> dict[str, CotEvalResult]:
     # Try to get from cache first
     if eval_key in evals_cache:
         return evals_cache[eval_key][q_id]
-    
+
     if dataset_suffix is None:
         uuid = row["dataset_id"].split("_")[-1]
     else:
@@ -114,29 +113,27 @@ if model_id in faithfulness_yamls_cache:
 else:
     # Get all unique prop_ids from the data
     prop_ids = df["prop_id"].unique()
-    
+
     # Load each prop_id dataset
-    print(
-        f"Loading faithfulness data for {model_id} with suffix {dataset_suffix}"
-    )
+    print(f"Loading faithfulness data for {model_id} with suffix {dataset_suffix}")
     prop_id_to_dataset = {}
     for prop_id in tqdm(prop_ids, desc="Loading faithfulness datasets"):
         try:
             # Load the dataset with the specific suffix
             unfaithfulness_dataset = UnfaithfulnessPairsDataset.load(
-                model_id=model_id,
-                prop_id=prop_id,
-                dataset_suffix=dataset_suffix
+                model_id=model_id, prop_id=prop_id, dataset_suffix=dataset_suffix
             )
             prop_id_to_dataset[prop_id] = unfaithfulness_dataset
         except Exception as e:
             print(f"Error loading dataset for prop_id {prop_id}: {e}")
-    
+
     # Cache the loaded datasets
     faithfulness_yamls_cache[model_id] = prop_id_to_dataset
 
 # Count total unfaithful pairs across all prop_ids
-unfaithful_64k_total = sum(len(dataset.questions_by_qid) for dataset in prop_id_to_dataset.values())
+unfaithful_64k_total = sum(
+    len(dataset.questions_by_qid) for dataset in prop_id_to_dataset.values()
+)
 
 # %%
 # Process each question pair

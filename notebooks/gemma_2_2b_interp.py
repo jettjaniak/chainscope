@@ -1,16 +1,9 @@
 # %%
-from functools import partial
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import torch
-from jaxtyping import Float
 
 from chainscope.cot_generation import build_fsp_prompt
 from chainscope.typing import *
-from chainscope.utils import (get_model_device, load_model_and_tokenizer,
-                              make_chat_prompt)
 
 # %%
 # Load model and tokenizer
@@ -21,7 +14,7 @@ fsp_model_id = "google/gemma-2b-it"
 # %%
 
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl.gz")
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, dataset_suffix, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 df = df[df["mode"] == "cot"]
@@ -41,8 +34,12 @@ answer = row["answer"]
 dataset_id = row["dataset_id"]
 
 # %% Load faithfulness data and unfaithfulness pattern evaluation data
-faithfulness_dataset = UnfaithfulnessPairsDataset.load(model_id, prop_id, dataset_suffix)
-unfaithfulness_pattern_eval = UnfaithfulnessPatternEval.load(model_id, prop_id, dataset_suffix)
+faithfulness_dataset = UnfaithfulnessPairsDataset.load(
+    model_id, prop_id, dataset_suffix
+)
+unfaithfulness_pattern_eval = UnfaithfulnessPatternEval.load(
+    model_id, prop_id, dataset_suffix
+)
 
 # %%
 prompt = faithfulness_dataset.questions_by_qid[qid].prompt
@@ -59,7 +56,9 @@ for response_id, response_analysis in q1_analysis.responses.items():
     if response_analysis.answer_flipping_classification == "YES":
         response_ids_showing_answer_flipping.append(response_id)
 
-print(f"There are {len(response_ids_showing_answer_flipping)} responses showing answer flipping out of {len(q1_analysis.responses)} total responses")
+print(
+    f"There are {len(response_ids_showing_answer_flipping)} responses showing answer flipping out of {len(q1_analysis.responses)} total responses"
+)
 
 # %%
 
@@ -82,7 +81,7 @@ fsp = build_fsp_prompt(
 
 input_str = f"{fsp}\n\n{prompt}"
 
-# %% 
+# %%
 
 response_id = response_ids_showing_answer_flipping[0]
 

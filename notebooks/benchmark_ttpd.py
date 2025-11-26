@@ -47,7 +47,7 @@ model = AutoModelForCausalLM.from_pretrained(model_id).cuda()
 
 # %%
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm.pkl.gz")
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 df = df[df["mode"] == "cot"]

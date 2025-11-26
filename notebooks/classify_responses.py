@@ -12,7 +12,7 @@ from chainscope.typing import *
 # %%
 
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df.pkl")
+df = pd.read_pickle(DATA_DIR / "df.pkl.gz")
 df = df[df["mode"] == "cot"]
 filter_prop_ids = ["animals-speed", "sea-depths", "sound-speeds", "train-speeds"]
 df = df[~df.prop_id.isin(filter_prop_ids)]

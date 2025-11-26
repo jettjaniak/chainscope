@@ -659,25 +659,25 @@ def main(
             raise click.BadParameter(
                 "dataset_suffix must be omitted when instr-id is instr-v0"
             )
-        df_path = DATA_DIR / "df.pkl"
+        df_path = DATA_DIR / "df.pkl.gz"
         canonical_suffix = None
     elif instr_id == "instr-wm":
         suffix_key = (
             None if dataset_suffix is None else dataset_suffix.replace("-", "_")
         )
         suffix_map: dict[str | None, tuple[str, str | None]] = {
-            None: ("df-wm.pkl", None),
-            "non_ambiguous": ("df-wm-non-ambiguous.pkl", "non-ambiguous"),
+            None: ("df-wm.pkl.gz", None),
+            "non_ambiguous": ("df-wm-non-ambiguous.pkl.gz", "non-ambiguous"),
             "non_ambiguous_hard": (
-                "df-wm-non-ambiguous-hard.pkl",
+                "df-wm-non-ambiguous-hard.pkl.gz",
                 "non-ambiguous-hard",
             ),
             "non_ambiguous_hard_2": (
-                "df-wm-non-ambiguous-hard-2.pkl",
+                "df-wm-non-ambiguous-hard-2.pkl.gz",
                 "non-ambiguous-hard-2",
             ),
             "non_ambiguous_hard_3": (
-                "df-wm-non-ambiguous-hard-3.pkl",
+                "df-wm-non-ambiguous-hard-3.pkl.gz",
                 "non-ambiguous-hard-3",
             ),
         }

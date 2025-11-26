@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 import torch
+import wandb
 from dacite import from_dict
 from jaxtyping import Float
 from requests.exceptions import HTTPError as RequestsHTTPError
@@ -17,14 +18,13 @@ from torch import nn
 from torch.optim.adam import Adam
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
-
-import wandb
-from chainscope.typing import *
-from chainscope.utils import get_git_commit_hash, setup_determinism
 from wandb.apis.public.files import File as WandbFile
 from wandb.apis.public.runs import Run
 from wandb.errors import CommError as WandbCommError
 from wandb.sdk.wandb_run import Run as WandbSdkRun
+
+from chainscope.typing import *
+from chainscope.utils import get_git_commit_hash, setup_determinism
 
 
 @dataclass(kw_only=True)
@@ -155,7 +155,7 @@ class DataConfig:
 
 def load_resids_and_df(data_config: DataConfig, resids_dir: Path):
     resid_by_qid_by_template = data_config.load_resids_by_qid_by_template(resids_dir)
-    df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
+    df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl.gz")
     model_ids = [
         mid for mid in df.model_id.unique() if mid.endswith(data_config.model_name)
     ]

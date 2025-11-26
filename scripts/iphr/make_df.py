@@ -85,7 +85,9 @@ def analyze_cot_eval(
         if isinstance(cot_eval, CotEval):
             yes_count = sum(1 for r in eval_results.values() if r.result == "YES")
             no_count = sum(1 for r in eval_results.values() if r.result == "NO")
-            unknown_count = sum(1 for r in eval_results.values() if r.result == "UNKNOWN")
+            unknown_count = sum(
+                1 for r in eval_results.values() if r.result == "UNKNOWN"
+            )
         else:
             yes_count = sum(1 for r in eval_results.values() if r == "YES")
             no_count = sum(1 for r in eval_results.values() if r == "NO")
@@ -129,21 +131,27 @@ def analyze_cot_eval(
     return results
 
 
-def process_wm_cot_evals(dataset_pattern: str | None = None, out_path: str | None = None):
+def process_wm_cot_evals(
+    dataset_pattern: str | None = None, out_path: str | None = None
+):
     """Process CoT evaluations for the WM instruction."""
     if out_path is None:
-        out_path = DATA_DIR / "df-wm.pkl"
+        out_path = DATA_DIR / "df-wm.pkl.gz"
     assert out_path is not None
-    logging.info(f"Processing WM CoT evaluations for {out_path}")
+    out_path_str = str(out_path)
+    assert out_path_str.endswith(".gz")
+    logging.info(f"Processing WM CoT evaluations for {out_path_str}")
 
     all_results = []
     instr_id = "instr-wm"
     dataset_ids = get_dataset_ids(instr_id)
     for dataset_id in tqdm(dataset_ids):
         if dataset_pattern and dataset_pattern not in dataset_id:
-            logging.info(f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}")
+            logging.info(
+                f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}"
+            )
             continue
-        
+
         ds_params = DatasetParams.from_id(dataset_id)
 
         # Process CoT evaluations
@@ -166,26 +174,32 @@ def process_wm_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
 
     # Create DataFrame and save
     df = pd.DataFrame(all_results)
-    df.to_pickle(out_path)
-    print(f"Saved analysis results to {out_path}")
+    df.to_pickle(out_path_str, compression="gzip")
+    print(f"Saved analysis results to {out_path_str}")
     print(f"Total rows: {len(df)}")
     print("\nColumns:", ", ".join(df.columns))
 
 
-def process_v0_cot_evals(dataset_pattern: str | None = None, out_path: str | None = None):
+def process_v0_cot_evals(
+    dataset_pattern: str | None = None, out_path: str | None = None
+):
     """Process CoT evaluations for the V0 instruction."""
     if out_path is None:
-        out_path = DATA_DIR / "df.pkl"
+        out_path = DATA_DIR / "df.pkl.gz"
     assert out_path is not None
+    out_path_str = str(out_path)
+    assert out_path_str.endswith(".gz")
 
     all_results = []
     instr_id = "instr-v0"
     dataset_ids = get_dataset_ids(instr_id)
     for dataset_id in tqdm(dataset_ids):
         if dataset_pattern and dataset_pattern not in dataset_id:
-            logging.info(f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}")
+            logging.info(
+                f"Skipping {dataset_id} because it doesn't match pattern {dataset_pattern}"
+            )
             continue
-        
+
         ds_params = DatasetParams.from_id(dataset_id)
 
         # # Process direct evaluations
@@ -217,8 +231,8 @@ def process_v0_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
 
     # Create DataFrame and save
     df = pd.DataFrame(all_results)
-    df.to_pickle(out_path)
-    print(f"Saved analysis results to {out_path}")
+    df.to_pickle(out_path_str, compression="gzip")
+    print(f"Saved analysis results to {out_path_str}")
     print(f"Total rows: {len(df)}")
     print("\nColumns:", ", ".join(df.columns))
 
@@ -251,7 +265,12 @@ def process_v0_cot_evals(dataset_pattern: str | None = None, out_path: str | Non
     is_flag=True,
     help="Verbose logging",
 )
-def main(instr_id: str, dataset_pattern: str | None = None, out_path: str | None = None, verbose: bool = False):
+def main(
+    instr_id: str,
+    dataset_pattern: str | None = None,
+    out_path: str | None = None,
+    verbose: bool = False,
+):
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
     if instr_id == "instr-wm":
         process_wm_cot_evals(dataset_pattern, out_path)

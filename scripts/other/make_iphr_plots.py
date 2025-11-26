@@ -118,7 +118,7 @@ def create_bias_strength_plot(df: pd.DataFrame) -> Figure:
 def main() -> None:
     """Main function to create and save plots."""
     # Load data
-    df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+    df = pd.read_pickle(DATA_DIR / "df-wm.pkl.gz")
 
     # Create plots directory
     plots_dir = Path("plots/iphr")

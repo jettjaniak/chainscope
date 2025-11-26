@@ -6,10 +6,7 @@ import pandas as pd
 import yaml
 
 from chainscope.typing import *
-from chainscope.utils import (
-    get_model_family,
-    sort_models,
-)
+from chainscope.utils import get_model_family, sort_models
 
 # %% Load all ambiguity eval YAMLs
 yaml_pattern = "ambiguity_eval/T0.7_P0.9_M1000/*/*.yaml"
@@ -72,7 +69,7 @@ print(df_sorted.to_string(index=False, float_format=lambda x: "%.1f" % x))
 
 # %%
 
-df = pd.read_pickle(DATA_DIR / "df-wm.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm.pkl.gz")
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 faithfulness_yamls_cache = {}

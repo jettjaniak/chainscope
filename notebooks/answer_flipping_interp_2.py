@@ -1,5 +1,4 @@
 # %%
-import copy
 from functools import partial
 
 import matplotlib.pyplot as plt
@@ -10,8 +9,11 @@ from jaxtyping import Float
 from transformers.models.llama.modeling_llama import LlamaRMSNorm
 
 from chainscope.typing import *
-from chainscope.utils import (get_model_device, load_model_and_tokenizer,
-                              make_chat_prompt)
+from chainscope.utils import (
+    get_model_device,
+    load_model_and_tokenizer,
+    make_chat_prompt,
+)
 
 # %%
 # Load model and tokenizer
@@ -29,8 +31,7 @@ W_U = model.lm_head.weight.T.clone().detach().cpu()
 # Get the final layer norm for proper logits computation
 # Create a separate copy of the final norm for CPU analysis (don't modify the original model)
 final_norm_cpu = LlamaRMSNorm(
-    hidden_size=model.config.hidden_size, 
-    eps=model.config.rms_norm_eps
+    hidden_size=model.config.hidden_size, eps=model.config.rms_norm_eps
 )
 # Copy the weights from the original norm layer
 final_norm_cpu.weight.data = model.model.norm.weight.data.cpu().clone()
@@ -39,7 +40,7 @@ final_norm_cpu = final_norm_cpu.cpu()
 # %%
 
 # Load the data
-df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl")
+df = pd.read_pickle(DATA_DIR / "df-wm-non-ambiguous-hard-2.pkl.gz")
 # Columns: q_str, qid, prop_id, comparison, answer, dataset_id, dataset_suffix, model_id, p_yes, p_no, p_correct, mode, instr_id, x_name, y_name, x_value, y_value, temperature, top_p, max_new_tokens, unknown_rate
 
 df = df[df["mode"] == "cot"]
@@ -50,11 +51,15 @@ df = df[df["model_id"] == model_id]
 # Get YES and NO token IDs
 yes_token_strs = [" YES", "YES"]
 yes_token_ids = tokenizer.encode(yes_token_strs, add_special_tokens=False)
-assert len(yes_token_ids) == len(yes_token_strs), "Tokenizer returned different number of token IDs than expected"
+assert len(yes_token_ids) == len(
+    yes_token_strs
+), "Tokenizer returned different number of token IDs than expected"
 
 no_token_strs = [" NO", "NO"]
 no_token_ids = tokenizer.encode(no_token_strs, add_special_tokens=False)
-assert len(no_token_ids) == len(no_token_strs), "Tokenizer returned different number of token IDs than expected"
+assert len(no_token_ids) == len(
+    no_token_strs
+), "Tokenizer returned different number of token IDs than expected"
 
 # %%
 
@@ -66,8 +71,12 @@ dataset_suffix = row["dataset_suffix"]
 expected_answer = row["answer"]
 
 # %% Load faithfulness data and unfaithfulness pattern evaluation data
-faithfulness_dataset = UnfaithfulnessPairsDataset.load(model_id, prop_id, dataset_suffix)
-unfaithfulness_pattern_eval = UnfaithfulnessPatternEval.load(model_id, prop_id, dataset_suffix)
+faithfulness_dataset = UnfaithfulnessPairsDataset.load(
+    model_id, prop_id, dataset_suffix
+)
+unfaithfulness_pattern_eval = UnfaithfulnessPatternEval.load(
+    model_id, prop_id, dataset_suffix
+)
 
 # %%
 prompt = faithfulness_dataset.questions_by_qid[qid].prompt
@@ -84,7 +93,10 @@ for response_id, response_analysis in q1_analysis.responses.items():
     if response_analysis.answer_flipping_classification == "YES":
         response_ids_showing_answer_flipping.append(response_id)
 
-print(f"There are {len(response_ids_showing_answer_flipping)} responses showing answer flipping out of {len(q1_analysis.responses)} total responses")
+print(
+    f"There are {len(response_ids_showing_answer_flipping)} responses showing answer flipping out of {len(q1_analysis.responses)} total responses"
+)
+
 
 # %%
 def resid_stream_hook_fn(
@@ -263,9 +275,11 @@ def run_model(input_ids: torch.Tensor) -> Float[torch.Tensor, "seq_len vocab_siz
         logits = logits[0].detach().cpu()  # shape: (seq_len, vocab_size)
         return logits
 
+
 # %%
 
 seq_position_to_analyze_str = "Token Before Final Answer"
+
 
 def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> None:
     q_metadata = faithfulness_dataset.questions_by_qid[qid].metadata
@@ -288,11 +302,15 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     # Print all tokens
     print("\nAll tokens:")
     for i in range(len(input_ids[0])):
-        print(f"Token {i} ({i - len(input_ids[0])}): `{tokenizer.decode(input_ids[0][i])}` (id: {input_ids[0][i]})")
+        print(
+            f"Token {i} ({i - len(input_ids[0])}): `{tokenizer.decode(input_ids[0][i])}` (id: {input_ids[0][i]})"
+        )
 
-    # Get the token before the final answer    
+    # Get the token before the final answer
     # Traverse backwards from the end of the response to find the YES/NO token
-    print("\nTraversing backwards from the end of the response to find the YES/NO token")
+    print(
+        "\nTraversing backwards from the end of the response to find the YES/NO token"
+    )
     seq_position_to_analyze = None
 
     # Only look at last 150 tokens. If we don't find it we are probably doing something wrong.
@@ -300,7 +318,9 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     main_yes_token_id = None
     main_no_token_id = None
     for i in range(len(input_ids[0]) - 1, start_idx - 1, -1):
-        print(f"Token {i}: `{tokenizer.decode(input_ids[0][i])}` (id: {input_ids[0][i]})")
+        print(
+            f"Token {i}: `{tokenizer.decode(input_ids[0][i])}` (id: {input_ids[0][i]})"
+        )
         if input_ids[0][i] in yes_token_ids:
             seq_position_to_analyze = i - 1
             main_yes_token_id = input_ids[0][i]
@@ -309,9 +329,13 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
             seq_position_to_analyze = i - 1
             main_no_token_id = input_ids[0][i]
             break
-    
-    assert seq_position_to_analyze is not None, "Could not find YES/NO token in response"
-    print(f"Analyzing token at position {seq_position_to_analyze} (index {len(input_ids[0]) + seq_position_to_analyze} out of {len(input_ids[0])}): `{tokenizer.decode(input_ids[0][seq_position_to_analyze])}`")
+
+    assert (
+        seq_position_to_analyze is not None
+    ), "Could not find YES/NO token in response"
+    print(
+        f"Analyzing token at position {seq_position_to_analyze} (index {len(input_ids[0]) + seq_position_to_analyze} out of {len(input_ids[0])}): `{tokenizer.decode(input_ids[0][seq_position_to_analyze])}`"
+    )
 
     if main_yes_token_id is None:
         assert main_no_token_id is not None
@@ -329,7 +353,7 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     #     top_token = tokenizer.decode([top_token_id])
     #     print(f"Position {i}: token_id={top_token_id}, token={top_token!r}")
 
-    print(f"Top 10 tokens and their probabilities in the seq position to analyze:")
+    print("Top 10 tokens and their probabilities in the seq position to analyze:")
     logits_at_position = logits[seq_position_to_analyze]
     probs_at_position = torch.softmax(logits_at_position, dim=0)
     top_10_indices = torch.topk(probs_at_position, 10).indices
@@ -363,7 +387,9 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
             no_probs_by_layer.append(float("nan"))
             continue
 
-        layer_activations = acts_by_layer[layer_idx]  # Expected Shape: (seq_len, d_model)
+        layer_activations = acts_by_layer[
+            layer_idx
+        ]  # Expected Shape: (seq_len, d_model)
 
         if not isinstance(layer_activations, torch.Tensor):
             print(
@@ -374,7 +400,9 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
             continue
 
         if layer_activations.ndim == 2 and layer_activations.shape[0] > 0:
-            h_last_prompt_token = layer_activations[seq_position_to_analyze, :]  # Shape: (d_model)
+            h_last_prompt_token = layer_activations[
+                seq_position_to_analyze, :
+            ]  # Shape: (d_model)
             # Apply final layer normalization before computing logits (all on CPU)
             h_normalized = final_norm_cpu(h_last_prompt_token)
             # Compute logits for all tokens
@@ -412,14 +440,23 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     title_text = f"YES vs NO Probability Trajectory at {seq_position_to_analyze_str} for response {response_id[:8]}"
     title_text += f"\nExpected Answer: {expected_answer}"
     if is_answer_flipping_response:
-        title_text += f". Categorized as Answer Flipping"
+        title_text += ". Categorized as Answer Flipping"
     else:
-        title_text += f". Categorized as No Answer Flipping"
+        title_text += ". Categorized as No Answer Flipping"
     ax.set_title(title_text, fontsize=16)
 
     # Add prompt and response below the title
     full_text_to_display = f"Prompt:\n{prompt}\nResponse:\n{response_str}"
-    plt.figtext(0.05, -0.01, full_text_to_display, ha="left", va="top", fontsize=12, wrap=True, bbox=dict(boxstyle='round,pad=0.5', fc='white', alpha=1))
+    plt.figtext(
+        0.05,
+        -0.01,
+        full_text_to_display,
+        ha="left",
+        va="top",
+        fontsize=12,
+        wrap=True,
+        bbox=dict(boxstyle="round,pad=0.5", fc="white", alpha=1),
+    )
 
     ax.set_xlabel("Layer Number (0=Embeddings, 1 to N=Transformer Blocks)", fontsize=12)
     ax.set_ylabel("Probability", fontsize=12)
@@ -430,10 +467,17 @@ def make_plot_logit_trajectory_token_before_final_answer(response_id: str) -> No
     ax.legend(fontsize=10)
     ax.grid(True, linestyle="--", alpha=0.7)
 
-    fig.tight_layout(rect=(0, 0, 1, 0.94)) # Adjust rect to leave space for title and fig
+    fig.tight_layout(
+        rect=(0, 0, 1, 0.94)
+    )  # Adjust rect to leave space for title and fig
 
-    plt.savefig(f"prob_trajectory_before_final_answer_{model_id.split('/')[-1]}_qid_{qid[:8]}_response_{response_id[:8]}.png", dpi=300, bbox_inches="tight")
+    plt.savefig(
+        f"prob_trajectory_before_final_answer_{model_id.split('/')[-1]}_qid_{qid[:8]}_response_{response_id[:8]}.png",
+        dpi=300,
+        bbox_inches="tight",
+    )
     plt.show()
+
 
 # %%
 
