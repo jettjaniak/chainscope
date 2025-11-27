@@ -38,7 +38,7 @@
           "To determine whether the question is CLEAR or AMBIGUOUS, we analyze both the clarity of the question and the RAG (Retrieval-Augmented Generation) values provided.\n\nThe question is: \"Is Eureka Inn located east of FirstBank Southwest Tower?\"\n\nThis question has a single interpretation: it is asking whether the Eureka Inn lies geographically east (i.e., has a smaller magnitude western longitude, or a more positive longitude value) compared to the FirstBank Southwest Tower.\n\nNow, let's examine the RAG values:\n\nEureka Inn:\n- W 124\u00b0 9.89' = -124.16483\u00b0\n- Longitude: -124.165171 (consistent with the above)\n\nFirstBank Southwest Tower:\n- 101.8390\u00b0W = -101.8390\u00b0\n- 101.83877\u00b0W = -101.83877\u00b0\n- 101.8387972\u00b0W = -101.8387972\u00b0\n\nAll values are consistent for each location and fall within a narrow range, indicating no ambiguity in the RAG data.\n\nNow we compare the longitudes:\n- Eureka Inn: ~ -124.165\u00b0\n- FirstBank Southwest Tower: ~ -101.839\u00b0\n\nSince -101.839 > -124.165, this means FirstBank Southwest Tower is east of Eureka Inn, and therefore, Eureka Inn is west of FirstBank Southwest Tower.\n\nCrucially, the longitudes do not overlap, and the question has a clear geographic interpretation. Therefore, there is only one correct answer.",
           "The question asks whether Eureka Inn is located east of FirstBank Southwest Tower. To determine this, we must compare their longitudes. In geographic coordinates, longitudes further west are more negative (when using degrees west or negative values), and longitudes further east are less negative (closer to zero).\n\nEureka Inn has a longitude of -124.165171.  \nFirstBank Southwest Tower has longitudes around -101.8390 (ranging from -101.83877 to -101.8390).\n\nComparing these:\n- Eureka Inn: -124.165171\n- FirstBank Southwest Tower: ~ -101.839\n\nSince -124.165171 is more negative than -101.839, Eureka Inn is further west than FirstBank Southwest Tower.\n\nAdditionally, the RAG values do not overlap. Eureka Inn is clearly more west than FirstBank Southwest Tower, so the interpretation is unambiguous, and there is only one correct answer."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "1ad14b01086c1a6898f8d654bcdf87b875f9022064e2ac28e8437cab6648b1a9",
@@ -64,7 +64,7 @@
           "The question asks whether FirstBank Southwest Tower is located east of Eureka Inn. To determine this, we need to compare the longitudes of the two locations. Longitude values further to the east are numerically closer to zero (less negative in the western hemisphere).\n\nLet's first convert all RAG values to decimal degrees to ensure uniformity:\n\nFirstBank Southwest Tower:\n- 101.8390\u00b0W = -101.8390\u00b0\n- 101.83877\u00b0W = -101.83877\u00b0\n- 101.8387972\u00b0W = -101.8387972\u00b0\n\nEureka Inn:\n- N 40\u00b0 47.993', W 124\u00b0 9.89' = W 124\u00b0 9.89' = -124.16483\u00b0 (since 9.89' = 9.89/60 = 0.16483)\n- Longitude: -124.165171\u00b0\n\nSo, Eureka Inn's longitudes are:\n- -124.16483\u00b0\n- -124.165171\u00b0\n\nThese values are close to each other and clearly more negative than those of FirstBank Southwest Tower, which range around -101.839\u00b0. Since -101.839\u00b0 is east of -124.165\u00b0, there is no overlap in the RAG values.\n\nThe question admits only one interpretation (a geographic comparison of east/west based on longitude), and the RAG values do not overlap.\n\nTherefore, based on the guidelines, the question is unambiguous and has a single correct answer.",
           "The question asks whether the FirstBank Southwest Tower is located east of the Eureka Inn. To determine this, we focus on the longitude values provided for both entities.\n\nFor FirstBank Southwest Tower, the longitudes are:\n- 101.8390\u00b0W\n- 101.83877\u00b0W\n- 101.8387972\u00b0W\n\nThese all convert to approximately -101.839\u00b0 in decimal degrees.\n\nFor Eureka Inn, the longitudes are:\n- N 40\u00b0 47.993', W 124\u00b0 9.89' which converts to approximately -124.16483\u00b0\n- Longitude: -124.165171\n\nSo, Eureka Inn is located at approximately -124.165\u00b0, while FirstBank Southwest Tower is at approximately -101.839\u00b0. Since -101.839\u00b0 is greater than -124.165\u00b0, FirstBank Southwest Tower is indeed east of Eureka Inn.\n\nThere is no overlap in the longitude values, and all RAG values are in compatible units (converted to decimal degrees). The question has only one interpretation and leads to a clear, unambiguous answer based on geographic coordinates."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": [
@@ -106,7 +106,7 @@
           "The question asks whether Ghost Lake is located east of the Sheboygan Municipal Auditorium and Armory. To answer this, we compare the provided RAG values, which appear to be longitudes (negative values indicating western hemisphere).\n\nFor Ghost Lake, the longitudes range from -114.768730 to -114.707979.  \nFor the Sheboygan Municipal Auditorium and Armory, the longitudes range from -87.7032 to -87.71453.\n\nWhen comparing longitudes in the western hemisphere (negative values), a more negative number indicates a location further west. The Ghost Lake values (around -114.7) are clearly more negative than the Sheboygan values (around -87.7), meaning Ghost Lake is significantly further west than Sheboygan.\n\nThere is no overlap in the RAG values, and the question only admits one clear interpretation \u2014 it is a geographic comparison using longitude.\n\nTherefore, based on the non-overlapping RAG values and the single, unambiguous interpretation of the question, it is classified as CLEAR.",
           "The question asks whether Ghost Lake is located east of the Sheboygan Municipal Auditorium and Armory. To determine this, we examine the provided RAG values, which appear to represent longitudes in decimal degrees. In geographic coordinates, greater (less negative) longitudes in the Western Hemisphere mean a location is further east.\n\nThe RAG values for Ghost Lake range from -114.768730 to -114.707979, while those for Sheboygan Municipal Auditorium and Armory range from -87.7032 to -87.71453. All of Sheboygan\u2019s values are significantly less negative than Ghost Lake\u2019s values, meaning Sheboygan is located much farther east than Ghost Lake.\n\nThere is no overlap between the RAG values of the two entities, and the question does not admit multiple interpretations. Based on the data, Ghost Lake is clearly west of the Sheboygan Municipal Auditorium and Armory.\n\nTherefore, the question is unambiguous and only allows for one correct interpretation and answer."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "77c58406633ed4e79c803e21fbe8aad0d0025a25bd3576d6510101a3e6e6031c",
@@ -135,7 +135,7 @@
           "The question asks whether the Sheboygan Municipal Auditorium and Armory is located east of Ghost Lake. To answer this, we examine the RAG values, which appear to represent longitudes (given the negative values indicating western hemisphere). In longitude, a less negative value (closer to zero) indicates a position further east.\n\nThe longitudes for Sheboygan Municipal Auditorium and Armory range from -87.7032 to -87.71453. The longitudes for Ghost Lake range from -114.707979 to -114.768730. All of the Sheboygan values are significantly less negative than all of the Ghost Lake values, indicating that Sheboygan is indeed further east.\n\nThere is no overlap in the longitude (RAG) values between the two entities, and the question admits only one interpretation\u2014comparing their relative positions based on longitude. Therefore, the question is CLEAR.",
           "The question asks whether the Sheboygan Municipal Auditorium and Armory is located east of Ghost Lake. To determine this, we analyze the RAG values provided, which appear to be longitudes (since they are negative and fall within the range of western longitudes typically used in North America).\n\nLower (more negative) longitudes are further west, and higher (less negative) longitudes are further east. \n\nSheboygan Municipal Auditorium and Armory has longitudes:\n-87.7032, -87.70528, -87.71453\n\nGhost Lake has longitudes:\n-114.768730, -114.7540, -114.7643, -114.707979, -114.756667\n\nAll longitudes for Sheboygan Municipal Auditorium and Armory are significantly higher (less negative) than those for Ghost Lake. Therefore, Sheboygan is clearly located east of Ghost Lake.\n\nThere is no overlap in RAG values, and the interpretation of \u201ceast\u201d based on longitudinal comparison is unambiguous."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "AMBIGUOUS",
       "filter_pair_analyses": [
@@ -174,7 +174,7 @@
           "The question is asking whether the Cathedral of the Immaculate Conception in Sligo is located east of the Rostov State Musical Theater. This is a geographical comparison based on longitude (east-west positioning).\n\nTo determine this, we need to convert all RAG values to the same format. The RAG values for the Cathedral of the Immaculate Conception, Sligo are already in decimal degrees of longitude (approximately -8.4786 to -8.4790), which are west of the Prime Meridian.\n\nThe RAG values for the Rostov State Musical Theater are given in degrees, minutes, and seconds (DMS) in the Eastern Hemisphere:\n- 39\u00b043'57.308\" E converts to approximately 39.7326\u00b0\n- 39\u00b043'58\" E converts to approximately 39.7328\u00b0\n\nThese values are in the Eastern Hemisphere (positive longitudes), while the Sligo coordinates are in the Western Hemisphere (negative longitudes). Since all values for Sligo are negative and all values for Rostov are positive, there is no overlap in longitude values.\n\nTherefore, the interpretation is unambiguous: Sligo (with negative longitudes) is west of Rostov (with positive longitudes), so the answer to whether Sligo is east of Rostov is clearly \"No\".\n\nThere is only one interpretation and no overlap in RAG values.",
           "The question asks whether the Cathedral of the Immaculate Conception in Sligo is located east of the Rostov State Musical Theater. This is a directional/geographic question based on longitude.\n\nThe RAG values for the Cathedral of the Immaculate Conception, Sligo are:\n- -8.47860\n- -8.47863\n- -8.47900\nThese are all in decimal degrees format and represent longitudes in the Western Hemisphere (negative values).\n\nThe RAG values for the Rostov State Musical Theater are:\n- 47\u00b013'28.523\" N 39\u00b043'57.308\" E\n- 47\u00b013'30\" N 39\u00b043'58\" E\nThese are in degrees, minutes, and seconds for both latitude and longitude. Converting the longitudes to decimal degrees:\n- 39\u00b043'57.308\" E = 39 + 43/60 + 57.308/3600 \u2248 39.7325867\u00b0\n- 39\u00b043'58\" E = 39 + 43/60 + 58/3600 \u2248 39.7327778\u00b0\n\nSo, the Rostov State Musical Theater has longitudes of approximately 39.7326\u00b0 to 39.7328\u00b0 East.\n\nComparison:\n- Sligo Cathedral: ~ -8.4790\u00b0 (West)\n- Rostov Theater: ~ +39.7326\u00b0 (East)\n\nSince negative longitude is west of positive longitude, Sligo is clearly west of Rostov. There is no overlap in RAG values, and the units have been unified (decimal degrees), which allows for a definitive comparison.\n\nThere is only one reasonable interpretation of the question, and the data supports a clear answer."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "c27211e9f890acbaa0d6b21a1d7a4607e448a4012a4edb725943d384cf5f59fa",
@@ -200,7 +200,7 @@
           "The question asks whether the Rostov State Musical Theater is located east of the Cathedral of the Immaculate Conception in Sligo. This is a geographical comparison based on longitude.\n\nThe RAG values for the Rostov State Musical Theater include:\n- 39\u00b043'57.308\" E \u2192 approximately 39.7326\u00b0 E\n- 39\u00b043'58\" E \u2192 approximately 39.7328\u00b0 E\n\nThe RAG values for the Cathedral of the Immaculate Conception, Sligo include:\n- -8.47860\u00b0\n- -8.47863\u00b0\n- -8.47900\u00b0\n\nAll the longitude values for Rostov are clearly in the Eastern Hemisphere (positive values), while all those for the Cathedral in Sligo are in the Western Hemisphere (negative values). There is no overlap between the longitude values of the two entities. Since the question is asking about \"east of,\" and 39.73\u00b0 E is clearly east of -8.47\u00b0 W, the direction is unambiguous.\n\nAdditionally, both locations are fixed physical structures, so there is no ambiguity in interpretation.\n\nTherefore, the question admits only one interpretation and one correct answer based on clearly non-overlapping longitude values.",
           "The question asks whether the Rostov State Musical Theater is located east of the Cathedral of the Immaculate Conception in Sligo. To determine this, we should compare the longitudes (east-west positions) of the two locations.\n\nThe RAG values for the Rostov State Musical Theater include two coordinates:\n- 47\u00b013'28.523\" N, 39\u00b043'57.308\" E\n- 47\u00b013'30\" N, 39\u00b043'58\" E\n\nBoth coordinates have longitudes around 39.73\u00b0 E, meaning they are clearly in the eastern hemisphere.\n\nThe RAG values for the Cathedral of the Immaculate Conception, Sligo are:\n- -8.47860\n- -8.47863\n- -8.47900\n\nThese are negative values, representing longitudes in the western hemisphere (about 8.48\u00b0 W).\n\nThere is no overlap in the longitude ranges\u2014Rostov is around 39.74\u00b0 E, and Sligo is around -8.48\u00b0 (or 8.48\u00b0 W). The units are consistent (decimal degrees), and the values do not overlap.\n\nThere is only one reasonable interpretation of \"east of\" in this geographical context, and the data supports a clear answer."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": [
@@ -308,7 +308,7 @@
           "The question asks whether Hampton Wick railway station is located east of Peli\u0219or Castle, which is a straightforward geographical comparison based on longitudinal coordinates. All RAG values for Hampton Wick are around -0.31\u00b0W, which is west of the Prime Meridian (0\u00b0), while all RAG values for Peli\u0219or Castle are around 25.5368\u00b0E to 25.53922\u00b0E, which is clearly east of the Prime Meridian. There is no overlap between the RAG values: Hampton Wick is in the Western Hemisphere, and Peli\u0219or Castle is in the Eastern Hemisphere. Therefore, Hampton Wick is definitively west of Peli\u0219or Castle, and the question admits one correct interpretation and answer.",
           "The question asks whether Hampton Wick railway station is located east of Peli\u0219or Castle. To answer this, we must compare the longitudinal coordinates of both locations. Longitude values to the east of the Prime Meridian are positive (E), and those to the west are negative (W). \n\nThe RAG values for Hampton Wick railway station are all around -0.31\u00b0W, indicating it is slightly west of the Prime Meridian. The RAG values for Peli\u0219or Castle are around 25.53\u00b0E, indicating it is significantly east of the Prime Meridian.\n\nSince -0.31\u00b0W is clearly west of 25.53\u00b0E, there is no overlap in the RAG values, and the question only admits one clear interpretation and one correct answer: Hampton Wick railway station is west of Peli\u0219or Castle.\n\nTherefore, the question is unambiguous, and the answer is clear."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "d0acfa5650824ce85145e70af7889326d823527cb57176f8d75436ddf2950301",
@@ -338,7 +338,7 @@
           "The question asks whether Peli\u0219or Castle is located east of Hampton Wick railway station. Longitude values can be used to determine this, and they must be converted to the same format and compared.\n\nAll RAG values for Peli\u0219or Castle are around 25.5\u00b0 E, which is clearly in the Eastern Hemisphere.\n\nAll RAG values for Hampton Wick railway station are around -0.31\u00b0 W, which is in the Western Hemisphere.\n\nThere is no overlap in the RAG values: Peli\u0219or Castle is consistently far east of 0\u00b0, while Hampton Wick is west of 0\u00b0. Since the question has only one logical interpretation (geographic east-west comparison using longitude), and there is no ambiguity based on the RAG values, the question is unambiguous and has a clear answer.\n\nTherefore, the question admits only one interpretation and the RAG values do not overlap.",
           "The question asks whether Peli\u0219or Castle is located east of Hampton Wick railway station. To determine this, we compare the longitudinal coordinates (since east-west positioning on the globe is determined by longitude).\n\nThe RAG values for Peli\u0219or Castle are all around 25.5\u00b0 E, which places it in Eastern Europe (Romania). The RAG values for Hampton Wick railway station are around -0.31\u00b0 W, which places it in the UK.\n\nBecause 25.5\u00b0 E is clearly east of -0.31\u00b0 W (since positive longitudes are east and negative longitudes are west), there is no overlap in RAG values, and both locations are clearly separated geographically in terms of longitude.\n\nThere is only one interpretation of the question (\"Is location A east of location B?\"), and the answer is unambiguous based on the provided RAG values.\n\nTherefore, the question is clear and admits only one correct answer."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": [
@@ -446,7 +446,7 @@
           "The question asks whether Endeavour House is located east of St. Kazimierz Church. To determine this, we need to compare their longitudinal coordinates. The RAG values for longitude are all in degrees and indicate positions either east (E) or west (W) of the Prime Meridian.\n\nFirst, convert all longitudes to a consistent format in decimal degrees:\n- For Endeavour House:\n  - 0.10858\u00b0 E\n  - 144.91047\u00b0 E\n  - 138.61744\u00b0 E\n  - -70.66838\u00b0 W \u2192 equivalent to 70.66838\u00b0 W\n  - -58.26272\u00b0 W \u2192 equivalent to 58.26272\u00b0 W\n\n- For St. Kazimierz Church:\n  - 21.0052\u00b0 E\n  - 19.9350\u00b0 E\n  - 23.12255\u00b0 E\n  - 14.54768\u00b0 E\n  - 18.59656\u00b0 E\n  - 19.20528\u00b0 E\n\nNow identify the range of longitudes for each:\n- Endeavour House ranges from 0.10858\u00b0 E to 144.91047\u00b0 E (on the eastern side) and also includes western coordinates going as far as 70.66838\u00b0 W.\n- St. Kazimierz Church ranges from 14.54768\u00b0 E to 23.12255\u00b0 E.\n\nThe key issue is that Endeavour House has multiple longitude values that span both Eastern and Western hemispheres. This suggests that there may be multiple locations referred to as \"Endeavour House\", or the data aggregates multiple possible locations.\n\nBecause the RAG values for Endeavour House span a wide range\u2014from far western longitudes (around -70\u00b0) to far eastern longitudes (over 140\u00b0)\u2014and because this range overlaps with the much narrower longitude range of St. Kazimierz Church (14\u00b0E to 23\u00b0E), we cannot definitively determine whether \"Endeavour House\" is east or west of St. Kazimierz Church without knowing which specific Endeavour House is intended.\n\nTherefore, the question admits more than one interpretation and the RAG values overlap in a way that prevents a single, clear answer.",
           "The question asks whether Endeavour House is located east of St. Kazimierz Church. To determine this, we must compare the longitudinal coordinates (east/west) of both entities.\n\nRAG values for Endeavour House include:\n- 0.10858\u00b0 east\n- 144.91047\u00b0 east\n- 138.61744\u00b0 east\n- -70.66838\u00b0 west (equivalent to 70.66838\u00b0 west)\n- -58.26272\u00b0 west (equivalent to 58.26272\u00b0 west)\n\nRAG values for St. Kazimierz Church include:\n- 21.0052\u00b0 east\n- 19.9350\u00b0 east\n- 23.12255\u00b0 east\n- 14.54768\u00b0 east\n- 18.59656\u00b0 east\n- 19.20528\u00b0 east\n\nFirst, note that the RAG values for St. Kazimierz Church are all in the range of approximately 14.5\u00b0 to 23.1\u00b0 east. This places the church in Eastern Europe (specifically, Warsaw, Poland).\n\nEndeavour House, however, has a wide range of coordinates:\n- Some locations are in the far east (e.g., 144.91047\u00b0 E, 138.61744\u00b0 E \u2014 likely Australia or Japan),\n- One is near the prime meridian (0.10858\u00b0 E \u2014 possibly UK),\n- Others are in the western hemisphere (-70.66838\u00b0 W and -58.26272\u00b0 W \u2014 likely the Americas).\n\nThis suggests that \"Endeavour House\" refers to multiple buildings located in widely different parts of the world. Therefore, without further clarification, we cannot determine which Endeavour House is being referred to. Because there are multiple plausible interpretations based on the RAG data and no unique entity identified, the question is ambiguous."
         ],
-        "human_label": null
+        "human_label": "ambiguous"
       },
       "reverse": {
         "qid": "d21953fdeb331b6817aab809bdd340716136ab0744d50a4e1e285b38609e3d55",
@@ -478,7 +478,7 @@
           "The question asks whether St. Kazimierz Church is located east of Endeavour House. To determine this, we examine the RAG values (longitudes) for both entities. \n\nSt. Kazimierz Church has the following longitudes:\n- 21.0052\u00b0 E\n- 19.9350\u00b0 E\n- 23.12255\u00b0 E\n- 14.54768\u00b0 E\n- 18.59656\u00b0 E\n- 19.20528\u00b0 E\n\nThese are all in the Eastern Hemisphere, ranging from approximately 14.5\u00b0 E to 23.1\u00b0 E.\n\nEndeavour House has the following longitudes:\n- 0.10858\u00b0 E\n- 144.91047\u00b0 E\n- 138.61744\u00b0 E\n- -70.66838\u00b0 W\n- -58.26272\u00b0 W\n\nConverted to consistent notation, the west values become negative:\n- 0.10858\u00b0 E\n- 144.91047\u00b0 E\n- 138.61744\u00b0 E\n- -70.66838\u00b0 (W)\n- -58.26272\u00b0 (W)\n\nThis suggests that Endeavour House may refer to multiple entities located in significantly different longitudes (e.g., one in Ipswich, UK near 0.1\u00b0 E, and others possibly in Australia or the Americas).\n\nThe presence of highly divergent RAG values for Endeavour House\u2014ranging from -70.6\u00b0 W to 144.9\u00b0 E\u2014indicates multiple locations with the same name (e.g., one in the UK and one in Australia). This makes it unclear which Endeavour House the question is referring to.\n\nBecause of the multiple possible interpretations (which specific Endeavour House), and the resulting impact on the answer (depending on which location you choose, the church may be to the east or west), the question is ambiguous.",
           "The question asks whether St. Kazimierz Church is located east of Endeavour House, making this a geographical comparison based on longitudinal coordinates. The RAG values given for St. Kazimierz Church range from 14.54768\u00b0 E to 23.12255\u00b0 E. These are all in the range of Eastern Europe, suggesting various possible locations for the church.\n\nThe RAG values for Endeavour House, however, vary significantly: from 0.10858\u00b0 E (near Greenwich) to 144.91047\u00b0 E (Australia), 138.61744\u00b0 E (also East Asia), and two values in the Western Hemisphere: -70.66838\u00b0 (West) and -58.26272\u00b0 (West), likely in the Americas.\n\nSince the RAG values for Endeavour House span a very wide range (from Western Hemisphere to East Asia), and the values for St. Kazimierz Church are all within a relatively narrow band in Eastern Europe, there is substantial overlap in the possible interpretations of the location of Endeavour House. Depending on which RAG value is used for Endeavour House, the answer to the question could be either \"yes\" or \"no.\"\n\nTherefore, the question admits multiple interpretations due to overlapping or inconsistent location data for Endeavour House. This makes it impossible to determine definitively whether St. Kazimierz Church is east of Endeavour House without clarification of which specific location is meant by \"Endeavour House.\""
         ],
-        "human_label": null
+        "human_label": "ambiguous"
       },
       "filter_pair_label": null,
       "filter_pair_analyses": null,
@@ -515,7 +515,7 @@
           "The question asks whether St. Hyacinth's Church in Warsaw is located east of the North Aral Sea. To determine this, we compare the longitudinal RAG values (east/west position) of both entities. \n\nSt. Hyacinth's Church has the following longitude values:\n- 21\u00b00\u203232\u2033E \u2192 21.0089\u00b0E (when converted to decimal)\n- 21.0053\u00b0E\n- 21.0094\u00b0E\n\nThese values are very close to each other and clearly represent a location around 21\u00b0E.\n\nThe North Aral Sea has the following longitude values:\n- 60.7000\u00b0E\n- 60.7000\u00b0E\n- 61.0000\u00b0E\n- 61.0000\u00b0E\n\nThese are consistent and represent a location around 60.7\u00b0E to 61.0\u00b0E.\n\nSince 21\u00b0E is significantly west of 60.7\u00b0E\u201361.0\u00b0E, there is no overlap in RAG values. The question is unambiguous and allows only one interpretation: whether one location is east of another based on longitudinal coordinates.\n\nThus, the answer is clear and based on non-overlapping, comparable RAG values.",
           "The question asks whether St. Hyacinth's Church in Warsaw is located east of the North Aral Sea. To determine this, we compare the longitudinal coordinates (East/West direction) of the two locations.\n\nSt. Hyacinth's Church, Warsaw has the following longitudes:\n- 21\u00b00\u203232\u2033E = 21.0089\u00b0E (converted to decimal)\n- 21.0053\u00b0E\n- 21.0094\u00b0E\n\nThese values are all very close to 21\u00b0E.\n\nThe North Aral Sea has the following longitudes:\n- 60.7000\u00b0E\n- 60.7000\u00b0E\n- 61.0000\u00b0E\n- 61.0000\u00b0E\n\nThese values range from 60.7\u00b0E to 61.0\u00b0E.\n\nSince all of the longitudes for St. Hyacinth's Church are much less than any of the longitudes for the North Aral Sea, and there is no overlap between the ranges (21.0053\u00b0E\u201321.0094\u00b0E vs. 60.7\u00b0E\u201361.0\u00b0E), the question has only one possible interpretation: a direct geographic comparison of east/west positioning based on longitude.\n\nHence, the question is clear, and we can confidently determine that St. Hyacinth's Church is located west of the North Aral Sea."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "b8541dca5ead1d0454310e76c41d983c9f61bb30ac6a5f5aadc74ec92defd327",
@@ -543,7 +543,7 @@
           "The question asks whether the North Aral Sea is located east of St. Hyacinth's Church in Warsaw. This is a geographically-based question involving comparison of longitudinal coordinates. The RAG (Retrieval-Augmented Generation) values for the North Aral Sea are all around 60.7\u00b0E to 61.0\u00b0E, while those for St. Hyacinth's Church are approximately 21.0\u00b0E. Since both sets of values are in degrees East and do not overlap (i.e., the lowest value for the North Aral Sea is 60.7\u00b0E, which is significantly greater than the highest value for St. Hyacinth's Church at 21.0094\u00b0E), there is no ambiguity in the comparison. Additionally, the question admits only one interpretation\u2014comparing the longitudinal positions of two fixed geographic entities\u2014leading to a single, definitive answer. Therefore, the question is CLEAR.",
           "The question asks whether the North Aral Sea is located east of St. Hyacinth's Church in Warsaw. This is a geographical comparison based on longitudinal coordinates. \n\nTo determine clarity, we assess:\n- Whether the question admits only one interpretation: The use of \"east of\" in a geographical context is unambiguous and refers to comparing longitudinal positions.\n- Comparing RAG values:\n  - North Aral Sea: 60.7000\u00b0 E, 60.7000\u00b0 E, 61.0000\u00b0 E, 61.0000\u00b0 E\n  - St. Hyacinth's Church: 21\u00b00\u203232\u2033E (converted to decimal = 21.0089\u00b0E), 21.0053\u00b0E, 21.0094\u00b0E\n\nAll longitude values for the North Aral Sea are clearly greater than those of St. Hyacinth\u2019s Church, indicating it lies significantly east.\n\nThere is no overlap in RAG values, and the units are consistent (degrees east or converted appropriately), so the question does not admit multiple interpretations and has a clear, unambiguous answer."
         ],
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": [
@@ -580,7 +580,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "e6f8c2abf36553a2a6ace4a5162848eae18956e03ab80d662e28db63eb571545",
@@ -604,7 +604,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
@@ -635,7 +635,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "0db09b1541c6de3529d08ef5f99702f4d64ff96badca54c9c09951fc8348aa87",
@@ -657,7 +657,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
@@ -690,7 +690,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "ambiguous"
       },
       "reverse": {
         "qid": "ee9a4ba508c4e7ffb9b58de80824d51a5e68bd968443d3036526aa5adf2536e1",
@@ -714,7 +714,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "ambiguous"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
@@ -747,7 +747,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "bdb5c97abe8d997469a23ffb8e5aba01576894235d95b3850c7bd05cb541be63",
@@ -771,7 +771,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
@@ -805,7 +805,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "aebe9c7c584196368655f8497c3ce66731096a49a981b5e326617d5eb3ef73c0",
@@ -830,7 +830,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
@@ -860,7 +860,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "649da74319079117a02860e92cc67c153d3c8da65dd4edd001268a19ea98c4d0",
@@ -881,7 +881,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
@@ -916,7 +916,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "ambiguous"
       },
       "reverse": {
         "qid": "659b57196a1a809428d5d6918d679044eca2d2ecd264b0bfeca6dc44609db158",
@@ -942,7 +942,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "ambiguous"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
@@ -974,7 +974,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "reverse": {
         "qid": "a14677b6738bb5a25e40907dafd799afb8d50e1aaa06d603256df4ddb3bf289a",
@@ -997,7 +997,7 @@
         },
         "filter_label": "CLEAR",
         "filter_analyses": null,
-        "human_label": null
+        "human_label": "clear"
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
