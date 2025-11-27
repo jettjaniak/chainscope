@@ -817,6 +817,8 @@ def enforce_labeling_quota(
     target_study_clear: int,
     target_study_ambiguous: int,
     target_existing: int,
+    study_per_prop_cap: int | None,
+    existing_per_prop_cap: int | None,
 ) -> None:
     def collect_pairs() -> (
         tuple[
@@ -852,6 +854,45 @@ def enforce_labeling_quota(
             pair.skip_human = True
             changed.add(state.prop_id)
         return changed
+
+    # First enforce per-property caps so each prop contributes fairly.
+    per_label_limit = (
+        study_per_prop_cap // 2
+        if study_per_prop_cap and study_per_prop_cap > 0
+        else None
+    )
+    for state in states.values():
+        changed = False
+        if per_label_limit is not None and per_label_limit >= 0:
+            for label in ("CLEAR", "AMBIGUOUS"):
+                candidates = [
+                    pair_id
+                    for pair_id, pair in state.pairs.items()
+                    if not pair.skip_human
+                    and pair.source == "study"
+                    and pair.human_pair_label is None
+                    and pair_llm_label(pair) == label
+                ]
+                if len(candidates) > per_label_limit:
+                    rng.shuffle(candidates)
+                    for pair_id in candidates[per_label_limit:]:
+                        state.pairs[pair_id].skip_human = True
+                    changed = True
+        if existing_per_prop_cap is not None and existing_per_prop_cap >= 0:
+            candidates = [
+                pair_id
+                for pair_id, pair in state.pairs.items()
+                if not pair.skip_human
+                and pair.source == "existing"
+                and pair.human_pair_label is None
+            ]
+            if len(candidates) > existing_per_prop_cap:
+                rng.shuffle(candidates)
+                for pair_id in candidates[existing_per_prop_cap:]:
+                    state.pairs[pair_id].skip_human = True
+                changed = True
+        if changed:
+            save_state(state)
 
     study_clear, study_amb, existing = collect_pairs()
     changed_props: set[str] = set()
@@ -1571,6 +1612,10 @@ def main(
         target_study_clear=study_target,
         target_study_ambiguous=study_target,
         target_existing=existing_target,
+        study_per_prop_cap=per_prop_cap if per_prop_cap > 0 else None,
+        existing_per_prop_cap=per_prop_existing_cap
+        if per_prop_existing_cap > 0
+        else None,
     )
     if not stats_only:
         summarize_states(states)
