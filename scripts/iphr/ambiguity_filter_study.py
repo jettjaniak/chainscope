@@ -813,7 +813,6 @@ def summarize_states(states: dict[str, StudyState]) -> None:
 
 def enforce_labeling_quota(
     states: dict[str, StudyState],
-    rng: random.Random,
     target_study_clear: int,
     target_study_ambiguous: int,
     target_existing: int,
@@ -832,8 +831,10 @@ def enforce_labeling_quota(
         study_clear: dict[str, list[str]] = defaultdict(list)
         study_amb: dict[str, list[str]] = defaultdict(list)
         existing: dict[str, list[str]] = defaultdict(list)
-        for state in states.values():
-            for pair_id, pair in state.pairs.items():
+        for prop_id in sorted(states.keys()):
+            state = states[prop_id]
+            for pair_id in sorted(state.pairs.keys()):
+                pair = state.pairs[pair_id]
                 if pair.human_pair_label is not None:
                     continue
                 if pair.source == "study":
@@ -1201,10 +1202,14 @@ def ask_direction_label(
 
 
 @beartype
-def ask_pair_label(state: StudyState, pair: PairRecord) -> DirectionLabel | None:
+def ask_pair_label(
+    _state: StudyState,
+    pair: PairRecord,
+    pair_index: int,
+    total_pairs: int,
+) -> DirectionLabel | None:
     click.echo("\n" + "-" * 80)
-    click.echo(f"Property: {state.prop_id}")
-    click.echo(f"Dataset suffix: {state.dataset_suffix}")
+    click.echo(f"Pair {pair_index}/{total_pairs}")
     click.echo("\nQuestion A:")
     click.echo(pair.forward.question.strip())
     click.echo("\nQuestion B:")
@@ -1261,9 +1266,11 @@ def run_labeling_loops(
     pair_tasks = build_pair_tasks(states)
     rng.shuffle(pair_tasks)
     pair_queue: deque[tuple[StudyState, PairRecord]] = deque(pair_tasks)
+    total_pairs = len(pair_tasks)
     while pair_queue:
+        pair_index = total_pairs - len(pair_queue)
         state, pair = pair_queue.popleft()
-        label = ask_pair_label(state, pair)
+        label = ask_pair_label(state, pair, pair_index, total_pairs)
         if label is None:
             click.echo("Exiting pair loop.")
             return
@@ -1656,7 +1663,6 @@ def main(
     existing_target = min(existing_pairs, 200)
     enforce_labeling_quota(
         states=states,
-        rng=rng,
         target_study_clear=study_target,
         target_study_ambiguous=study_target,
         target_existing=existing_target,
