@@ -853,7 +853,8 @@ def enforce_labeling_quota(
             return set()
         contributions: dict[str, int] = {}
         total = 0
-        for prop, ids in by_prop.items():
+        for prop in sorted(by_prop.keys()):
+            ids = by_prop[prop]
             prop_cap = len(ids) if base_limit is None else min(base_limit, len(ids))
             contributions[prop] = prop_cap
             total += prop_cap
@@ -861,11 +862,15 @@ def enforce_labeling_quota(
         if total > target:
             props_list = [prop for prop, count in contributions.items() if count > 0]
             while total > target and props_list:
-                prop = rng.choice(props_list)
-                if contributions[prop] > 0:
-                    contributions[prop] -= 1
-                    total -= 1
-                    if contributions[prop] == 0:
+                for prop in list(props_list):
+                    if total <= target:
+                        break
+                    if contributions[prop] > 0:
+                        contributions[prop] -= 1
+                        total -= 1
+                        if contributions[prop] == 0:
+                            props_list.remove(prop)
+                    else:
                         props_list.remove(prop)
         # Increase if below target and capacity available
         if total < target:
@@ -875,22 +880,32 @@ def enforce_labeling_quota(
             }
             props_list = [prop for prop, cap in capacity.items() if cap > 0]
             while total < target and props_list:
-                prop = rng.choice(props_list)
-                if capacity[prop] > 0:
-                    contributions[prop] += 1
-                    capacity[prop] -= 1
-                    total += 1
-                    if capacity[prop] == 0:
+                progress = False
+                for prop in list(props_list):
+                    if total >= target:
+                        break
+                    available = capacity.get(prop, 0)
+                    if available <= 0:
                         props_list.remove(prop)
+                        continue
+                    contributions[prop] += 1
+                    capacity[prop] = available - 1
+                    total += 1
+                    progress = True
+                    if capacity[prop] <= 0:
+                        props_list.remove(prop)
+                    if total >= target:
+                        break
+                if not progress:
+                    break
 
         selected: set[str] = set()
-        for prop, ids in by_prop.items():
+        for prop in sorted(by_prop.keys()):
+            ids = sorted(by_prop[prop])
             need = contributions.get(prop, 0)
             if need <= 0:
                 continue
-            shuffled = ids[:]
-            rng.shuffle(shuffled)
-            selected.update(shuffled[:need])
+            selected.update(ids[:need])
         return selected
 
     study_clear_by_prop, study_amb_by_prop, existing_by_prop = gather_candidates()
