@@ -1173,7 +1173,9 @@ def ask_direction_label(
             click.echo(f"    • {value}")
     click.echo("\nLabel options: [c] clear, [a] ambiguous, [s] skip, [q] quit")
     while True:
-        choice = click.prompt("Choice", type=str).strip().lower()
+        choice = click.getchar().strip().lower()
+        if choice:
+            click.echo(choice)
         if choice == "q":
             return None
         if choice == "s":
@@ -1203,7 +1205,9 @@ def ask_pair_label(state: StudyState, pair: PairRecord) -> DirectionLabel | None
             click.echo(f"    • {value}")
     click.echo("\nPair label options: [c] clear, [a] ambiguous, [s] skip, [q] quit")
     while True:
-        choice = click.prompt("Choice", type=str).strip().lower()
+        choice = click.getchar().strip().lower()
+        if choice:
+            click.echo(choice)
         if choice == "q":
             return None
         if choice == "s":
