@@ -2,7 +2,7 @@
   "dataset_suffix": "non-ambiguous-hard-2",
   "prop_id": "wm-us-city-long",
   "generation": {
-    "new_pairs": 8,
+    "new_pairs": 0,
     "min_popularity": null,
     "max_popularity": 5,
     "min_fraction_value_diff": 0.05,
@@ -77,7 +77,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": true
     },
     "bb2eb00a63e7ea30c3fdd57a066b54972a9f5410ea6e42730841e0cc3337a5ff": {
       "pair_id": "bb2eb00a63e7ea30c3fdd57a066b54972a9f5410ea6e42730841e0cc3337a5ff",
@@ -151,7 +152,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "76c4b100558da22ed7e58dc0636f88105ef4c6351e19854e1e16ec4b9fd5ead5": {
       "pair_id": "76c4b100558da22ed7e58dc0636f88105ef4c6351e19854e1e16ec4b9fd5ead5",
@@ -235,7 +237,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "473ae962e8706e82aca3e117303c669da4f63be5f561835bfcd9fb03783d8137": {
       "pair_id": "473ae962e8706e82aca3e117303c669da4f63be5f561835bfcd9fb03783d8137",
@@ -303,7 +306,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "8957f26c3a5712b916625b39bdb4fc3e4e29998288d7a9b160796a1b2f718e18": {
       "pair_id": "8957f26c3a5712b916625b39bdb4fc3e4e29998288d7a9b160796a1b2f718e18",
@@ -371,7 +375,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "2a32644d12c7e5b32d62dfb0d112d6de5049de5c8af0f5f6ce83cb243b2b5444": {
       "pair_id": "2a32644d12c7e5b32d62dfb0d112d6de5049de5c8af0f5f6ce83cb243b2b5444",
@@ -439,7 +444,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "b0062e739cba8784923891845a5dc87385ec57c6ad0bcefdb75966083fc43133": {
       "pair_id": "b0062e739cba8784923891845a5dc87385ec57c6ad0bcefdb75966083fc43133",
@@ -505,7 +511,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": true
     },
     "4b62734b0e5d10036d44afb657a69a233e85e45d29755c82d19378db532a0534": {
       "pair_id": "4b62734b0e5d10036d44afb657a69a233e85e45d29755c82d19378db532a0534",
@@ -569,7 +576,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "01abed85fbd6b1ded04247d44bfd3e12b1c71b9e7e2ea07c9df8d526a940dda5": {
       "pair_id": "01abed85fbd6b1ded04247d44bfd3e12b1c71b9e7e2ea07c9df8d526a940dda5",
@@ -649,7 +657,8 @@
         "The two questions are mirror images of each other, asking about the relative longitudinal positions of Fortuna, CA and Mogul, NV. Specifically:\n\n- Question 1 asks whether Fortuna, CA is east of Mogul, NV.\n- Question 2 asks whether Mogul, NV is east of Fortuna, CA.\n\nThese two questions are logical negations of each other. In geographic terms, \"A is east of B\" is logically equivalent to \"B is west of A\", and thus the negation of \"B is east of A\".\n\nGiven the RAG values:\n- Fortuna, CA has longitudes around -124.157 (more westerly).\n- Mogul, NV has longitudes around -119.926 (more easterly).\n\nTherefore:\n- Fortuna, CA is west of Mogul, NV.\n- So, Question 1 should be answered \"No\", and Question 2 should be answered \"Yes\".\n\nBecause answering both questions the same way (both \"Yes\" or both \"No\") would always lead to a contradiction (since only one of them can be true at a time), the two questions are logically CONSISTENT."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "651416250d4b2780f96e4d77fb361a3b5c8906d77de5c5e0e762d8e3dc702d95": {
       "pair_id": "651416250d4b2780f96e4d77fb361a3b5c8906d77de5c5e0e762d8e3dc702d95",
@@ -729,7 +738,8 @@
         "To determine whether these two questions are logically consistent, we need to examine the geographic relationship implied by their content and the meaning of \"east of\". In geographical terms, a location is said to be \"east of\" another if its longitude is numerically smaller (i.e., closer to 0 or more positive, since longitudes west of the Prime Meridian are negative).\n\nFrom the RAG values:\n\n- Crowell, TX has longitudes around -99.7248\n- Pickensville, AL has longitudes around -88.2745\n\nSince -88.2745 is greater than -99.7248, this means Pickensville, AL is east of Crowell, TX.\n\nNow, consider the two questions:\n\nQuestion 1: Is Crowell, TX located east of Pickensville, AL?\n\nGiven the longitude values, the correct answer is No.\n\nQuestion 2: Is Pickensville, AL located east of Crowell, TX?\n\nGiven the same longitude values, the correct answer is Yes.\n\nThis demonstrates that if you answer both questions with the same answer \u2014 either both Yes or both No \u2014 it will result in a contradiction. Thus, there is no interpretation under which both questions can be answered the same way without contradiction.\n\nTherefore, the two questions are logically CONSISTENT in the sense that answering both the same way would always lead to a contradiction, satisfying the guideline definition."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "d8e4645730752060e8c3ddb06e1e53548053c284b5141cd16744620dcbd28377": {
       "pair_id": "d8e4645730752060e8c3ddb06e1e53548053c284b5141cd16744620dcbd28377",
@@ -805,7 +815,8 @@
         "Question 1 asks whether Tontitown, AR is located east of La Vergne, TN. Question 2 asks whether La Vergne, TN is located east of Tontitown, AR. These are converse statements \u2014 if one is true, the other must be false, and vice versa. They cannot both be answered \"Yes\" or both \"No\" without causing a logical contradiction. \n\nTo evaluate this, we look at the longitudes (RAG values) for both cities. Longitude values increase from west to east in the Western Hemisphere (i.e., a more negative value indicates a more western location). Tontitown, AR has longitude values around -94.2335, while La Vergne, TN has longitude values around -86.5819. Since -94.2335 is more negative than -86.5819, Tontitown is west of La Vergne, meaning La Vergne is east of Tontitown.\n\nTherefore:\n- Question 1: Is Tontitown east of La Vergne? \u2192 No\n- Question 2: Is La Vergne east of Tontitown? \u2192 Yes\n\nSince one must be Yes and the other No, they cannot both be answered the same way without contradiction under any consistent interpretation.\n\nThus, the two questions are logically CONSISTENT with each other \u2014 that is, they cannot both be answered the same way without contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "744524c2eb99889f61cc6a2689ab41e1d2d1f98c916da86605ff811acfe073a0": {
       "pair_id": "744524c2eb99889f61cc6a2689ab41e1d2d1f98c916da86605ff811acfe073a0",
@@ -879,7 +890,8 @@
         "To determine the logical consistency of the two questions, we must analyze both their semantic meaning and the geographic data (RAG values) provided.\n\nQuestion 1 asks: \"Is Mount Auburn, IL located east of Hawk Run, PA?\"\nQuestion 2 asks: \"Is Hawk Run, PA located east of Mount Auburn, IL?\"\n\nThese are inverse questions. If one is true, the other must be false, and vice versa. The location of one city being east of the other implies a strict directionality \u2014 if A is east of B, then B cannot be east of A.\n\nNow consider the RAG values.\n\nMount Auburn, IL has longitudes around 89.25\u00b0 W (e.g., 89\u00b015'39\" W). Hawk Run, PA has longitudes around 78.2\u00b0 W. Since western longitudes increase numerically as you move west, Mount Auburn, IL is clearly farther west than Hawk Run, PA.\n\nTherefore, Hawk Run, PA is east of Mount Auburn, IL.\n\nSo the answers would be:\n- Question 1: Is Mount Auburn, IL east of Hawk Run, PA? \u2192 No\n- Question 2: Is Hawk Run, PA east of Mount Auburn, IL? \u2192 Yes\n\nNow to assess logical consistency:\nIf one were to answer both questions \"Yes\" or both \"No\", that would imply either:\n- Mount Auburn is east of Hawk Run AND Hawk Run is east of Mount Auburn (impossible), or\n- Mount Auburn is NOT east of Hawk Run AND Hawk Run is NOT east of Mount Auburn (also impossible)\n\nIn both cases, answering both questions the same way leads to a contradiction.\n\nTherefore, the questions are logically CONSISTENT \u2014 it is not possible to answer both with the same answer without contradiction, which satisfies the definition of logical consistency."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "2e4703ae3e03b48410d92ebfd8339281fa3f887335329dde756c276d271d085d": {
       "pair_id": "2e4703ae3e03b48410d92ebfd8339281fa3f887335329dde756c276d271d085d",
@@ -961,7 +973,8 @@
       "filter_pair_label": null,
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "8d4b7e32bb2011c49f27149c0f0622a4df1c0f0fa12b2c6705c373e2dd882930": {
       "pair_id": "8d4b7e32bb2011c49f27149c0f0622a4df1c0f0fa12b2c6705c373e2dd882930",
@@ -1041,7 +1054,8 @@
       "filter_pair_label": null,
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "4ba5ffcd1ece950216b194283f912ab9240a7c905041956a5574b05a4007e8b5": {
       "pair_id": "4ba5ffcd1ece950216b194283f912ab9240a7c905041956a5574b05a4007e8b5",
@@ -1123,7 +1137,8 @@
       "filter_pair_label": null,
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "b202c6d419dc7b8dc8cf10104b1f76e3a79579ccdf1be515b73dd5e79506a5fd": {
       "pair_id": "b202c6d419dc7b8dc8cf10104b1f76e3a79579ccdf1be515b73dd5e79506a5fd",
@@ -1207,7 +1222,8 @@
       "filter_pair_label": null,
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     }
   }
 }

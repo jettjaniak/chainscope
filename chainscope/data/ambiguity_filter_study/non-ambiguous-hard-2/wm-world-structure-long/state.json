@@ -2,7 +2,7 @@
   "dataset_suffix": "non-ambiguous-hard-2",
   "prop_id": "wm-world-structure-long",
   "generation": {
-    "new_pairs": 8,
+    "new_pairs": 0,
     "min_popularity": null,
     "max_popularity": 5,
     "min_fraction_value_diff": 0.05,
@@ -73,7 +73,8 @@
         "To evaluate the logical consistency of the two questions, we analyze their semantics and geographic data based on the RAG (retrieval-augmented generation) values provided.\n\nThe two questions are:\n\n1. Is Eureka Inn located east of FirstBank Southwest Tower?\n2. Is FirstBank Southwest Tower located east of Eureka Inn?\n\nThese questions are direct opposites in terms of spatial relation: if one structure is east of another, then the other must be west, and vice versa. Therefore, a \"Yes\" answer to one implies a \"No\" answer to the other, and vice versa. Thus, answering both questions the same way (both Yes or both No) would lead to a contradiction unless the two locations are at exactly the same longitude.\n\nNow, examining the RAG values:\n- Eureka Inn: Longitude -124.165171 (which is equivalent to 124.165171\u00b0W)\n- FirstBank Southwest Tower: Longitudes around 101.8388\u00b0W\n\nComparing longitudes:\n- Eureka Inn is at 124.165171\u00b0W (more west),\n- FirstBank Southwest Tower is at approximately 101.8388\u00b0W (more east).\n\nSince a more negative longitude in the western hemisphere indicates a location further west, Eureka Inn is west of FirstBank Southwest Tower.\n\nTherefore:\n- Question 1: \"Is Eureka Inn located east of FirstBank Southwest Tower?\" \u2014 Correct answer: No\n- Question 2: \"Is FirstBank Southwest Tower located east of Eureka Inn?\" \u2014 Correct answer: Yes\n\nThis shows that the two questions must be answered differently to avoid contradiction. That is, answering both with the same answer (both Yes or both No) would always lead to a contradiction.\n\nThis satisfies the condition for logical CONSISTENCY as defined: the questions are logically consistent if answering both the same way would always cause a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "8a5001488642aa60ea7556260e72d295c6f1bc0c699ff99647a700912cbb5653": {
       "pair_id": "8a5001488642aa60ea7556260e72d295c6f1bc0c699ff99647a700912cbb5653",
@@ -143,7 +144,8 @@
         "To determine the logical consistency of the two questions, we need to analyze both their semantic content and the associated RAG (longitude) values.\n\nFirst, let\u2019s analyze the semantic structure of the questions:\n\nQuestion 1: \u201cIs Ghost Lake located east of Sheboygan Municipal Auditorium and Armory?\u201d\nQuestion 2: \u201cIs Sheboygan Municipal Auditorium and Armory located east of Ghost Lake?\u201d\n\nThese two questions are exact opposites in meaning. If one is true, the other must be false, assuming a consistent interpretation of \"east of\" in terms of longitude (i.e., a location is east of another if its longitude is numerically greater, since longitudes increase from west to east).\n\nNow examine the RAG values:\n\nGhost Lake has longitudes around -114.76 (ranging from -114.768730 to -114.707979).\nSheboygan Municipal Auditorium and Armory has longitudes around -87.71 (ranging from -87.7032 to -87.71453).\n\nSince -87 is greater than -114 (less negative), Sheboygan is east of Ghost Lake.\n\nTherefore:\n- Question 1: \"Is Ghost Lake east of Sheboygan?\" \u2192 No\n- Question 2: \"Is Sheboygan east of Ghost Lake?\" \u2192 Yes\n\nYou cannot answer both questions with the same answer (either both Yes or both No) without causing a contradiction. For instance, answering Yes to both would imply that each location is east of the other, which is impossible. Similarly, answering No to both would imply that neither is east of the other, which also contradicts the directional nature of \"east of.\"\n\nHence, it is logically impossible to answer both questions the same way without contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "51c2b3ff38d94aeba2f2101ba0721ddf03a13d7799ccd2d4919c31c862e919d7": {
       "pair_id": "51c2b3ff38d94aeba2f2101ba0721ddf03a13d7799ccd2d4919c31c862e919d7",
@@ -207,7 +209,8 @@
         "The two questions are mirror images of each other, asking about the relative east-west position of the same two locations: the Cathedral of the Immaculate Conception in Sligo and the Rostov State Musical Theater.\n\nTo determine logical consistency, we analyze the geographic longitudes:\n\n- The Cathedral of the Immaculate Conception, Sligo has RAG values (longitudes) around -8.4786 (i.e., approximately 8.4786\u00b0 West).\n- The Rostov State Musical Theater has longitudes of approximately 39.7326\u00b0 East.\n\nClearly, Rostov is significantly east of Sligo.\n\nNow, let's consider the questions:\n\nQuestion 1: \"Is Cathedral of the Immaculate Conception, Sligo located east of Rostov State Musical Theater?\" \u2014 Based on the coordinates, the answer is No.\n\nQuestion 2: \"Is Rostov State Musical Theater located east of Cathedral of the Immaculate Conception, Sligo?\" \u2014 Based on the same coordinates, the answer is Yes.\n\nThus, answering both questions the same way (both Yes or both No) would lead to a contradiction, because if A is east of B, then B cannot be east of A. There is no interpretation under which both answers could be Yes or both could be No without contradicting the directional relationship defined by the coordinates.\n\nTherefore, the two questions are logically CONSISTENT because answering both with the same answer always leads to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "e937693247d8a484049e661900b31067a0f4e4f0185a5f393616bce7f7bb24b4": {
       "pair_id": "e937693247d8a484049e661900b31067a0f4e4f0185a5f393616bce7f7bb24b4",
@@ -271,7 +274,8 @@
         "The two questions are logically consistent with each other. Question 1 asks whether Roosecote Power Station is located east of Shatura Power Station, while Question 2 asks whether Shatura Power Station is located east of Roosecote Power Station. These are inverse formulations of the same spatial relationship along the east-west axis.\n\nGiven that \"east of\" is a directional and mutually exclusive relationship, both questions cannot be answered \"Yes\" at the same time \u2014 if Roosecote is east of Shatura, then Shatura must be west of Roosecote, and vice versa. Similarly, both questions cannot be answered \"No\" simultaneously unless the two locations are at exactly the same longitude, which is extremely unlikely given the RAG values provided.\n\nLooking at the RAG values:\n- Roosecote Power Station has longitudes around -3.19 (i.e., west of the Prime Meridian).\n- Shatura Power Station has longitudes around 39.56 (i.e., east of the Prime Meridian).\n\nThis confirms that Shatura is located significantly east of Roosecote. Therefore:\n- Question 1 should be answered \"No\".\n- Question 2 should be answered \"Yes\".\n\nThus, any attempt to answer both questions with the same answer (both Yes or both No) would lead to a contradiction, proving that the questions are logically consistent according to the provided definition."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "705ef689f7cbb966547ba76bb1105a7e35c87353d720171730e809751c6fde40": {
       "pair_id": "705ef689f7cbb966547ba76bb1105a7e35c87353d720171730e809751c6fde40",
@@ -343,7 +347,8 @@
         "To determine the logical consistency of the two questions, we must first understand their semantic meaning and spatial relationship.\n\nQuestion 1: \"Is Hampton Wick railway station located east of Peli\u0219or Castle?\"\nQuestion 2: \"Is Peli\u0219or Castle located east of Hampton Wick railway station?\"\n\nThese are mirror-image geographic questions. If Hampton Wick is east of Peli\u0219or Castle, then Peli\u0219or Castle cannot also be east of Hampton Wick \u2014 one being east of the other precludes the reverse being true, except in the case where they have the same longitudinal coordinate.\n\nNow, consider the RAG (retrieved attribute groundings) values:\n- Hampton Wick railway station is located at approximately -0.312\u00b0W longitude.\n- Peli\u0219or Castle is located at approximately 25.537\u00b0E longitude.\n\nSince Peli\u0219or Castle has a positive longitude value (East), and Hampton Wick has a negative longitude value (West), clearly Peli\u0219or Castle is east of Hampton Wick railway station.\n\nThis means:\n- The correct answer to Question 1 is No (Hampton Wick is not east of Peli\u0219or).\n- The correct answer to Question 2 is Yes (Peli\u0219or is east of Hampton Wick).\n\nThese answers are opposite. Now, to assess logical consistency according to the provided guidelines:\n\nThe questions are logically CONSISTENT if answering both questions the same way (both Yes or both No) would always lead to a contradiction.\n\nIndeed, if you were to answer both questions \"Yes\", you would be asserting that each location is east of the other \u2014 a contradiction. Similarly, answering both \"No\" would imply that neither is east of the other, which is only possible if they are at the same longitude \u2014 also contradicted by the RAG values.\n\nTherefore, there is no interpretation under which both questions can logically receive the same answer without contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "bbe08d365dacfd63d9b93f9db55ba1107483cc052e779d1136895f6dc1f99a2d": {
       "pair_id": "bbe08d365dacfd63d9b93f9db55ba1107483cc052e779d1136895f6dc1f99a2d",
@@ -405,7 +410,8 @@
         "The two questions ask about the relative east-west geographic positions of two locations: Bricklayers Arms railway station and the Mikhail Bulgakov Museum. Bricklayers Arms railway station is located at approximately 0.08\u00b0W longitude, while the Mikhail Bulgakov Museum is located significantly farther east, at between 30.5\u00b0E and 37.6\u00b0E longitude. This means that the Mikhail Bulgakov Museum is unequivocally east of the Bricklayers Arms railway station.\n\nQuestion 1: \"Is Bricklayers Arms railway station located east of Mikhail Bulgakov Museum?\" \u2014 The correct answer is No.\n\nQuestion 2: \"Is Mikhail Bulgakov Museum located east of Bricklayers Arms railway station?\" \u2014 The correct answer is Yes.\n\nNow, consider the definition of logical consistency provided:\n\n- The questions are LOGICALLY INCONSISTENT if there exists at least one interpretation where both questions could be answered the same way (both Yes or both No) without contradiction.\n- The questions are LOGICALLY CONSISTENT if answering both questions the same way (both Yes or both No) would always lead to a contradiction.\n\nHere, if one were to answer both questions with \"Yes\" or both with \"No\", it would result in a contradiction, because one must be Yes and the other No due to the mutually exclusive nature of directional relationships (if A is east of B, then B cannot also be east of A).\n\nTherefore, the questions are logically CONSISTENT because answering both the same way always leads to a contradiction, given their directional opposition."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "fb419ff3d08646f31a0ad08138458050b5afa4aa60603eea8dc4a777972c68ed": {
       "pair_id": "fb419ff3d08646f31a0ad08138458050b5afa4aa60603eea8dc4a777972c68ed",
@@ -477,7 +483,8 @@
       "filter_pair_label": null,
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "29efa629b4b237ae51cb072a30c96405be8fada1ec9997a01b4ff8b32896b9cf": {
       "pair_id": "29efa629b4b237ae51cb072a30c96405be8fada1ec9997a01b4ff8b32896b9cf",
@@ -545,7 +552,8 @@
         "The two questions are asking about the relative longitudinal positions of two locations: St. Hyacinth's Church in Warsaw and the North Aral Sea.\n\nFrom the RAG values:\n- St. Hyacinth's Church, Warsaw has longitudes around 21.0\u00b0E.\n- The North Aral Sea has longitudes around 60.7\u00b0E to 61.0\u00b0E.\n\nIn terms of geography, a higher longitude in the eastern hemisphere indicates a location further east. Therefore, the North Aral Sea is significantly east of St. Hyacinth's Church in Warsaw.\n\nLet\u2019s examine the two questions:\n\nQuestion 1: Is St. Hyacinth's Church, Warsaw located east of North Aral Sea?\nGiven the above, the correct answer is No.\n\nQuestion 2: Is North Aral Sea located east of St. Hyacinth's Church, Warsaw?\nGiven the above, the correct answer is Yes.\n\nNow, we test logical consistency. If both questions were answered the same way (either both Yes or both No), this would contradict the known spatial relationship between the locations.\n\n- If both were answered Yes: That would imply both locations are east of the other, which is a contradiction.\n- If both were answered No: That would imply neither location is east of the other, which is also a contradiction.\n\nTherefore, answering both questions with the same answer (Yes/Yes or No/No) always leads to a contradiction. Hence, the two questions are logically CONSISTENT by the guideline definition."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "b4d8a3e1442eafb94fdc88823dc517badad8375dd5645ab8816cec4701610e96": {
       "pair_id": "b4d8a3e1442eafb94fdc88823dc517badad8375dd5645ab8816cec4701610e96",
@@ -601,7 +609,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": true
     },
     "a768ae1a66f94d905357a7ba79150f836daa3edf5685f9bd27d98ea55ee76cbc": {
       "pair_id": "a768ae1a66f94d905357a7ba79150f836daa3edf5685f9bd27d98ea55ee76cbc",
@@ -653,7 +662,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "81f4a0b481f414821e64ae469923269b2e380c66eaedc3d74c9170d6ef08ac3c": {
       "pair_id": "81f4a0b481f414821e64ae469923269b2e380c66eaedc3d74c9170d6ef08ac3c",
@@ -709,7 +719,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "88fb899a315862ad02d269993c837dcdc785a085ff2f5557f4736c1585ce383c": {
       "pair_id": "88fb899a315862ad02d269993c837dcdc785a085ff2f5557f4736c1585ce383c",
@@ -765,7 +776,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "a402547f132331b734ebbdc5098f0834d17113481d06eb1e1c70e9954dc7ac2b": {
       "pair_id": "a402547f132331b734ebbdc5098f0834d17113481d06eb1e1c70e9954dc7ac2b",
@@ -823,7 +835,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "920945e9ea7e4aade27d7d0538b141ae126e319e4acfd3ee08578695289fec37": {
       "pair_id": "920945e9ea7e4aade27d7d0538b141ae126e319e4acfd3ee08578695289fec37",
@@ -873,7 +886,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "c0b39069503347ebef7f4eeefd0c7e79ca00a2459a25a49a122d510af4551023": {
       "pair_id": "c0b39069503347ebef7f4eeefd0c7e79ca00a2459a25a49a122d510af4551023",
@@ -933,7 +947,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "8e59cd726758f523ce77fee6020f15b9f0d8cdf068bd41058412af3df19faba4": {
       "pair_id": "8e59cd726758f523ce77fee6020f15b9f0d8cdf068bd41058412af3df19faba4",
@@ -987,7 +1002,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     }
   }
 }

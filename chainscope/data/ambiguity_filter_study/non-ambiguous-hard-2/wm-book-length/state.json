@@ -2,7 +2,7 @@
   "dataset_suffix": "non-ambiguous-hard-2",
   "prop_id": "wm-book-length",
   "generation": {
-    "new_pairs": 8,
+    "new_pairs": 0,
     "min_popularity": null,
     "max_popularity": 5,
     "min_fraction_value_diff": 0.05,
@@ -89,7 +89,8 @@
         "We are given two questions that are reciprocal comparisons of page counts between two books:\n\n- Question 1 asks whether Outlaw Pete has more pages than In Watermelon Sugar.\n- Question 2 asks whether In Watermelon Sugar has more pages than Outlaw Pete.\n\nFrom the RAG values:\n- Outlaw Pete consistently has 56 pages.\n- In Watermelon Sugar consistently has 138 pages.\n\nTherefore, the factual answer to Question 1 is No (56 < 138), and the answer to Question 2 is Yes (138 > 56). These answers are logically opposite, as expected for two directly inverse comparative statements.\n\nNow, we evaluate logical consistency:\n\nAccording to the guidelines:\n- Questions are INCONSISTENT if there exists at least one interpretation where both questions could be answered the same way (both Yes or both No) without contradiction.\n- Questions are CONSISTENT if answering both the same (both Yes or both No) would always lead to contradiction.\n\nIn this case, the two questions are logical opposites. If one answers \"Yes\" to both, that would imply that each book has more pages than the other simultaneously, which is a contradiction. Likewise, if one answers \"No\" to both, it implies neither has more pages than the other, which would only be true if they had the same number of pages \u2014 which they do not.\n\nTherefore, it is impossible to answer both questions the same way (both Yes or both No) without contradiction \u2014 indicating that the questions are logically CONSISTENT."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "34c38e7b7561a5340a44ca64db85fdf9743a59558887ab6ac3646622e28b2420": {
       "pair_id": "34c38e7b7561a5340a44ca64db85fdf9743a59558887ab6ac3646622e28b2420",
@@ -159,7 +160,8 @@
         "Question 1 asks whether The Face in the Frost has more pages than The Art of Intrusion. Question 2 asks the inverse: whether The Art of Intrusion has more pages than The Face in the Frost. These questions are logical negations of each other\u2014if one is true, the other must be false.\n\nUsing the RAG values provided for both books:\n\n- The Face in the Frost: 174 pages (consistently across all RAG entries)\n- The Art of Intrusion: 270 or 288 pages\n\nSince in all RAG entries, The Art of Intrusion has more pages than The Face in the Frost, the answer to Question 1 is No, and the answer to Question 2 is Yes.\n\nIf we tried to answer both questions with the same answer (both Yes or both No), it would lead to a contradiction. For example, if we answered Yes to both, that would mean The Face in the Frost has more pages than The Art of Intrusion, and The Art of Intrusion has more pages than The Face in the Frost\u2014an impossibility. Similarly, if we answered No to both, then neither book would have more pages than the other, which is false given their different page counts.\n\nTherefore, answering both questions the same way always leads to a contradiction, making them logically consistent under the provided definition."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "4bc61ca9d2239c1f45e770971e94dae754d6fdb3b024316d75bc6eeae4d1e4df": {
       "pair_id": "4bc61ca9d2239c1f45e770971e94dae754d6fdb3b024316d75bc6eeae4d1e4df",
@@ -237,7 +239,8 @@
         "We are given two questions that both ask about the relative page counts of two books: Stephen King's Rage and Orson Scott Card's Shadow of the Giant.\n\nQuestion 1: \"Does Stephen King's Rage have more pages than Orson Scott Card's Shadow of the Giant?\"\nQuestion 2: \"Does Orson Scott Card's Shadow of the Giant have more pages than Stephen King's Rage?\"\n\nThese two questions are logical inverses of each other: if the answer to one is \"Yes\", the answer to the other must be \"No\", and vice versa. They are asking the same comparative question but from opposite perspectives.\n\nTo determine logical consistency, we apply the guideline:\n\n- Questions are logically INCONSISTENT if there exists at least one interpretation where both questions could be answered the same way (both Yes or both No) without contradiction.\n- Questions are logically CONSISTENT if answering both questions with the same answer (both Yes or both No) would always lead to a contradiction.\n\nNow let's examine the RAG (retrieved) values:\n\nStephen King's Rage:\n- Range: 211 to 274 pages\n\nOrson Scott Card's Shadow of the Giant:\n- Range: 365 to 388 pages\n\nThere is no overlap between the page counts. Even the maximum value for Rage (274 pages) is less than the minimum value for Shadow of the Giant (365 pages). Therefore, under all interpretations based on the given RAG values, Shadow of the Giant is always longer than Rage.\n\nThis means:\n- Question 1: \"Does Rage have more pages than Shadow of the Giant?\" \u2192 No\n- Question 2: \"Does Shadow of the Giant have more pages than Rage?\" \u2192 Yes\n\nTherefore, under all interpretations, one answer is Yes and the other is No.\n\nNow let\u2019s apply the consistency test: Is there at least one interpretation where both questions could be answered the same way (both Yes or both No)? No \u2014 because the questions are logical opposites, and the data supports only one directional answer.\n\nThus, answering both questions with the same answer would always create a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "cae0195564f2385b9ae8d1a00de07c9d7a1709bb056a3d615af9c6802eb0d2ef": {
       "pair_id": "cae0195564f2385b9ae8d1a00de07c9d7a1709bb056a3d615af9c6802eb0d2ef",
@@ -307,7 +310,8 @@
         "Question 1 asks whether \"More Than Human\" has more pages than \"Evernight\", while Question 2 asks the reverse\u2014whether \"Evernight\" has more pages than \"More Than Human\". These are direct opposites in terms of logical structure.\n\nIf Question 1 is answered \"Yes\", then \"More Than Human\" must have more pages than \"Evernight\", which would make the answer to Question 2 necessarily \"No\", and vice versa. It is logically impossible for both questions to be answered \"Yes\" simultaneously, as that would imply both books have more pages than the other, which is a contradiction. Similarly, both cannot be answered \"No\" simultaneously, as that would imply that neither book has more pages than the other, which is again a contradiction unless they have exactly the same number of pages.\n\nHowever, the RAG values indicate that \"More Than Human\" has page counts ranging from 186 to 233, whereas \"Evernight\" has page counts ranging from 327 to 352. There is no overlap in page ranges, and \"Evernight\" consistently has more pages than \"More Than Human\" across all sourced values. This supports the conclusion that Question 1 should be answered \"No\" and Question 2 should be answered \"Yes\", further confirming that the questions are logical inverses.\n\nTherefore, answering both with the same response (either Yes/Yes or No/No) would always lead to a contradiction, irrespective of which page count you use from the RAG data.\n\nThus, the questions are logically CONSISTENT, because answering them the same way would always create a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "0811206219925b173d1b95192d2fbc304065e2820c7569795037c92f309c3c20": {
       "pair_id": "0811206219925b173d1b95192d2fbc304065e2820c7569795037c92f309c3c20",
@@ -381,7 +385,8 @@
         "The two questions are exact logical inverses of each other:\n\n- Question 1 asks if Burnt Offerings has more pages than The Book of Fate.\n- Question 2 asks if The Book of Fate has more pages than Burnt Offerings.\n\nIn terms of logic, these two questions are mutually exclusive: if the answer to one is \"Yes,\" the answer to the other must be \"No,\" and vice versa. There is no interpretation under which both could be answered \"Yes\" or both \"No\" without a contradiction.\n\nNow, looking at the RAG values:\n- Burnt Offerings has page counts ranging from 226 to 264.\n- The Book of Fate has page counts ranging from 508 to 616.\n\nIn every RAG value pairing, The Book of Fate has significantly more pages than Burnt Offerings. Therefore, the correct answer to Question 1 would be \"No\" (Burnt Offerings does not have more pages), and the correct answer to Question 2 would be \"Yes\" (The Book of Fate does have more pages).\n\nBut beyond actual values, the core of this task is to assess logical consistency. The structure of the questions ensures that if both were answered the same way (both Yes or both No), it would always lead to a contradiction. For example:\n- If both were answered \"Yes,\" it would imply each book has more pages than the other, which is impossible.\n- If both were answered \"No,\" it would imply that neither book has more pages than the other, which contradicts the assumption that one must be longer unless they are equal \u2014 and the RAG values rule out them being equal.\n\nThus, the questions are logically CONSISTENT according to the given guidelines, as answering both the same way always leads to contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "4ebbe64179041d993a753ef804ab7336726e157c45a08465251ac20e21b0d15b": {
       "pair_id": "4ebbe64179041d993a753ef804ab7336726e157c45a08465251ac20e21b0d15b",
@@ -459,7 +464,8 @@
         "The two questions are direct inverses of each other. Question 1 asks whether Book A (Mr. Monk Goes to Germany) has more pages than Book B (Scarecrow and the Army of Thieves), while Question 2 asks whether Book B has more pages than Book A. These are logically equivalent comparisons in opposite directions.\n\nIf one answers \"Yes\" to both questions, it implies that each book has more pages than the other, which is a contradiction \u2014 a book cannot simultaneously have more pages than and fewer pages than another book. Likewise, answering \"No\" to both would imply that neither book has more pages than the other, which only makes sense if both books have the same number of pages.\n\nHowever, the RAG values show that \"Mr. Monk Goes to Germany\" consistently has 288 pages, while \"Scarecrow and the Army of Thieves\" has values ranging from 352 to 576 pages. None of these values are equal to 288, meaning there is no interpretation in which the books have the same number of pages.\n\nTherefore, answering both questions with the same answer (both Yes or both No) would always lead to a contradiction, given the page counts. This makes the questions logically CONSISTENT, as same-answer responses would contradict the factual data."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "a5a78b21ae491abd80b45f2bdd3cc6eb22e515b61c29e4c3b4728f5083e9d5a2": {
       "pair_id": "a5a78b21ae491abd80b45f2bdd3cc6eb22e515b61c29e4c3b4728f5083e9d5a2",
@@ -537,7 +543,8 @@
         "The two questions are logically exact opposites of each other:\n\n- Question 1 asks whether \"TransAtlantic\" has more pages than \"New England White.\"\n- Question 2 asks whether \"New England White\" has more pages than \"TransAtlantic.\"\n\nThese are mutually exclusive comparisons. Logically, if one book has more pages than the other, then the reverse cannot also be true. The only situation in which both questions could be answered the same way (both Yes or both No) without contradiction is if the two books have exactly the same number of pages.\n\nHowever, the RAG values show that the page counts for each book vary, likely due to different editions. But even considering the full range of possible page counts for each:\n\n- TransAtlantic ranges from 304 to 368 pages.\n- New England White ranges from 555 to 736 pages.\n\nThere is no overlap in the page ranges\u2014every known edition of New England White has more pages than any known edition of TransAtlantic.\n\nTherefore, we cannot interpret a scenario where both books have the same number of pages. This means that answering both questions the same way (both Yes or both No) would always lead to a contradiction, because either one book has more pages or the other does.\n\nThus, the questions are logically CONSISTENT: answering both with the same answer would necessarily contradict the page data and the logical structure of the questions."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "1ba7be6429ffbf9d0d4131ec65866d4aa86dd133a86e4f91aa2dfe7b2458245c": {
       "pair_id": "1ba7be6429ffbf9d0d4131ec65866d4aa86dd133a86e4f91aa2dfe7b2458245c",
@@ -609,7 +616,8 @@
       "filter_pair_label": null,
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "c89a4a87c87979c6de3d7e6d347ed2f758ea5ea916bdff7e11d186d7446e5008": {
       "pair_id": "c89a4a87c87979c6de3d7e6d347ed2f758ea5ea916bdff7e11d186d7446e5008",
@@ -679,7 +687,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "d1eda194fcb40bc94b26b89db36d05393b262a2dc06d0391f155d288bf79d9ee": {
       "pair_id": "d1eda194fcb40bc94b26b89db36d05393b262a2dc06d0391f155d288bf79d9ee",
@@ -743,7 +752,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "0c6f046cda49a1714b4600f6a75f9ac5d22c62719b4145062c6d8a3796a251bf": {
       "pair_id": "0c6f046cda49a1714b4600f6a75f9ac5d22c62719b4145062c6d8a3796a251bf",
@@ -803,7 +813,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "cfbb90d6235a897bb075a7c9735cf628412f6b98a5d893582fefe74b40ab41ac": {
       "pair_id": "cfbb90d6235a897bb075a7c9735cf628412f6b98a5d893582fefe74b40ab41ac",
@@ -875,7 +886,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "f9f5ba8c801a093cc6e0d1796ff5f550c4e67af7d481088d8dc9494697bf71d1": {
       "pair_id": "f9f5ba8c801a093cc6e0d1796ff5f550c4e67af7d481088d8dc9494697bf71d1",
@@ -933,7 +945,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "ee340f6362d7da386a2db9fda08bff305eb0413193659dfe68a9d22780e296fa": {
       "pair_id": "ee340f6362d7da386a2db9fda08bff305eb0413193659dfe68a9d22780e296fa",
@@ -993,7 +1006,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "d5710f4b33027d2569327495c7ca290e198d64b3d513b230c5ce3652c3e48ccb": {
       "pair_id": "d5710f4b33027d2569327495c7ca290e198d64b3d513b230c5ce3652c3e48ccb",
@@ -1067,7 +1081,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "0cbd6442b4a9fe71a109530922d90f3eee6b0304de0ba797a9caa8a9acd3555b": {
       "pair_id": "0cbd6442b4a9fe71a109530922d90f3eee6b0304de0ba797a9caa8a9acd3555b",
@@ -1127,7 +1142,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     }
   }
 }

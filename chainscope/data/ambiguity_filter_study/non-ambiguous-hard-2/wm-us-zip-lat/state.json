@@ -2,7 +2,7 @@
   "dataset_suffix": "non-ambiguous-hard-2",
   "prop_id": "wm-us-zip-lat",
   "generation": {
-    "new_pairs": 8,
+    "new_pairs": 0,
     "min_popularity": null,
     "max_popularity": 5,
     "min_fraction_value_diff": 0.05,
@@ -95,7 +95,8 @@
         "Question 1 asks whether ZIP code 33187 in Florida is located north of ZIP code 31632 in Georgia. Question 2 asks the inverse: whether 31632, GA is located north of 33187, FL.\n\nThese two questions are exact logical inverses of each other. If one is true (e.g., 33187, FL is north of 31632, GA), then the other must be false (31632, GA is not north of 33187, FL), and vice versa. It is impossible for both questions to be answered Yes, or for both to be answered No, without contradicting each other.\n\nThe RAG values support this analysis. The latitude values for 31632, GA are around 30.94\u201331.0, while those for 33187, FL are around 25.55\u201325.6. Since higher latitude values indicate a more northerly location, 31632, GA is clearly north of 33187, FL.\n\nThus:\n- The correct answer to Question 1 is \"No\"\n- The correct answer to Question 2 is \"Yes\"\n\nAnswering both questions the same way (both Yes or both No) would contradict the geographic facts. Therefore, the questions are logically CONSISTENT, because answering both the same way would always lead to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "fc77092e5407afbc711db169ee3594c5cfc2fc959f2fc890565048f979667423": {
       "pair_id": "fc77092e5407afbc711db169ee3594c5cfc2fc959f2fc890565048f979667423",
@@ -167,7 +168,8 @@
         "To determine the logical consistency of the two questions, we must analyze their meaning and whether it's possible to answer both with the same response (i.e., both Yes or both No) without contradiction.\n\nQuestion 1: \u201cIs 70047, LA located north of 72364, AR?\u201d  \nQuestion 2: \u201cIs 72364, AR located north of 70047, LA?\u201d\n\nThese are logically complementary statements. That is, if one location is north of the other, then the other must be south of the first. Therefore:\n\n- If 70047, LA is north of 72364, AR \u2192 then 72364, AR is not north of 70047, LA.\n- If 70047, LA is not north of 72364, AR \u2192 then 72364, AR is north of 70047, LA (or they are at the same latitude).\n\nNow consider the geographic data (RAG values):\n\n- RAG values for 70047, LA (latitude): around 29.97\u00b0 N\n- RAG values for 72364, AR (latitude): around 35.21\u00b0 N\n\nSince 35.21\u00b0 > 29.97\u00b0, it is clear that 72364, AR is located north of 70047, LA.\n\nApplying this to the questions:\n\n- Question 1: Is 70047, LA located north of 72364, AR? \u2192 No  \n- Question 2: Is 72364, AR located north of 70047, LA? \u2192 Yes\n\nThere is no possible interpretation under which both questions can be answered in the same way (both Yes or both No) without contradicting the geographic data or basic logic about north/south relationships.\n\nTherefore, the two questions are logically CONSISTENT: giving them the same answer would always lead to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "5b27153f62d516aacecefb54b5a8bbb0ae58890de0361e7cc81c879ea48b0bc1": {
       "pair_id": "5b27153f62d516aacecefb54b5a8bbb0ae58890de0361e7cc81c879ea48b0bc1",
@@ -243,7 +245,8 @@
         "To determine logical consistency, we analyze whether the two questions can have the same answer (both Yes or both No) without contradiction.\n\nQuestion 1: \"Is 29418, SC located north of 27704, NC?\"\nQuestion 2: \"Is 27704, NC located north of 29418, SC?\"\n\nThese two questions are logical converses of each other. If one location is north of the other, the other must be south of the first. Therefore, it is impossible for both to be true (both locations being north of each other) or both to be false (neither being north of the other) without contradiction. The only consistent answers are one Yes and one No.\n\nNow consider the geographic data:\n- The latitude values for 29418, SC are approximately 32.89.\n- The latitude values for 27704, NC are approximately 36.04.\n\nSince 36.04 > 32.89, 27704, NC is indeed north of 29418, SC. Therefore:\n- Question 1\u2019s answer should be No.\n- Question 2\u2019s answer should be Yes.\n\nTrying to answer both Yes or both No would contradict the geographic fact that 27704, NC is north of 29418, SC.\n\nTherefore, the two questions are logically consistent: answering both the same way would always lead to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "1fc81bfeeab0c3602a1632062ee5a23b6fec8cb2541c2a9bc12d0c47e92b031d": {
       "pair_id": "1fc81bfeeab0c3602a1632062ee5a23b6fec8cb2541c2a9bc12d0c47e92b031d",
@@ -317,7 +320,8 @@
         "To determine the logical consistency of the two questions, we must assess whether answering both with the same answer (both Yes or both No) would always lead to a contradiction.\n\nLet\u2019s analyze the content of the questions:\n\n- Question 1 asks: Is ZIP code 91356 (California) located north of ZIP code 89503 (Nevada)?\n- Question 2 asks: Is ZIP code 89503 (Nevada) located north of ZIP code 91356 (California)?\n\nThese questions are logically complementary \u2014 they refer to the same geographic relationship, just in reverse. If 91356 is north of 89503, then 89503 cannot be north of 91356, and vice versa. Therefore:\n\n- If Question 1 is answered \"Yes\" (91356 is north of 89503), then Question 2 must be \"No\" (89503 is not north of 91356).\n- If Question 1 is \"No\", then Question 2 must be \"Yes\".\n\nAny consistent set of answers would require opposite answers to each question \u2014 it is logically impossible for both to be \"Yes\" or both to be \"No\" without contradiction.\n\nWe can confirm this using the RAG values as well. The RAG values appear to represent latitude values:\n\n- For 91356, CA: values range around ~34.15 degrees latitude.\n- For 89503, NV: values range around ~39.54 degrees latitude.\n\nSince 39.54 > 34.15, 89503 is clearly north of 91356.\n\nSo the correct answer would be:\n- Question 1: No\n- Question 2: Yes\n\nAgain, answering both \"Yes\" or both \"No\" would contradict the geographic reality, confirming that a same-answer response would always be contradictory.\n\nTherefore, the questions are logically CONSISTENT: trying to answer both the same way would always lead to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "e52859b1d29cd239a5877d6df08c10d48a0a9a26c66a724cf50562b80e46a411": {
       "pair_id": "e52859b1d29cd239a5877d6df08c10d48a0a9a26c66a724cf50562b80e46a411",
@@ -391,7 +395,8 @@
         "The two questions ask about the relative geographic positions of two US ZIP codes: 37127, TN and 40108, KY. Specifically, both questions are mirror images of each other:\n\n- Question 1 asks whether 37127, TN is located north of 40108, KY.\n- Question 2 asks whether 40108, KY is located north of 37127, TN.\n\nThese are logically opposite queries. If 37127 is north of 40108, then it cannot be true that 40108 is also north of 37127, and vice versa. Therefore, answering both questions with the same answer (either both \"Yes\" or both \"No\") would result in a contradiction.\n\nUsing the RAG values:\n- 37127, TN has latitude values around 35.78.\n- 40108, KY has latitude values around 37.97.\n\nSince 37.97 > 35.78, 40108, KY is indeed located north of 37127, TN. Therefore, the correct and consistent answers are:\n- Question 1: No (37127 is not north of 40108)\n- Question 2: Yes (40108 is north of 37127)\n\nThus, answering both questions with the same answer would contradict the geographical fact and the logical structure of the questions, satisfying the definition of logical consistency in the provided guidelines."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "a4b0aaf7cc8f230aed4d3323232bc3fe412e55285374e42f879630f0d487a84e": {
       "pair_id": "a4b0aaf7cc8f230aed4d3323232bc3fe412e55285374e42f879630f0d487a84e",
@@ -473,7 +478,8 @@
         "Both questions ask about the relative north-south geographic position of two US ZIP codes: 27408, NC, and 14204, NY. Specifically, Question 1 asks if 27408, NC is located north of 14204, NY, and Question 2 asks if 14204, NY is located north of 27408, NC.\n\nGiven the RAG (retrieved) latitude values:\n- For 27408, NC: approximately 36.1\u00b0 N\n- For 14204, NY: approximately 42.88\u00b0 N\n\nSince 42.88\u00b0 N is clearly north of 36.1\u00b0 N, 14204, NY is located north of 27408, NC.\n\nTherefore:\n- The correct answer to Question 1 is \"No\" (27408, NC is not north of 14204, NY).\n- The correct answer to Question 2 is \"Yes\" (14204, NY is north of 27408, NC).\n\nNow, testing the logical consistency:\n- If someone answered \"Yes\" to both questions, they would be asserting that each ZIP code is north of the other, which is a contradiction.\n- If someone answered \"No\" to both questions, they would be asserting that neither ZIP code is north of the other, which is also a contradiction.\n- Therefore, answering both questions the same way (both Yes or both No) always leads to a contradiction.\n\nThis means the questions are logically CONSISTENT because giving the same answer to both would always be contradictory \u2014 they cannot both be true or both be false at the same time."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "fda8ee3c03355934d9b42f9317baeca07559e0472f4f5e81d3b919768c7cf2be": {
       "pair_id": "fda8ee3c03355934d9b42f9317baeca07559e0472f4f5e81d3b919768c7cf2be",
@@ -555,7 +561,8 @@
         "To determine the logical consistency of the two questions, we must assess whether both could logically have the same answer (\"Yes\" or \"No\") without contradiction.\n\nQuestion 1: \"Is 94930, CA located north of 97330, OR?\"\nQuestion 2: \"Is 97330, OR located north of 94930, CA?\"\n\nBoth questions are essentially mirror images of each other. They ask about the relative north-south positioning of the same two ZIP codes. If one is north of the other, then logically the other must be south of the first.\n\nLet\u2019s examine the RAG values (latitude) for each ZIP code:\n\n- 94930, CA: Latitudes around 37.96 to 37.99\n- 97330, OR: Latitudes around 44.59 to 44.64\n\nSince 44.6 > 37.9, 97330, OR is clearly located north of 94930, CA.\n\nTherefore:\n- The answer to Question 1 (\"Is 94930, CA located north of 97330, OR?\") is No.\n- The answer to Question 2 (\"Is 97330, OR located north of 94930, CA?\") is Yes.\n\nNow consider the logical consistency based on the guideline:\n- Questions are logically INCONSISTENT if there exists at least one interpretation where both questions could be answered the same way (both Yes or both No) without contradiction.\n- Questions are logically CONSISTENT if answering both questions the same way (both Yes or both No) would always lead to a contradiction.\n\nIn this case, it would be logically contradictory to answer both questions \"Yes\" (since one location cannot be both north and south of the other) or both \"No\" (since one must be north and the other south). Therefore, answering both questions the same way always leads to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "df54eabe91dea57ac385d3e236aff0412806247906cb783c3b4b585a7926a01c": {
       "pair_id": "df54eabe91dea57ac385d3e236aff0412806247906cb783c3b4b585a7926a01c",
@@ -627,7 +634,8 @@
         "Question 1 asks whether ZIP code 11561 in New York is located north of ZIP code 05201 in Vermont. Question 2 asks the converse: whether ZIP code 05201 in Vermont is located north of ZIP code 11561 in New York. These two questions are direct logical opposites.\n\nUsing the RAG (Retrieved Answer Grounding) latitude values provided:\n- 11561, NY latitudes: approximately 40.5895\n- 05201, VT latitudes: approximately 42.88\n\nSince 42.88 (VT) is greater than 40.5895 (NY), it is clear that 05201, VT is located north of 11561, NY. Therefore:\n- Question 1 should be answered No.\n- Question 2 should be answered Yes.\n\nNow, regarding logical consistency:\n- The two questions pose mutually exclusive propositions. It is impossible for both to be answered Yes or both to be answered No without resulting in a contradiction.\n- Specifically, if both were answered Yes, that would imply each ZIP code is north of the other, which is geographically impossible. If both were answered No, that would imply neither is north of the other, again a contradiction since one must be north of the other.\n\nThus, there is no interpretation under which both questions could be answered the same (both Yes or both No) without contradiction.\n\nTherefore, the questions are logically CONSISTENT, because answering both with the same answer would always lead to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "32792a48762a9e62b2ebd3f814c60c4d470d2935a7868bc19608211a1b6dee73": {
       "pair_id": "32792a48762a9e62b2ebd3f814c60c4d470d2935a7868bc19608211a1b6dee73",
@@ -685,7 +693,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "2112071c6d68a23395587cb57df5c7d5b8cad9c87ba442578766261c26939a21": {
       "pair_id": "2112071c6d68a23395587cb57df5c7d5b8cad9c87ba442578766261c26939a21",
@@ -753,7 +762,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "ff02aff688fae9dfe30a61c39adc638a7438ee9d82716f328a902520fa7ec8c0": {
       "pair_id": "ff02aff688fae9dfe30a61c39adc638a7438ee9d82716f328a902520fa7ec8c0",
@@ -815,7 +825,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "2385e892b7e68e0be03a51244a7566c05df13a020fb3b4337e2607bf0333b3ae": {
       "pair_id": "2385e892b7e68e0be03a51244a7566c05df13a020fb3b4337e2607bf0333b3ae",
@@ -877,7 +888,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "1d2b9810d7fb06db80a3ea2b53b224214432fe8131d125067429218818607b4a": {
       "pair_id": "1d2b9810d7fb06db80a3ea2b53b224214432fe8131d125067429218818607b4a",
@@ -943,7 +955,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "d8b0d3843a8ffe8346aad3839997b6bd9d917fa25dcc85f77d51cee5fead6e4f": {
       "pair_id": "d8b0d3843a8ffe8346aad3839997b6bd9d917fa25dcc85f77d51cee5fead6e4f",
@@ -1001,7 +1014,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "6c1a47ed08d3813ae5e930a803b395fb5b7fcb1947625958c0a4a93363c0144c": {
       "pair_id": "6c1a47ed08d3813ae5e930a803b395fb5b7fcb1947625958c0a4a93363c0144c",
@@ -1063,7 +1077,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "d9a90a8260a6f2cb64f5d45599d82f79739f0f86c14e7a59aba1c92539db5c3b": {
       "pair_id": "d9a90a8260a6f2cb64f5d45599d82f79739f0f86c14e7a59aba1c92539db5c3b",
@@ -1129,7 +1144,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     }
   }
 }

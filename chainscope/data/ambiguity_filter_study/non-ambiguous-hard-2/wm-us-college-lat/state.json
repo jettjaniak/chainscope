@@ -2,7 +2,7 @@
   "dataset_suffix": "non-ambiguous-hard-2",
   "prop_id": "wm-us-college-lat",
   "generation": {
-    "new_pairs": 8,
+    "new_pairs": 0,
     "min_popularity": null,
     "max_popularity": 5,
     "min_fraction_value_diff": 0.05,
@@ -73,7 +73,8 @@
         "To determine the logical consistency between the two questions, we must analyze whether answering both questions the same way (either both Yes or both No) would result in a contradiction.\n\nFirst, we interpret the questions:\n\nQuestion 1: Is Lynn University, FL located north of Georgia Southern University-Armstrong Campus, GA?\n\nQuestion 2: Is Georgia Southern University-Armstrong Campus, GA located north of Lynn University, FL?\n\nFrom a geographic and semantic standpoint, these two questions are direct inverses of each other. If one location is north of another, then the second location must be south of the first (and vice versa). Therefore:\n\n- If the answer to Question 1 is Yes (Lynn is north of Georgia Southern), then the answer to Question 2 must be No (Georgia Southern is not north of Lynn), and\n- If the answer to Question 1 is No, then the answer to Question 2 must be Yes.\n\nThis means it is impossible to answer both questions the same way (both Yes or both No) without causing a contradiction with the known meaning of \"north of\".\n\nNow, we verify with the geographic data:\n\n- Lynn University: ~26.3850\u00b0 N\n- Georgia Southern University-Armstrong Campus: ~31.97817\u00b0 N\n\nSince 31.97817\u00b0 N > 26.3850\u00b0 N, Georgia Southern University-Armstrong Campus is located north of Lynn University.\n\nTherefore:\n\n- Question 1 should be answered No.\n- Question 2 should be answered Yes.\n\nThis confirms that answering both questions the same way would result in a contradiction.\n\nThus, the two questions are logically CONSISTENT because answering both with the same response would always lead to a contradiction, based on their inverse structure and the directional relationship implied by \"north of\"."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "86144330368e1a257a083fca759bcfc15bd64fa12d78c2c63bb37c3657285dbe": {
       "pair_id": "86144330368e1a257a083fca759bcfc15bd64fa12d78c2c63bb37c3657285dbe",
@@ -135,7 +136,8 @@
         "To determine the logical consistency of the two questions, we must analyze whether both can be answered the same way (\"Yes\" or \"No\") without contradiction, given the geographic latitude (RAG) values provided.\n\nQuestion 1: Is University of Mississippi Medical Center School of Dentistry, MS (UMMC) located north of Bethel University, TN?\nQuestion 2: Is Bethel University, TN located north of UMMC?\n\nRAG values:\n- UMMC: 32.328853\u00b0N\n- Bethel University: 36.14221\u00b0N and 36.13923\u00b0N\n\nGiven that both values for Bethel University are significantly north of UMMC's latitude, we can conclude:\n- UMMC is not north of Bethel University.\n- Bethel University is north of UMMC.\n\nSo, the correct answers to the questions are:\n- Question 1: No\n- Question 2: Yes\n\nNow, let\u2019s examine the logical relationship:\n- The two questions are direct inverses of each other. That is, if one is true, the other must be false.\n- Therefore, the questions are logically CONSISTENT because answering both with the same value (e.g., \"Yes\" to both) would always result in contradiction.\n\nThus, there is no interpretation under which both questions can be answered the same way without contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "577194458a3f8a00887ea84e75c3581d9915153b35d3d7f37812d043e5e067fc": {
       "pair_id": "577194458a3f8a00887ea84e75c3581d9915153b35d3d7f37812d043e5e067fc",
@@ -201,7 +203,8 @@
         "To determine whether these two questions are logically consistent, we must examine their semantic content and the geographical data (RAG values) provided.\n\nQuestion 1: \"Is Clayton State University, GA located north of Johnson University, TN?\"\nQuestion 2: \"Is Johnson University, TN located north of Clayton State University, GA?\"\n\nThese two questions are logical inverses of each other. That is, if one is true (Yes), the other must be false (No), and vice versa. It is not logically possible for both to be answered \"Yes\" without contradiction, nor is it possible for both to be answered \"No\" without contradiction.\n\nNow, looking at the RAG (Research and Ground-truth) values:\n\n- Clayton State University, GA:\n  - Latitude values: 33.59447\u00b0, 33.59572\u00b0, ~33.5956\u00b0 average\n- Johnson University, TN:\n  - Latitude values: 35.93537, 35.9362408, ~35.9358\u00b0 average\n\nSince Johnson University is at a higher latitude than Clayton State University, it is located farther north. Therefore, the correct answers would be:\n- Question 1: No (Clayton State is south of Johnson)\n- Question 2: Yes (Johnson is north of Clayton State)\n\nThus, answering both questions the same way (both Yes or both No) would always produce a contradiction, which supports that they are logically consistent as defined in the guidelines."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "b7906cd33f2c688d6cd837412889aa51502aa544e135c44e8e148166f369a7e6": {
       "pair_id": "b7906cd33f2c688d6cd837412889aa51502aa544e135c44e8e148166f369a7e6",
@@ -269,7 +272,8 @@
         "Question 1 asks whether University of North Carolina Wilmington (UNCW) is located north of Franciscan University of Steubenville (FUS), while Question 2 asks the converse\u2014whether FUS is located north of UNCW. These questions are logical converses of each other: if one is true, the other must be false.\n\nFrom the provided RAG values:\n- UNCW has latitudes around 34.22\u00b0 N.\n- FUS has latitudes around 40.37\u00b0 N.\n\nSince 40.37\u00b0 N > 34.22\u00b0 N, FUS is indeed north of UNCW. Therefore:\n- The answer to Question 1 is No (UNCW is not north of FUS).\n- The answer to Question 2 is Yes (FUS is north of UNCW).\n\nThus, it is not possible to answer both questions the same way (both Yes or both No) without contradicting the geographical facts. Therefore, any interpretation where both questions are answered identically (Yes/Yes or No/No) leads to a contradiction.\n\nConsequently, the two questions are logically CONSISTENT, because answering them the same way would always lead to a contradiction, which is the definition of logical consistency in this context."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "f2653a986d1b2d85dff1cd10dc3284d6f9babeefea077849e660974c1f9adeb0": {
       "pair_id": "f2653a986d1b2d85dff1cd10dc3284d6f9babeefea077849e660974c1f9adeb0",
@@ -333,7 +337,8 @@
         "Question 1 asks whether Johnson University, TN is located north of Indiana University \u2013 Purdue University Columbus, IN. Question 2 asks the inverse: whether Indiana University \u2013 Purdue University Columbus, IN is located north of Johnson University, TN. These two questions are perfect logical inverses of each other.\n\nTo assess logical consistency, we examine whether both questions can be answered the same way (both \"Yes\" or both \"No\") without contradiction.\n\nFrom the RAG values:\n- Johnson University, TN is at approximately 35.936\u00b0N.\n- Indiana University \u2013 Purdue University Columbus, IN is at approximately 39.250\u00b0N.\n\nThis means Indiana University \u2013 Purdue University Columbus is clearly north of Johnson University.\n\nTherefore:\n- Question 1: Is Johnson University north of Indiana University \u2013 Purdue University Columbus? \u2192 No.\n- Question 2: Is Indiana University \u2013 Purdue University Columbus north of Johnson University? \u2192 Yes.\n\nThis shows that the two questions must have opposite answers. If one is \"Yes\", the other must be \"No\", and vice versa.\n\nThus, answering both questions the same way would always lead to a contradiction. Therefore, the questions are logically CONSISTENT, because they cannot be answered the same way without contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "bec658299655ca4b60580e6241041b2b3b21d3a0d81a5c40f8b0659960f79d0d": {
       "pair_id": "bec658299655ca4b60580e6241041b2b3b21d3a0d81a5c40f8b0659960f79d0d",
@@ -401,7 +406,8 @@
         "To determine the logical consistency of the two questions, we must examine whether it is possible for both questions to be answered the same way (either both Yes or both No) without contradiction.\n\nQuestion 1: \"Is Averett University, VA located north of PennWest Edinboro, PA?\"\nQuestion 2: \"Is PennWest Edinboro, PA located north of Averett University, VA?\"\n\nThese questions are logical inverses of each other. If Averett is north of PennWest Edinboro (Question 1: Yes), then PennWest Edinboro cannot be north of Averett (Question 2: No), and vice versa. The only scenario where both could be answered the same way (Yes/Yes or No/No) without contradiction is if the two universities are at the exact same latitude.\n\nNow let\u2019s look at the RAG values (approximate latitude in degrees north):\n\n- Averett University, VA: ~36.57736\u00b0 N to 36.579166\u00b0 N\n- PennWest Edinboro, PA: ~41.874126\u00b0 N to 41.876667\u00b0 N\n\nThese values clearly show that PennWest Edinboro is approximately 5 degrees farther north than Averett University. This eliminates any possibility of them being at the same latitude. Thus, one must be north of the other, and their positions are not equal.\n\nTherefore:\n- If Question 1 is answered \"Yes\" (Averett is north), then Question 2 must be \"No\" (Edinboro is not north).\n- If Question 1 is \"No,\" then Question 2 must be \"Yes.\"\n\nIt is not possible to answer both questions \"Yes\" or both \"No\" without contradicting the geographical data.\n\nHence, there is no interpretation where both questions could be answered the same way without contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "e4047aa1db584393db254e7a2ec70188c76a9747845c368852670c551cedd534": {
       "pair_id": "e4047aa1db584393db254e7a2ec70188c76a9747845c368852670c551cedd534",
@@ -467,7 +473,8 @@
         "To determine the logical consistency of the two questions, we must analyze whether answering both questions with the same response (either both \"Yes\" or both \"No\") would be logically coherent given the geographic data provided.\n\nQuestion 1 asks whether Lindenwood University\u2013Belleville, IL is located north of University of Wisconsin\u2013River Falls, WI.\n\nQuestion 2 asks whether University of Wisconsin\u2013River Falls, WI is located north of Lindenwood University\u2013Belleville, IL.\n\nThe latitude of Lindenwood University\u2013Belleville, IL is 38.52309\u00b0 N.\nThe latitude of University of Wisconsin\u2013River Falls, WI is 44.85352\u00b0 N.\n\nSince 44.85352\u00b0 N is clearly greater than 38.52309\u00b0 N, this means University of Wisconsin\u2013River Falls is north of Lindenwood University\u2013Belleville. Therefore:\n\n- Question 1 should be answered \"No\"\n- Question 2 should be answered \"Yes\"\n\nNow, consider if both questions were answered with the same answer (both \"Yes\" or both \"No\"):\n- If both are answered \"Yes\": This would imply Lindenwood is north of River Falls AND River Falls is north of Lindenwood \u2014 a contradiction.\n- If both are answered \"No\": This would imply neither is north of the other \u2014 another contradiction, since one must be north of the other.\n\nThus, there is no way to answer both questions the same way without a contradiction. Therefore, the questions are logically CONSISTENT with each other because answering both the same way always leads to a contradiction."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": true
     },
     "494d0512ebaa99e6590f318448e7f8724a2ab24134ec6422f7652aa8a6605bfd": {
       "pair_id": "494d0512ebaa99e6590f318448e7f8724a2ab24134ec6422f7652aa8a6605bfd",
@@ -535,7 +542,8 @@
         "To determine whether the two questions are logically consistent, we analyze their content and implications based on the geographic coordinates provided (RAG values).\n\nQuestion 1: \"Is Wittenberg University, OH located north of Calvin University, MI?\"\nQuestion 2: \"Is Calvin University, MI located north of Wittenberg University, OH?\"\n\nThese two questions are exact logical inverses of each other. If one is true (e.g., Wittenberg is north of Calvin), then the other must be false (Calvin is not north of Wittenberg), and vice versa.\n\nNow, we look at the RAG values:\n- Wittenberg University, OH: ~39.9331\u00b0 N to 39.93478\u00b0 N\n- Calvin University, MI: ~42.93123\u00b0 N to 42.93237\u00b0 N\n\nClearly, Calvin University is located at a higher (more northern) latitude than Wittenberg University. Therefore:\n- The answer to Question 1 is No (Wittenberg is not north of Calvin)\n- The answer to Question 2 is Yes (Calvin is north of Wittenberg)\n\nSince answering both questions the same way (both Yes or both No) would directly contradict the geographical reality (and the logical structure of their inverse relationship), there is no interpretation under which both answers can be the same without contradiction.\n\nTherefore, the questions are logically consistent \u2014 the only way to answer both without contradiction is to give opposite answers."
       ],
       "human_pair_label": null,
-      "source": "study"
+      "source": "study",
+      "skip_human": false
     },
     "8a13898ec645eb90886207f82e37e33f5fb72825d694cf73789888f212c7e784": {
       "pair_id": "8a13898ec645eb90886207f82e37e33f5fb72825d694cf73789888f212c7e784",
@@ -589,7 +597,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "d2ec80a232ce5ca9e7fd8b1345c6078b8458f830582a7863bd1789efa7279140": {
       "pair_id": "d2ec80a232ce5ca9e7fd8b1345c6078b8458f830582a7863bd1789efa7279140",
@@ -647,7 +656,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "d22ad38d727a41d7f4a62d8b9a23208f655f84e54f5abd21f5b7889e1369632a": {
       "pair_id": "d22ad38d727a41d7f4a62d8b9a23208f655f84e54f5abd21f5b7889e1369632a",
@@ -707,7 +717,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "dd3f0df7c719d3251ab70d8d89ba5166fd1e8f487852d94a327954e095c36678": {
       "pair_id": "dd3f0df7c719d3251ab70d8d89ba5166fd1e8f487852d94a327954e095c36678",
@@ -781,7 +792,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "8ecb877ca2a71b8cad59fd9da144170ae426dcba342bdcee1b71510faf58adc0": {
       "pair_id": "8ecb877ca2a71b8cad59fd9da144170ae426dcba342bdcee1b71510faf58adc0",
@@ -835,7 +847,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "3f54c6cc2c42c2b37992153e949bb249933c1e52bb9e18e4c46e705211afd554": {
       "pair_id": "3f54c6cc2c42c2b37992153e949bb249933c1e52bb9e18e4c46e705211afd554",
@@ -887,7 +900,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "13cda5c5c24562a59e96810af0acf589bac14e93a0303d970053117347124809": {
       "pair_id": "13cda5c5c24562a59e96810af0acf589bac14e93a0303d970053117347124809",
@@ -941,7 +955,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     },
     "1f5cb98927c8a36ce380889468f57a78e9628400105cc1c72efb1edddaee755c": {
       "pair_id": "1f5cb98927c8a36ce380889468f57a78e9628400105cc1c72efb1edddaee755c",
@@ -999,7 +1014,8 @@
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
       "human_pair_label": null,
-      "source": "existing"
+      "source": "existing",
+      "skip_human": false
     }
   }
 }
