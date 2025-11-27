@@ -1134,14 +1134,14 @@ def build_pair_tasks(
 
 @beartype
 def ask_direction_label(
-    state: StudyState,
+    _state: StudyState,
     direction: DirectionRecord,
-    direction_name: str,
+    _direction_name: str,
+    question_index: int,
+    total_questions: int,
 ) -> DirectionLabel | None:
     click.echo("\n" + "=" * 80)
-    click.echo(f"Property: {state.prop_id}")
-    click.echo(f"Dataset suffix: {state.dataset_suffix}")
-    click.echo(f"Direction: {direction_name}")
+    click.echo(f"Question {question_index}/{total_questions}")
     click.echo(f"Question:\n{direction.question.strip()}")
     click.echo("\nRAG values:")
     for entity in (direction.x_name, direction.y_name):
@@ -1197,12 +1197,18 @@ def run_labeling_loops(
 ) -> None:
     question_tasks = build_question_tasks(states)
     rng.shuffle(question_tasks)
+    total_questions = len(question_tasks)
     task_queue: deque[
         tuple[StudyState, PairRecord, DirectionRecord, Literal["forward", "reverse"]]
     ] = deque(question_tasks)
+    if total_questions == 0:
+        click.echo("\nNo pending question-level labels.")
     while task_queue:
         state, pair, direction, direction_name = task_queue.popleft()
-        label = ask_direction_label(state, direction, direction_name)
+        question_number = total_questions - len(task_queue)
+        label = ask_direction_label(
+            state, direction, direction_name, question_number, total_questions
+        )
         if label is None:
             click.echo("Exiting labeling loop.")
             return
