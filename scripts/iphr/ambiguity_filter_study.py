@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # isort: skip_file
-from collections import deque
+from collections import deque, defaultdict
 from dataclasses import dataclass
 import hashlib
 import json
@@ -820,87 +820,110 @@ def enforce_labeling_quota(
     study_per_prop_cap: int | None,
     existing_per_prop_cap: int | None,
 ) -> None:
-    def collect_pairs() -> (
-        tuple[
-            list[tuple[StudyState, str]],
-            list[tuple[StudyState, str]],
-            list[tuple[StudyState, str]],
-        ]
-    ):
-        study_clear: list[tuple[StudyState, str]] = []
-        study_amb: list[tuple[StudyState, str]] = []
-        existing: list[tuple[StudyState, str]] = []
-        for state in states.values():
-            for pair_id, pair in state.pairs.items():
-                if pair.skip_human or pair.human_pair_label is not None:
-                    continue
-                if pair.source == "study":
-                    label = pair_llm_label(pair)
-                    if label == "CLEAR":
-                        study_clear.append((state, pair_id))
-                    elif label == "AMBIGUOUS":
-                        study_amb.append((state, pair_id))
-                elif pair.source == "existing":
-                    existing.append((state, pair_id))
-        return study_clear, study_amb, existing
-
-    def trim(pairs: list[tuple[StudyState, str]], target: int) -> set[str]:
-        changed: set[str] = set()
-        if len(pairs) <= target:
-            return changed
-        rng.shuffle(pairs)
-        for state, pair_id in pairs[target:]:
-            pair = state.pairs[pair_id]
-            pair.skip_human = True
-            changed.add(state.prop_id)
-        return changed
-
-    # First enforce per-property caps so each prop contributes fairly.
     per_label_limit = (
         study_per_prop_cap // 2
         if study_per_prop_cap and study_per_prop_cap > 0
         else None
     )
+
+    def gather_candidates() -> (
+        tuple[dict[str, list[str]], dict[str, list[str]], dict[str, list[str]]]
+    ):
+        study_clear: dict[str, list[str]] = defaultdict(list)
+        study_amb: dict[str, list[str]] = defaultdict(list)
+        existing: dict[str, list[str]] = defaultdict(list)
+        for state in states.values():
+            for pair_id, pair in state.pairs.items():
+                if pair.human_pair_label is not None:
+                    continue
+                if pair.source == "study":
+                    label = pair_llm_label(pair)
+                    if label == "CLEAR":
+                        study_clear[state.prop_id].append(pair_id)
+                    elif label == "AMBIGUOUS":
+                        study_amb[state.prop_id].append(pair_id)
+                elif pair.source == "existing":
+                    existing[state.prop_id].append(pair_id)
+        return study_clear, study_amb, existing
+
+    def allocate(
+        by_prop: dict[str, list[str]], base_limit: int | None, target: int
+    ) -> set[str]:
+        if target <= 0:
+            return set()
+        contributions: dict[str, int] = {}
+        total = 0
+        for prop, ids in by_prop.items():
+            prop_cap = len(ids) if base_limit is None else min(base_limit, len(ids))
+            contributions[prop] = prop_cap
+            total += prop_cap
+        # Reduce if we exceeded target
+        if total > target:
+            props_list = [prop for prop, count in contributions.items() if count > 0]
+            while total > target and props_list:
+                prop = rng.choice(props_list)
+                if contributions[prop] > 0:
+                    contributions[prop] -= 1
+                    total -= 1
+                    if contributions[prop] == 0:
+                        props_list.remove(prop)
+        # Increase if below target and capacity available
+        if total < target:
+            capacity = {
+                prop: len(by_prop[prop]) - contributions.get(prop, 0)
+                for prop in by_prop
+            }
+            props_list = [prop for prop, cap in capacity.items() if cap > 0]
+            while total < target and props_list:
+                prop = rng.choice(props_list)
+                if capacity[prop] > 0:
+                    contributions[prop] += 1
+                    capacity[prop] -= 1
+                    total += 1
+                    if capacity[prop] == 0:
+                        props_list.remove(prop)
+
+        selected: set[str] = set()
+        for prop, ids in by_prop.items():
+            need = contributions.get(prop, 0)
+            if need <= 0:
+                continue
+            shuffled = ids[:]
+            rng.shuffle(shuffled)
+            selected.update(shuffled[:need])
+        return selected
+
+    study_clear_by_prop, study_amb_by_prop, existing_by_prop = gather_candidates()
+    keep_clear = allocate(study_clear_by_prop, per_label_limit, target_study_clear)
+    keep_amb = allocate(study_amb_by_prop, per_label_limit, target_study_ambiguous)
+    keep_existing = allocate(
+        existing_by_prop,
+        existing_per_prop_cap
+        if existing_per_prop_cap and existing_per_prop_cap > 0
+        else None,
+        target_existing,
+    )
+
     for state in states.values():
         changed = False
-        if per_label_limit is not None and per_label_limit >= 0:
-            for label in ("CLEAR", "AMBIGUOUS"):
-                candidates = [
-                    pair_id
-                    for pair_id, pair in state.pairs.items()
-                    if not pair.skip_human
-                    and pair.source == "study"
-                    and pair.human_pair_label is None
-                    and pair_llm_label(pair) == label
-                ]
-                if len(candidates) > per_label_limit:
-                    rng.shuffle(candidates)
-                    for pair_id in candidates[per_label_limit:]:
-                        state.pairs[pair_id].skip_human = True
-                    changed = True
-        if existing_per_prop_cap is not None and existing_per_prop_cap >= 0:
-            candidates = [
-                pair_id
-                for pair_id, pair in state.pairs.items()
-                if not pair.skip_human
-                and pair.source == "existing"
-                and pair.human_pair_label is None
-            ]
-            if len(candidates) > existing_per_prop_cap:
-                rng.shuffle(candidates)
-                for pair_id in candidates[existing_per_prop_cap:]:
-                    state.pairs[pair_id].skip_human = True
+        for pair_id, pair in state.pairs.items():
+            if pair.human_pair_label is not None:
+                continue
+            original = pair.skip_human
+            if pair.source == "study":
+                label = pair_llm_label(pair)
+                if label == "CLEAR":
+                    pair.skip_human = pair_id not in keep_clear
+                elif label == "AMBIGUOUS":
+                    pair.skip_human = pair_id not in keep_amb
+                else:
+                    pair.skip_human = True
+            elif pair.source == "existing":
+                pair.skip_human = pair_id not in keep_existing
+            if pair.skip_human != original:
                 changed = True
         if changed:
             save_state(state)
-
-    study_clear, study_amb, existing = collect_pairs()
-    changed_props: set[str] = set()
-    changed_props |= trim(study_clear, target_study_clear)
-    changed_props |= trim(study_amb, target_study_ambiguous)
-    changed_props |= trim(existing, target_existing)
-    for prop_id in changed_props:
-        save_state(states[prop_id])
 
 
 @beartype
