@@ -1305,7 +1305,7 @@ def wilson_interval(successes: int, total: int) -> tuple[float, float]:
 
 
 @beartype
-def compute_metrics(states: dict[str, StudyState]) -> None:
+def compute_metrics(states: dict[str, StudyState], residual_examples: bool) -> None:
     study_question = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
     study_pair = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
     residual_stats = {
@@ -1313,6 +1313,7 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
         "existing": {"total": 0, "ambiguous": 0},
         "combined": {"total": 0, "ambiguous": 0},
     }
+    ambiguous_examples: list[tuple[str, PairRecord]] = []
 
     def inferred_pair_human_label(pair: PairRecord) -> DirectionLabel | None:
         if pair.human_pair_label is not None:
@@ -1363,6 +1364,8 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
                 residual_stats[pair.source]["total"] += 1
                 if adjusted_human_pos:
                     residual_stats[pair.source]["ambiguous"] += 1
+                    if residual_examples and pair.source == "existing":
+                        ambiguous_examples.append((state.prop_id, pair))
                 residual_stats["combined"]["total"] += 1
                 if adjusted_human_pos:
                     residual_stats["combined"]["ambiguous"] += 1
@@ -1414,6 +1417,25 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
     _print_residual("existing", residual_stats["existing"])
     _print_residual("study", residual_stats["study"])
     _print_residual("combined", residual_stats["combined"])
+    if residual_examples and ambiguous_examples:
+
+        def _print_rag_values(direction: DirectionRecord) -> None:
+            click.echo("RAG values:")
+            for entity_name in sorted(direction.rag_values.keys()):
+                click.echo(f"- {entity_name}:")
+                for value in direction.rag_values[entity_name]:
+                    click.echo(f"    • {value}")
+
+        click.echo("\nResidual ambiguity examples (IPHR dataset):")
+        for prop_id, pair in ambiguous_examples:
+            click.echo("\n" + "-" * 80)
+            click.echo(f"Property: {prop_id}")
+            click.echo("Question A:")
+            click.echo(pair.forward.question.strip())
+            _print_rag_values(pair.forward)
+            click.echo("\nQuestion B:")
+            click.echo(pair.reverse.question.strip())
+            _print_rag_values(pair.reverse)
 
 
 @click.command()
@@ -1447,6 +1469,11 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
 @click.option("--seed", type=int, default=None)
 @click.option("--stats-only", is_flag=True, help="Skip interactive labeling.")
 @click.option(
+    "--residual-ambiguity-examples",
+    is_flag=True,
+    help="Print ambiguous residual examples from existing pairs.",
+)
+@click.option(
     "--existing-pairs",
     type=int,
     default=200,
@@ -1476,6 +1503,7 @@ def main(
     max_retries: int,
     seed: int | None,
     stats_only: bool,
+    residual_ambiguity_examples: bool,
     existing_pairs: int,
     use_openai: bool,
     use_open_router: bool,
@@ -1690,7 +1718,8 @@ def main(
         )
     study_target = min(new_pairs // 2, 200)
     existing_target = min(existing_pairs, 200)
-    if not stats_only:
+    read_only_mode = stats_only or residual_ambiguity_examples
+    if not read_only_mode:
         enforce_labeling_quota(
             states=states,
             target_study_clear=study_target,
@@ -1704,8 +1733,9 @@ def main(
         summarize_states(states)
         run_labeling_loops(states, rng)
     else:
-        click.echo("\nSkipping quota adjustments because --stats-only is set.")
-    compute_metrics(states)
+        reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
+        click.echo(f"\nSkipping quota adjustments because {reason} is set.")
+    compute_metrics(states, residual_examples=residual_ambiguity_examples)
 
 
 if __name__ == "__main__":
