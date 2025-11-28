@@ -1311,7 +1311,23 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
     residual_stats = {
         "study": {"total": 0, "ambiguous": 0},
         "existing": {"total": 0, "ambiguous": 0},
+        "combined": {"total": 0, "ambiguous": 0},
     }
+
+    def inferred_pair_human_label(pair: PairRecord) -> DirectionLabel | None:
+        if pair.human_pair_label is not None:
+            return pair.human_pair_label
+        if pair.forward.human_label is None or pair.reverse.human_label is None:
+            return None
+        if (
+            pair.forward.human_label == "ambiguous"
+            or pair.reverse.human_label == "ambiguous"
+        ):
+            return "ambiguous"
+        if pair.forward.human_label == "clear" and pair.reverse.human_label == "clear":
+            return "clear"
+        return None
+
     for state in states.values():
         for pair in state.pairs.values():
             if pair.skip_human:
@@ -1331,18 +1347,25 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
                     else:
                         study_question["tn"] += 1
             if pair.filter_pair_label is None or pair.human_pair_label is None:
-                continue
+                pair_human_label = inferred_pair_human_label(pair)
+                if pair_human_label is None:
+                    continue
+            else:
+                pair_human_label = pair.human_pair_label
             filter_pos = is_filter_positive(pair.filter_pair_label)
-            human_pair_pos = is_human_positive(pair.human_pair_label)
-            direction_ambiguous = any(
-                direction.human_label == "ambiguous"
-                for direction in (pair.forward, pair.reverse)
+            human_pair_pos = is_human_positive(pair_human_label)
+            direction_ambiguous = (
+                pair.forward.human_label == "ambiguous"
+                or pair.reverse.human_label == "ambiguous"
             )
             adjusted_human_pos = human_pair_pos or direction_ambiguous
             if pair.filter_pair_label == "CLEAR":
                 residual_stats[pair.source]["total"] += 1
                 if adjusted_human_pos:
                     residual_stats[pair.source]["ambiguous"] += 1
+                residual_stats["combined"]["total"] += 1
+                if adjusted_human_pos:
+                    residual_stats["combined"]["ambiguous"] += 1
             if pair.source != "study":
                 continue
             if filter_pos and adjusted_human_pos:
@@ -1390,6 +1413,7 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
 
     _print_residual("existing", residual_stats["existing"])
     _print_residual("study", residual_stats["study"])
+    _print_residual("combined", residual_stats["combined"])
 
 
 @click.command()
