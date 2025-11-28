@@ -1690,19 +1690,21 @@ def main(
         )
     study_target = min(new_pairs // 2, 200)
     existing_target = min(existing_pairs, 200)
-    enforce_labeling_quota(
-        states=states,
-        target_study_clear=study_target,
-        target_study_ambiguous=study_target,
-        target_existing=existing_target,
-        study_per_prop_cap=per_prop_cap if per_prop_cap > 0 else None,
-        existing_per_prop_cap=per_prop_existing_cap
-        if per_prop_existing_cap > 0
-        else None,
-    )
     if not stats_only:
+        enforce_labeling_quota(
+            states=states,
+            target_study_clear=study_target,
+            target_study_ambiguous=study_target,
+            target_existing=existing_target,
+            study_per_prop_cap=per_prop_cap if per_prop_cap > 0 else None,
+            existing_per_prop_cap=per_prop_existing_cap
+            if per_prop_existing_cap > 0
+            else None,
+        )
         summarize_states(states)
         run_labeling_loops(states, rng)
+    else:
+        click.echo("\nSkipping quota adjustments because --stats-only is set.")
     compute_metrics(states)
 
 
