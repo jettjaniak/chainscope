@@ -35,6 +35,7 @@ from chainscope.typing import (
     PropRAGEval,
     RAGValue,
     SamplingParams,
+    UnfaithfulnessPairsDataset,
 )
 
 
@@ -43,6 +44,45 @@ RAG_SAMPLING = SamplingParams(temperature=0.0, top_p=0.9, max_new_tokens=1000)
 DirectionLabel = Literal["clear", "ambiguous"]
 FilterLabel = Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]
 MIN_EXTEND_BATCH = 300
+FaithfulnessLookup = dict[str, dict[str, set[str]]]
+
+
+@lru_cache(maxsize=None)
+def _load_faithfulness_lookup(dataset_suffix: str | None) -> FaithfulnessLookup:
+    lookup: FaithfulnessLookup = {}
+    faithfulness_dir = DATA_DIR / "faithfulness"
+    if not faithfulness_dir.exists():
+        return lookup
+    suffix_token = f"_{dataset_suffix}" if dataset_suffix else None
+    for model_dir in sorted(faithfulness_dir.iterdir()):
+        if not model_dir.is_dir():
+            continue
+        for yaml_path in sorted(model_dir.glob("*.yaml")):
+            stem = yaml_path.stem
+            if dataset_suffix:
+                assert suffix_token is not None
+                if not stem.endswith(suffix_token):
+                    continue
+                prop_id = stem[: -len(suffix_token)]
+                if not prop_id:
+                    continue
+            else:
+                if "_" in stem:
+                    continue
+                prop_id = stem
+            dataset = UnfaithfulnessPairsDataset.load_from_path(yaml_path)
+            if dataset.dataset_suffix != dataset_suffix:
+                continue
+            prop_lookup = lookup.setdefault(prop_id, {})
+            for qid, question in dataset.questions_by_qid.items():
+                if not question.unfaithful_responses:
+                    continue
+                prop_lookup.setdefault(qid, set()).add(dataset.model_id)
+                if question.metadata is not None and question.metadata.reversed_q_id:
+                    prop_lookup.setdefault(question.metadata.reversed_q_id, set()).add(
+                        dataset.model_id
+                    )
+    return lookup
 
 
 EXCLUDED_PROPS = {"wm-nyc-place-lat", "wm-nyc-place-long"}
@@ -1305,7 +1345,11 @@ def wilson_interval(successes: int, total: int) -> tuple[float, float]:
 
 
 @beartype
-def compute_metrics(states: dict[str, StudyState], residual_examples: bool) -> None:
+def compute_metrics(
+    states: dict[str, StudyState],
+    residual_examples: bool,
+    faithfulness_lookup: FaithfulnessLookup | None = None,
+) -> None:
     study_question = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
     study_pair = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
     residual_stats = {
@@ -1314,6 +1358,19 @@ def compute_metrics(states: dict[str, StudyState], residual_examples: bool) -> N
         "combined": {"total": 0, "ambiguous": 0},
     }
     ambiguous_examples: list[tuple[str, PairRecord]] = []
+
+    def _faithfulness_models(pair: PairRecord) -> set[str]:
+        if not faithfulness_lookup:
+            return set()
+        prop_lookup = faithfulness_lookup.get(pair.prop_id)
+        if not prop_lookup:
+            return set()
+        models: set[str] = set()
+        for qid in (pair.forward.qid, pair.reverse.qid):
+            model_ids = prop_lookup.get(qid)
+            if model_ids:
+                models.update(model_ids)
+        return models
 
     def inferred_pair_human_label(pair: PairRecord) -> DirectionLabel | None:
         if pair.human_pair_label is not None:
@@ -1436,6 +1493,13 @@ def compute_metrics(states: dict[str, StudyState], residual_examples: bool) -> N
             click.echo("\nQuestion B:")
             click.echo(pair.reverse.question.strip())
             _print_rag_values(pair.reverse)
+            models = _faithfulness_models(pair)
+            if models:
+                click.echo(
+                    "\nModels with unfaithful responses: " + ", ".join(sorted(models))
+                )
+            else:
+                click.echo("\nModels with unfaithful responses: none recorded.")
 
 
 @click.command()
@@ -1718,6 +1782,11 @@ def main(
         )
     study_target = min(new_pairs // 2, 200)
     existing_target = min(existing_pairs, 200)
+    faithfulness_lookup = (
+        _load_faithfulness_lookup(dataset_suffix)
+        if residual_ambiguity_examples
+        else None
+    )
     read_only_mode = stats_only or residual_ambiguity_examples
     if not read_only_mode:
         enforce_labeling_quota(
@@ -1735,7 +1804,11 @@ def main(
     else:
         reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
         click.echo(f"\nSkipping quota adjustments because {reason} is set.")
-    compute_metrics(states, residual_examples=residual_ambiguity_examples)
+    compute_metrics(
+        states,
+        residual_examples=residual_ambiguity_examples,
+        faithfulness_lookup=faithfulness_lookup,
+    )
 
 
 if __name__ == "__main__":
