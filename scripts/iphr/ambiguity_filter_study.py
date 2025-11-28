@@ -1333,18 +1333,23 @@ def compute_metrics(states: dict[str, StudyState]) -> None:
             if pair.filter_pair_label is None or pair.human_pair_label is None:
                 continue
             filter_pos = is_filter_positive(pair.filter_pair_label)
-            human_pos = is_human_positive(pair.human_pair_label)
+            human_pair_pos = is_human_positive(pair.human_pair_label)
+            direction_ambiguous = any(
+                direction.human_label == "ambiguous"
+                for direction in (pair.forward, pair.reverse)
+            )
+            adjusted_human_pos = human_pair_pos or direction_ambiguous
             if pair.filter_pair_label == "CLEAR":
                 residual_stats[pair.source]["total"] += 1
-                if human_pos:
+                if adjusted_human_pos:
                     residual_stats[pair.source]["ambiguous"] += 1
             if pair.source != "study":
                 continue
-            if filter_pos and human_pos:
+            if filter_pos and adjusted_human_pos:
                 study_pair["tp"] += 1
-            elif filter_pos and not human_pos:
+            elif filter_pos and not adjusted_human_pos:
                 study_pair["fp"] += 1
-            elif not filter_pos and human_pos:
+            elif not filter_pos and adjusted_human_pos:
                 study_pair["fn"] += 1
             else:
                 study_pair["tn"] += 1
