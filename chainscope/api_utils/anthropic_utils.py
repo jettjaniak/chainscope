@@ -28,6 +28,7 @@ ANTHROPIC_MODEL_ALIASES = {
     "claude-3.6-sonnet": "claude-3-5-sonnet-20241022",
     "claude-3.5-haiku": "claude-3-5-haiku-20241022",
     "claude-3.7-sonnet": "claude-3-7-sonnet-20250219",
+    "claude-sonnet-4-6": "claude-sonnet-4-6",
 }
 
 
@@ -356,6 +357,9 @@ def submit_anthropic_batch(
             top_p=api_sampling_params.top_p,
             messages=[{"role": "user", "content": prompt}],
         )
+        # claude-sonnet-4-6 and later models do not support both temperature and top_p
+        if api_model_id.startswith("claude-sonnet-4") or api_model_id.startswith("claude-opus-4") or api_model_id.startswith("claude-haiku-4"):
+            del request_params["top_p"]
         if is_thinking_model:
             assert thinking_budget_tokens is not None
             request_params["thinking"] = {
