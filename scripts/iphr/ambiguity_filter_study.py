@@ -1172,9 +1172,13 @@ def asyncio_run_consistency(
     )
 
 
+SourceFilter = Literal["all", "existing", "study"]
+
+
 @beartype
 def build_question_tasks(
     states: dict[str, StudyState],
+    source_filter: SourceFilter = "all",
 ) -> list[
     tuple[StudyState, PairRecord, DirectionRecord, Literal["forward", "reverse"]]
 ]:
@@ -1184,6 +1188,8 @@ def build_question_tasks(
     for state in states.values():
         for pair in state.pairs.values():
             if pair.skip_human:
+                continue
+            if source_filter != "all" and pair.source != source_filter:
                 continue
             if pair.forward.human_label is None:
                 tasks.append((state, pair, pair.forward, "forward"))
@@ -1195,11 +1201,14 @@ def build_question_tasks(
 @beartype
 def build_pair_tasks(
     states: dict[str, StudyState],
+    source_filter: SourceFilter = "all",
 ) -> list[tuple[StudyState, PairRecord]]:
     tasks: list[tuple[StudyState, PairRecord]] = []
     for state in states.values():
         for pair in state.pairs.values():
             if pair.skip_human:
+                continue
+            if source_filter != "all" and pair.source != source_filter:
                 continue
             if pair.human_pair_label is not None:
                 continue
@@ -1281,8 +1290,9 @@ def ask_pair_label(
 def run_labeling_loops(
     states: dict[str, StudyState],
     rng: random.Random,
+    source_filter: SourceFilter = "all",
 ) -> None:
-    question_tasks = build_question_tasks(states)
+    question_tasks = build_question_tasks(states, source_filter=source_filter)
     rng.shuffle(question_tasks)
     total_questions = len(question_tasks)
     task_queue: deque[
@@ -1303,7 +1313,7 @@ def run_labeling_loops(
             continue
         direction.human_label = label
         save_state(state)
-    pair_tasks = build_pair_tasks(states)
+    pair_tasks = build_pair_tasks(states, source_filter=source_filter)
     rng.shuffle(pair_tasks)
     pair_queue: deque[tuple[StudyState, PairRecord]] = deque(pair_tasks)
     total_pairs = len(pair_tasks)
@@ -1553,6 +1563,13 @@ def compute_metrics(
 @click.option("--use-open-router/--no-open-router", default=False, show_default=True)
 @click.option("--use-anthropic/--no-anthropic", default=False, show_default=True)
 @click.option("--use-deepseek/--no-deepseek", default=False, show_default=True)
+@click.option(
+    "--source",
+    type=click.Choice(["all", "existing", "study"]),
+    default="all",
+    show_default=True,
+    help="Only label pairs from this source.",
+)
 @click.option("--verbose", is_flag=True)
 def main(
     dataset_suffix: str,
@@ -1579,6 +1596,7 @@ def main(
     use_open_router: bool,
     use_anthropic: bool,
     use_deepseek: bool,
+    source: SourceFilter,
     verbose: bool,
 ) -> None:
     """Run the ambiguity filter ablation study pipeline."""
@@ -1613,7 +1631,7 @@ def main(
         read_only_mode = stats_only or residual_ambiguity_examples
         if not read_only_mode:
             summarize_states(states)
-            run_labeling_loops(states, rng)
+            run_labeling_loops(states, rng, source_filter=source)
         else:
             reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
             click.echo(f"\nSkipping labeling because {reason} is set.")
@@ -1846,7 +1864,7 @@ def main(
             else None,
         )
         summarize_states(states)
-        run_labeling_loops(states, rng)
+        run_labeling_loops(states, rng, source_filter=source)
     else:
         reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
         click.echo(f"\nSkipping quota adjustments because {reason} is set.")
