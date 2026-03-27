@@ -1533,6 +1533,11 @@ def compute_metrics(
 @click.option("--seed", type=int, default=None)
 @click.option("--stats-only", is_flag=True, help="Skip interactive labeling.")
 @click.option(
+    "--label-only",
+    is_flag=True,
+    help="Skip generation/evaluation; load existing state files and go straight to labeling.",
+)
+@click.option(
     "--residual-ambiguity-examples",
     is_flag=True,
     help="Print ambiguous residual examples from existing pairs.",
@@ -1567,6 +1572,7 @@ def main(
     max_retries: int,
     seed: int | None,
     stats_only: bool,
+    label_only: bool,
     residual_ambiguity_examples: bool,
     existing_pairs: int,
     use_openai: bool,
@@ -1577,6 +1583,47 @@ def main(
 ) -> None:
     """Run the ambiguity filter ablation study pipeline."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
+    rng = random.Random(seed)
+
+    if label_only:
+        # Skip generation/evaluation/dataframe loading; just load existing
+        # state files and go straight to labeling + metrics.
+        study_suffix_dir = STUDY_DIR / dataset_suffix
+        assert (
+            study_suffix_dir.exists()
+        ), f"No state directory at {study_suffix_dir}"
+        found_props = sorted(
+            d.name
+            for d in study_suffix_dir.iterdir()
+            if d.is_dir() and (d / "state.json").exists()
+        )
+        if prop_ids:
+            found_props = [p for p in found_props if p in prop_ids]
+        assert found_props, f"No state files found under {study_suffix_dir}"
+        states: dict[str, StudyState] = {}
+        for prop_id in found_props:
+            loaded = load_state(dataset_suffix, prop_id)
+            if loaded is not None:
+                states[prop_id] = loaded
+        faithfulness_lookup = (
+            _load_faithfulness_lookup(dataset_suffix)
+            if residual_ambiguity_examples
+            else None
+        )
+        read_only_mode = stats_only or residual_ambiguity_examples
+        if not read_only_mode:
+            summarize_states(states)
+            run_labeling_loops(states, rng)
+        else:
+            reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
+            click.echo(f"\nSkipping labeling because {reason} is set.")
+        compute_metrics(
+            states,
+            residual_examples=residual_ambiguity_examples,
+            faithfulness_lookup=faithfulness_lookup,
+        )
+        return
+
     assert (
         new_pairs % 2 == 0
     ), f"--new-pairs must be even to keep CLEAR/AMBIGUOUS balanced, got {new_pairs}"
@@ -1602,7 +1649,6 @@ def main(
     assert (
         api_preferences.selects_at_least_one_api()
     ), "At least one API provider must be enabled."
-    rng = random.Random(seed)
     df, canonical_suffix = _load_dataset_dataframe(dataset_suffix)
     remaining_new_pairs = new_pairs
     remaining_existing = existing_pairs
