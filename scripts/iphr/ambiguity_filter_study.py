@@ -1291,6 +1291,7 @@ def run_labeling_loops(
     states: dict[str, StudyState],
     rng: random.Random,
     source_filter: SourceFilter = "all",
+    directions_only: bool = False,
 ) -> None:
     question_tasks = build_question_tasks(states, source_filter=source_filter)
     rng.shuffle(question_tasks)
@@ -1313,6 +1314,8 @@ def run_labeling_loops(
             continue
         direction.human_label = label
         save_state(state)
+    if directions_only:
+        return
     pair_tasks = build_pair_tasks(states, source_filter=source_filter)
     rng.shuffle(pair_tasks)
     pair_queue: deque[tuple[StudyState, PairRecord]] = deque(pair_tasks)
@@ -1570,6 +1573,11 @@ def compute_metrics(
     show_default=True,
     help="Only label pairs from this source.",
 )
+@click.option(
+    "--directions-only",
+    is_flag=True,
+    help="Only label individual directions, skip pair-level labeling.",
+)
 @click.option("--verbose", is_flag=True)
 def main(
     dataset_suffix: str,
@@ -1597,6 +1605,7 @@ def main(
     use_anthropic: bool,
     use_deepseek: bool,
     source: SourceFilter,
+    directions_only: bool,
     verbose: bool,
 ) -> None:
     """Run the ambiguity filter ablation study pipeline."""
@@ -1631,7 +1640,7 @@ def main(
         read_only_mode = stats_only or residual_ambiguity_examples
         if not read_only_mode:
             summarize_states(states)
-            run_labeling_loops(states, rng, source_filter=source)
+            run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only)
         else:
             reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
             click.echo(f"\nSkipping labeling because {reason} is set.")
@@ -1864,7 +1873,7 @@ def main(
             else None,
         )
         summarize_states(states)
-        run_labeling_loops(states, rng, source_filter=source)
+        run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only)
     else:
         reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
         click.echo(f"\nSkipping quota adjustments because {reason} is set.")
