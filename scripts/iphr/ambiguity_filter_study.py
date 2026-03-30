@@ -834,15 +834,15 @@ def summarize_states(states: dict[str, StudyState], annotator_id: str, source_fi
         dataset_pending += prop_dataset_pending
         parts = []
         if source_filter in ("all", "existing"):
-            parts.append(f"{prop_dataset_pending} missing from IPHR dataset")
+            parts.append(f"{prop_dataset_pending} missing to label from IPHR dataset")
         if source_filter in ("all", "study"):
-            parts.append(f"{prop_study_pending} missing from ablation study")
+            parts.append(f"{prop_study_pending} missing to label from ablation study")
         click.echo(f"  {prop_id}: {', '.join(parts)}")
     parts = []
     if source_filter in ("all", "existing"):
-        parts.append(f"{dataset_pending} missing from IPHR dataset (of {dataset_total})")
+        parts.append(f"{dataset_pending} missing to label from IPHR dataset (of {dataset_total})")
     if source_filter in ("all", "study"):
-        parts.append(f"{study_pending} missing from ablation study (of {study_total})")
+        parts.append(f"{study_pending} missing to label from ablation study (of {study_total})")
     click.echo(f"  TOTALS: {', '.join(parts)}")
 
 
