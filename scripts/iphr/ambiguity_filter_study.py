@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # isort: skip_file
 from collections import deque, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 import logging
@@ -140,7 +140,7 @@ class DirectionRecord:
     rag_values: dict[str, list[str]]
     filter_label: FilterLabel | None = None
     filter_analyses: list[str | None] | None = None
-    human_label: DirectionLabel | None = None
+    human_labels: dict[str, DirectionLabel] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -153,7 +153,7 @@ class DirectionRecord:
             "rag_values": self.rag_values,
             "filter_label": self.filter_label,
             "filter_analyses": self.filter_analyses,
-            "human_label": self.human_label,
+            "human_labels": self.human_labels,
         }
 
     @staticmethod
@@ -168,7 +168,7 @@ class DirectionRecord:
             rag_values={k: list(v) for k, v in payload.get("rag_values", {}).items()},
             filter_label=payload.get("filter_label"),
             filter_analyses=payload.get("filter_analyses"),
-            human_label=payload.get("human_label"),
+            human_labels=payload.get("human_labels", {}),
         )
 
 
@@ -180,7 +180,7 @@ class PairRecord:
     reverse: DirectionRecord
     filter_pair_label: FilterLabel | None = None
     filter_pair_analyses: list[str | None] | None = None
-    human_pair_label: DirectionLabel | None = None
+    human_pair_labels: dict[str, DirectionLabel] = field(default_factory=dict)
     source: Literal["study", "existing"] = "study"
     skip_human: bool = False
 
@@ -192,7 +192,7 @@ class PairRecord:
             "reverse": self.reverse.to_dict(),
             "filter_pair_label": self.filter_pair_label,
             "filter_pair_analyses": self.filter_pair_analyses,
-            "human_pair_label": self.human_pair_label,
+            "human_pair_labels": self.human_pair_labels,
             "source": self.source,
             "skip_human": self.skip_human,
         }
@@ -206,7 +206,7 @@ class PairRecord:
             reverse=DirectionRecord.from_dict(payload["reverse"]),
             filter_pair_label=payload.get("filter_pair_label"),
             filter_pair_analyses=payload.get("filter_pair_analyses"),
-            human_pair_label=payload.get("human_pair_label"),
+            human_pair_labels=payload.get("human_pair_labels", {}),
             source=payload.get("source", "study"),
             skip_human=payload.get("skip_human", False),
         )
@@ -794,7 +794,7 @@ def aggregate_label_counts(states: dict[str, StudyState]) -> dict[str, int]:
     return totals
 
 
-def summarize_states(states: dict[str, StudyState]) -> None:
+def summarize_states(states: dict[str, StudyState], annotator_id: str) -> None:
     if not states:
         click.echo("\nNo properties have been processed yet.")
         return
@@ -822,11 +822,11 @@ def summarize_states(states: dict[str, StudyState]) -> None:
                 if label is None:
                     continue
                 study_summary[label]["total"] += 1
-                if pair.human_pair_label is None:
+                if annotator_id not in pair.human_pair_labels:
                     study_summary[label]["missing"] += 1
             else:
                 existing_total += 1
-                if pair.human_pair_label is None:
+                if annotator_id not in pair.human_pair_labels:
                     existing_missing += 1
         clear_info = study_summary["CLEAR"]
         amb_info = study_summary["AMBIGUOUS"]
@@ -858,6 +858,7 @@ def enforce_labeling_quota(
     target_existing: int,
     study_per_prop_cap: int | None,
     existing_per_prop_cap: int | None,
+    annotator_id: str,
 ) -> None:
     per_label_limit = (
         study_per_prop_cap // 2
@@ -875,7 +876,7 @@ def enforce_labeling_quota(
             state = states[prop_id]
             for pair_id in sorted(state.pairs.keys()):
                 pair = state.pairs[pair_id]
-                if pair.human_pair_label is not None:
+                if annotator_id in pair.human_pair_labels:
                     continue
                 if pair.source == "study":
                     label = pair_llm_label(pair)
@@ -963,7 +964,7 @@ def enforce_labeling_quota(
     for state in states.values():
         changed = False
         for pair_id, pair in state.pairs.items():
-            if pair.human_pair_label is not None:
+            if annotator_id in pair.human_pair_labels:
                 continue
             original = pair.skip_human
             if pair.source == "study":
@@ -1179,6 +1180,8 @@ SourceFilter = Literal["all", "existing", "study"]
 def build_question_tasks(
     states: dict[str, StudyState],
     source_filter: SourceFilter = "all",
+    *,
+    annotator_id: str,
 ) -> list[
     tuple[StudyState, PairRecord, DirectionRecord, Literal["forward", "reverse"]]
 ]:
@@ -1191,9 +1194,9 @@ def build_question_tasks(
                 continue
             if source_filter != "all" and pair.source != source_filter:
                 continue
-            if pair.forward.human_label is None:
+            if annotator_id not in pair.forward.human_labels:
                 tasks.append((state, pair, pair.forward, "forward"))
-            if pair.reverse.human_label is None:
+            if annotator_id not in pair.reverse.human_labels:
                 tasks.append((state, pair, pair.reverse, "reverse"))
     return tasks
 
@@ -1202,6 +1205,8 @@ def build_question_tasks(
 def build_pair_tasks(
     states: dict[str, StudyState],
     source_filter: SourceFilter = "all",
+    *,
+    annotator_id: str,
 ) -> list[tuple[StudyState, PairRecord]]:
     tasks: list[tuple[StudyState, PairRecord]] = []
     for state in states.values():
@@ -1210,11 +1215,11 @@ def build_pair_tasks(
                 continue
             if source_filter != "all" and pair.source != source_filter:
                 continue
-            if pair.human_pair_label is not None:
+            if annotator_id in pair.human_pair_labels:
                 continue
             if (
-                pair.forward.human_label == "clear"
-                and pair.reverse.human_label == "clear"
+                pair.forward.human_labels.get(annotator_id) == "clear"
+                and pair.reverse.human_labels.get(annotator_id) == "clear"
             ):
                 tasks.append((state, pair))
     return tasks
@@ -1227,6 +1232,7 @@ def ask_direction_label(
     _direction_name: str,
     question_index: int,
     total_questions: int,
+    annotator_id: str,
 ) -> DirectionLabel | None:
     click.echo("\n" + "=" * 80)
     click.echo(f"Question {question_index}/{total_questions}")
@@ -1244,7 +1250,7 @@ def ask_direction_label(
         if choice == "q":
             return None
         if choice == "s":
-            return direction.human_label
+            return direction.human_labels.get(annotator_id)
         if choice in {"c", "a"}:
             return cast(DirectionLabel, {"c": "clear", "a": "ambiguous"}[choice])
         click.echo("Invalid choice, please use c/a/s/q.")
@@ -1256,6 +1262,7 @@ def ask_pair_label(
     pair: PairRecord,
     pair_index: int,
     total_pairs: int,
+    annotator_id: str,
 ) -> DirectionLabel | None:
     click.echo("\n" + "-" * 80)
     click.echo(f"Pair {pair_index}/{total_pairs}")
@@ -1280,7 +1287,7 @@ def ask_pair_label(
         if choice == "q":
             return None
         if choice == "s":
-            return pair.human_pair_label
+            return pair.human_pair_labels.get(annotator_id)
         if choice in {"c", "a"}:
             return cast(DirectionLabel, {"c": "clear", "a": "ambiguous"}[choice])
         click.echo("Invalid choice, please use c/a/s/q.")
@@ -1292,8 +1299,10 @@ def run_labeling_loops(
     rng: random.Random,
     source_filter: SourceFilter = "all",
     directions_only: bool = False,
+    *,
+    annotator_id: str,
 ) -> None:
-    question_tasks = build_question_tasks(states, source_filter=source_filter)
+    question_tasks = build_question_tasks(states, source_filter=source_filter, annotator_id=annotator_id)
     rng.shuffle(question_tasks)
     total_questions = len(question_tasks)
     task_queue: deque[
@@ -1305,31 +1314,31 @@ def run_labeling_loops(
         state, pair, direction, direction_name = task_queue.popleft()
         question_number = total_questions - len(task_queue)
         label = ask_direction_label(
-            state, direction, direction_name, question_number, total_questions
+            state, direction, direction_name, question_number, total_questions, annotator_id
         )
         if label is None:
             click.echo("Exiting labeling loop.")
             return
-        if label == direction.human_label:
+        if label == direction.human_labels.get(annotator_id):
             continue
-        direction.human_label = label
+        direction.human_labels[annotator_id] = label
         save_state(state)
     if directions_only:
         return
-    pair_tasks = build_pair_tasks(states, source_filter=source_filter)
+    pair_tasks = build_pair_tasks(states, source_filter=source_filter, annotator_id=annotator_id)
     rng.shuffle(pair_tasks)
     pair_queue: deque[tuple[StudyState, PairRecord]] = deque(pair_tasks)
     total_pairs = len(pair_tasks)
     while pair_queue:
         pair_index = total_pairs - len(pair_queue)
         state, pair = pair_queue.popleft()
-        label = ask_pair_label(state, pair, pair_index, total_pairs)
+        label = ask_pair_label(state, pair, pair_index, total_pairs, annotator_id)
         if label is None:
             click.echo("Exiting pair loop.")
             return
-        if label == pair.human_pair_label:
+        if label == pair.human_pair_labels.get(annotator_id):
             continue
-        pair.human_pair_label = label
+        pair.human_pair_labels[annotator_id] = label
         save_state(state)
 
 
@@ -1357,20 +1366,42 @@ def wilson_interval(successes: int, total: int) -> tuple[float, float]:
     return lower, upper
 
 
+def _discover_annotators(states: dict[str, StudyState]) -> list[str]:
+    """Return sorted list of all annotator IDs found in the data."""
+    annotators: set[str] = set()
+    for state in states.values():
+        for pair in state.pairs.values():
+            annotators.update(pair.forward.human_labels.keys())
+            annotators.update(pair.reverse.human_labels.keys())
+            annotators.update(pair.human_pair_labels.keys())
+    return sorted(annotators)
+
+
+def _inferred_pair_label(pair: PairRecord, ann_id: str) -> DirectionLabel | None:
+    if ann_id in pair.human_pair_labels:
+        return pair.human_pair_labels[ann_id]
+    fwd = pair.forward.human_labels.get(ann_id)
+    rev = pair.reverse.human_labels.get(ann_id)
+    if fwd is None or rev is None:
+        return None
+    if fwd == "ambiguous" or rev == "ambiguous":
+        return "ambiguous"
+    if fwd == "clear" and rev == "clear":
+        return "clear"
+    return None
+
+
 @beartype
 def compute_metrics(
     states: dict[str, StudyState],
     residual_examples: bool,
     faithfulness_lookup: FaithfulnessLookup | None = None,
+    annotator_id: str | None = None,
 ) -> None:
-    study_question = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
-    study_pair = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
-    residual_stats = {
-        "study": {"total": 0, "ambiguous": 0},
-        "existing": {"total": 0, "ambiguous": 0},
-        "combined": {"total": 0, "ambiguous": 0},
-    }
-    ambiguous_examples: list[tuple[str, PairRecord]] = []
+    annotators = _discover_annotators(states)
+    if not annotators:
+        click.echo("\nNo human annotations found.")
+        return
 
     def _faithfulness_models(pair: PairRecord) -> set[str]:
         if not faithfulness_lookup:
@@ -1384,71 +1415,6 @@ def compute_metrics(
             if model_ids:
                 models.update(model_ids)
         return models
-
-    def inferred_pair_human_label(pair: PairRecord) -> DirectionLabel | None:
-        if pair.human_pair_label is not None:
-            return pair.human_pair_label
-        if pair.forward.human_label is None or pair.reverse.human_label is None:
-            return None
-        if (
-            pair.forward.human_label == "ambiguous"
-            or pair.reverse.human_label == "ambiguous"
-        ):
-            return "ambiguous"
-        if pair.forward.human_label == "clear" and pair.reverse.human_label == "clear":
-            return "clear"
-        return None
-
-    for state in states.values():
-        for pair in state.pairs.values():
-            if pair.skip_human:
-                continue
-            for direction in (pair.forward, pair.reverse):
-                if direction.filter_label is None or direction.human_label is None:
-                    continue
-                filter_pos = is_filter_positive(direction.filter_label)
-                human_pos = is_human_positive(direction.human_label)
-                if pair.source == "study":
-                    if filter_pos and human_pos:
-                        study_question["tp"] += 1
-                    elif filter_pos and not human_pos:
-                        study_question["fp"] += 1
-                    elif not filter_pos and human_pos:
-                        study_question["fn"] += 1
-                    else:
-                        study_question["tn"] += 1
-            if pair.filter_pair_label is None or pair.human_pair_label is None:
-                pair_human_label = inferred_pair_human_label(pair)
-                if pair_human_label is None:
-                    continue
-            else:
-                pair_human_label = pair.human_pair_label
-            filter_pos = is_filter_positive(pair.filter_pair_label)
-            human_pair_pos = is_human_positive(pair_human_label)
-            direction_ambiguous = (
-                pair.forward.human_label == "ambiguous"
-                or pair.reverse.human_label == "ambiguous"
-            )
-            adjusted_human_pos = human_pair_pos or direction_ambiguous
-            if pair.filter_pair_label == "CLEAR":
-                residual_stats[pair.source]["total"] += 1
-                if adjusted_human_pos:
-                    residual_stats[pair.source]["ambiguous"] += 1
-                    if residual_examples and pair.source == "existing":
-                        ambiguous_examples.append((state.prop_id, pair))
-                residual_stats["combined"]["total"] += 1
-                if adjusted_human_pos:
-                    residual_stats["combined"]["ambiguous"] += 1
-            if pair.source != "study":
-                continue
-            if filter_pos and adjusted_human_pos:
-                study_pair["tp"] += 1
-            elif filter_pos and not adjusted_human_pos:
-                study_pair["fp"] += 1
-            elif not filter_pos and adjusted_human_pos:
-                study_pair["fn"] += 1
-            else:
-                study_pair["tn"] += 1
 
     def _print_binary_metrics(title: str, counts: dict[str, int]) -> None:
         total = counts["tp"] + counts["fp"] + counts["fn"] + counts["tn"]
@@ -1471,9 +1437,6 @@ def compute_metrics(
             f"(TP={counts['tp']}, FP={counts['fp']}, FN={counts['fn']}, TN={counts['tn']})"
         )
 
-    _print_binary_metrics("Study question-level metrics", study_question)
-    _print_binary_metrics("Study pair-level metrics", study_pair)
-
     def _print_residual(label: str, stats: dict[str, int]) -> None:
         total = stats["total"]
         click.echo(f"\nResidual ambiguity ({label} source)")
@@ -1484,9 +1447,84 @@ def compute_metrics(
         low, high = wilson_interval(stats["ambiguous"], total)
         click.echo(f"{rate:.3f} (95% CI {low:.3f}-{high:.3f}, n={total})")
 
-    _print_residual("existing", residual_stats["existing"])
-    _print_residual("study", residual_stats["study"])
-    _print_residual("combined", residual_stats["combined"])
+    # Per-annotator metrics
+    ambiguous_examples: list[tuple[str, PairRecord]] = []
+    for ann_id in annotators:
+        click.echo(f"\n{'=' * 80}")
+        click.echo(f"Annotator: {ann_id}")
+        click.echo("=" * 80)
+
+        study_question = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
+        study_pair = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
+        residual_stats: dict[str, dict[str, int]] = {
+            "study": {"total": 0, "ambiguous": 0},
+            "existing": {"total": 0, "ambiguous": 0},
+            "combined": {"total": 0, "ambiguous": 0},
+        }
+
+        for state in states.values():
+            for pair in state.pairs.values():
+                if pair.skip_human:
+                    continue
+                for direction in (pair.forward, pair.reverse):
+                    human_lbl = direction.human_labels.get(ann_id)
+                    if direction.filter_label is None or human_lbl is None:
+                        continue
+                    filter_pos = is_filter_positive(direction.filter_label)
+                    human_pos = is_human_positive(human_lbl)
+                    if pair.source == "study":
+                        if filter_pos and human_pos:
+                            study_question["tp"] += 1
+                        elif filter_pos and not human_pos:
+                            study_question["fp"] += 1
+                        elif not filter_pos and human_pos:
+                            study_question["fn"] += 1
+                        else:
+                            study_question["tn"] += 1
+                pair_human_label: DirectionLabel | None
+                if pair.filter_pair_label is None or ann_id not in pair.human_pair_labels:
+                    pair_human_label = _inferred_pair_label(pair, ann_id)
+                    if pair_human_label is None:
+                        continue
+                else:
+                    pair_human_label = pair.human_pair_labels[ann_id]
+                filter_pos = is_filter_positive(pair.filter_pair_label)
+                human_pair_pos = is_human_positive(pair_human_label)
+                direction_ambiguous = (
+                    pair.forward.human_labels.get(ann_id) == "ambiguous"
+                    or pair.reverse.human_labels.get(ann_id) == "ambiguous"
+                )
+                adjusted_human_pos = human_pair_pos or direction_ambiguous
+                if pair.filter_pair_label == "CLEAR":
+                    residual_stats[pair.source]["total"] += 1
+                    if adjusted_human_pos:
+                        residual_stats[pair.source]["ambiguous"] += 1
+                        if residual_examples and pair.source == "existing":
+                            ambiguous_examples.append((state.prop_id, pair))
+                    residual_stats["combined"]["total"] += 1
+                    if adjusted_human_pos:
+                        residual_stats["combined"]["ambiguous"] += 1
+                if pair.source != "study":
+                    continue
+                if filter_pos and adjusted_human_pos:
+                    study_pair["tp"] += 1
+                elif filter_pos and not adjusted_human_pos:
+                    study_pair["fp"] += 1
+                elif not filter_pos and adjusted_human_pos:
+                    study_pair["fn"] += 1
+                else:
+                    study_pair["tn"] += 1
+
+        _print_binary_metrics(f"Study question-level metrics ({ann_id})", study_question)
+        _print_binary_metrics(f"Study pair-level metrics ({ann_id})", study_pair)
+        _print_residual("existing", residual_stats["existing"])
+        _print_residual("study", residual_stats["study"])
+        _print_residual("combined", residual_stats["combined"])
+
+    # Inter-annotator agreement (when 2+ annotators)
+    if len(annotators) >= 2:
+        _compute_inter_annotator_agreement(states, annotators)
+
     if residual_examples and ambiguous_examples:
 
         def _print_rag_values(direction: DirectionRecord) -> None:
@@ -1513,6 +1551,87 @@ def compute_metrics(
                 )
             else:
                 click.echo("\nModels with unfaithful responses: none recorded.")
+
+
+def _compute_inter_annotator_agreement(
+    states: dict[str, StudyState], annotators: list[str]
+) -> None:
+    """Compute pairwise inter-annotator agreement (Cohen's kappa) for all annotator pairs."""
+    from itertools import combinations
+
+    for ann_a, ann_b in combinations(annotators, 2):
+        click.echo(f"\n{'=' * 80}")
+        click.echo(f"Inter-annotator agreement: {ann_a} vs {ann_b}")
+        click.echo("=" * 80)
+
+        # Direction-level agreement
+        dir_labels_a: list[DirectionLabel] = []
+        dir_labels_b: list[DirectionLabel] = []
+        # Pair-level agreement (inferred)
+        pair_labels_a: list[DirectionLabel] = []
+        pair_labels_b: list[DirectionLabel] = []
+
+        for state in states.values():
+            for pair in state.pairs.values():
+                if pair.skip_human:
+                    continue
+                for direction in (pair.forward, pair.reverse):
+                    lbl_a = direction.human_labels.get(ann_a)
+                    lbl_b = direction.human_labels.get(ann_b)
+                    if lbl_a is not None and lbl_b is not None:
+                        dir_labels_a.append(lbl_a)
+                        dir_labels_b.append(lbl_b)
+
+                pl_a = _inferred_pair_label(pair, ann_a)
+                pl_b = _inferred_pair_label(pair, ann_b)
+                if pl_a is not None and pl_b is not None:
+                    pair_labels_a.append(pl_a)
+                    pair_labels_b.append(pl_b)
+
+        _print_agreement("Direction-level", dir_labels_a, dir_labels_b, ann_a, ann_b)
+        _print_agreement("Pair-level (inferred)", pair_labels_a, pair_labels_b, ann_a, ann_b)
+
+
+def _print_agreement(
+    level: str,
+    labels_a: list[DirectionLabel],
+    labels_b: list[DirectionLabel],
+    ann_a: str,
+    ann_b: str,
+) -> None:
+    n = len(labels_a)
+    click.echo(f"\n{level} ({n} items with both annotations)")
+    if n == 0:
+        click.echo("No overlapping annotations.")
+        return
+
+    agree = sum(1 for a, b in zip(labels_a, labels_b) if a == b)
+    raw_agreement = agree / n
+
+    # Confusion matrix
+    both_clear = sum(1 for a, b in zip(labels_a, labels_b) if a == "clear" and b == "clear")
+    both_amb = sum(1 for a, b in zip(labels_a, labels_b) if a == "ambiguous" and b == "ambiguous")
+    a_clear_b_amb = sum(1 for a, b in zip(labels_a, labels_b) if a == "clear" and b == "ambiguous")
+    a_amb_b_clear = sum(1 for a, b in zip(labels_a, labels_b) if a == "ambiguous" and b == "clear")
+
+    click.echo(f"Raw agreement: {raw_agreement:.3f} ({agree}/{n})")
+    click.echo(f"Confusion matrix:")
+    click.echo(f"  {'':<12} {ann_b}=clear  {ann_b}=ambig")
+    click.echo(f"  {ann_a}=clear   {both_clear:>8}  {a_clear_b_amb:>8}")
+    click.echo(f"  {ann_a}=ambig   {a_amb_b_clear:>8}  {both_amb:>8}")
+
+    # Cohen's kappa
+    p_a_clear = (both_clear + a_clear_b_amb) / n
+    p_b_clear = (both_clear + a_amb_b_clear) / n
+    p_a_amb = 1.0 - p_a_clear
+    p_b_amb = 1.0 - p_b_clear
+    p_e = p_a_clear * p_b_clear + p_a_amb * p_b_amb
+
+    if abs(1.0 - p_e) < 1e-10:
+        click.echo("Cohen's kappa: undefined (trivial agreement)")
+    else:
+        kappa = (raw_agreement - p_e) / (1.0 - p_e)
+        click.echo(f"Cohen's kappa: {kappa:.3f}")
 
 
 @click.command()
@@ -1579,6 +1698,12 @@ def compute_metrics(
     help="Only label individual directions, skip pair-level labeling.",
 )
 @click.option("--verbose", is_flag=True)
+@click.option(
+    "--annotator",
+    type=str,
+    default=None,
+    help="Annotator ID for human labeling. Required when labeling.",
+)
 def main(
     dataset_suffix: str,
     prop_ids: tuple[str, ...],
@@ -1607,10 +1732,15 @@ def main(
     source: SourceFilter,
     directions_only: bool,
     verbose: bool,
+    annotator: str | None,
 ) -> None:
     """Run the ambiguity filter ablation study pipeline."""
     logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
     rng = random.Random(seed)
+
+    read_only_mode = stats_only or residual_ambiguity_examples
+    if annotator is None and not read_only_mode:
+        raise click.UsageError("--annotator is required when labeling.")
 
     if label_only:
         # Skip generation/evaluation/dataframe loading; just load existing
@@ -1637,10 +1767,10 @@ def main(
             if residual_ambiguity_examples
             else None
         )
-        read_only_mode = stats_only or residual_ambiguity_examples
         if not read_only_mode:
-            summarize_states(states)
-            run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only)
+            assert annotator is not None
+            summarize_states(states, annotator_id=annotator)
+            run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only, annotator_id=annotator)
         else:
             reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
             click.echo(f"\nSkipping labeling because {reason} is set.")
@@ -1648,6 +1778,7 @@ def main(
             states,
             residual_examples=residual_ambiguity_examples,
             faithfulness_lookup=faithfulness_lookup,
+            annotator_id=annotator,
         )
         return
 
@@ -1860,8 +1991,8 @@ def main(
         if residual_ambiguity_examples
         else None
     )
-    read_only_mode = stats_only or residual_ambiguity_examples
     if not read_only_mode:
+        assert annotator is not None
         enforce_labeling_quota(
             states=states,
             target_study_clear=study_target,
@@ -1871,9 +2002,10 @@ def main(
             existing_per_prop_cap=per_prop_existing_cap
             if per_prop_existing_cap > 0
             else None,
+            annotator_id=annotator,
         )
-        summarize_states(states)
-        run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only)
+        summarize_states(states, annotator_id=annotator)
+        run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only, annotator_id=annotator)
     else:
         reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
         click.echo(f"\nSkipping quota adjustments because {reason} is set.")
@@ -1881,6 +2013,7 @@ def main(
         states,
         residual_examples=residual_ambiguity_examples,
         faithfulness_lookup=faithfulness_lookup,
+        annotator_id=annotator,
     )
 
 
