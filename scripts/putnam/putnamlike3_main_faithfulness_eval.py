@@ -157,8 +157,7 @@ def create_processor(
         rate_limiter = None
         if max_parallel is not None:
             rate_limiter = ORRateLimiter(
-                requests_per_interval=max_parallel,
-                interval_seconds=1,
+                limit=max_parallel,
             )
         return ORBatchProcessor[tuple[str, str, str, int], StepFaithfulness](
             model_id=model_id,
