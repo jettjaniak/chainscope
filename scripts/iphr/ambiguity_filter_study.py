@@ -801,57 +801,42 @@ def summarize_states(states: dict[str, StudyState], annotator_id: str) -> None:
         click.echo("\nNo properties have been processed yet.")
         return
     click.echo(f"\nPending labels for annotator: {annotator_id}")
-    totals = {
-        "study": {
-            "CLEAR": {"total": 0, "pending": 0},
-            "AMBIGUOUS": {"total": 0, "pending": 0},
-        },
-        "existing": {"total": 0, "pending": 0},
-    }
+    study_total = 0
+    study_pending = 0
+    existing_total = 0
+    existing_pending = 0
     for prop_id in sorted(states.keys()):
         state = states[prop_id]
-        study_summary = {
-            "CLEAR": {"total": 0, "pending": 0},
-            "AMBIGUOUS": {"total": 0, "pending": 0},
-        }
-        existing_total = 0
-        existing_pending = 0
+        prop_study_total = 0
+        prop_study_pending = 0
+        prop_existing_total = 0
+        prop_existing_pending = 0
         for pair in state.pairs.values():
             if pair.skip_human:
                 continue
             if pair.source == "study":
-                label = pair_llm_label(pair)
-                if label is None:
+                if pair_llm_label(pair) is None:
                     continue
-                study_summary[label]["total"] += 1
+                prop_study_total += 1
                 if annotator_id not in pair.human_pair_labels:
-                    study_summary[label]["pending"] += 1
+                    prop_study_pending += 1
             else:
-                existing_total += 1
+                prop_existing_total += 1
                 if annotator_id not in pair.human_pair_labels:
-                    existing_pending += 1
-        clear_info = study_summary["CLEAR"]
-        amb_info = study_summary["AMBIGUOUS"]
-        totals["study"]["CLEAR"]["total"] += clear_info["total"]
-        totals["study"]["CLEAR"]["pending"] += clear_info["pending"]
-        totals["study"]["AMBIGUOUS"]["total"] += amb_info["total"]
-        totals["study"]["AMBIGUOUS"]["pending"] += amb_info["pending"]
-        totals["existing"]["total"] += existing_total
-        totals["existing"]["pending"] += existing_pending
+                    prop_existing_pending += 1
+        study_total += prop_study_total
+        study_pending += prop_study_pending
+        existing_total += prop_existing_total
+        existing_pending += prop_existing_pending
         click.echo(
             f"  {prop_id}: "
-            f"study {clear_info['pending']}/{clear_info['total']} pending (LLM=CLEAR), "
-            f"{amb_info['pending']}/{amb_info['total']} pending (LLM=AMBIG); "
-            f"existing {existing_pending}/{existing_total} pending"
+            f"study {prop_study_pending}/{prop_study_total} pending, "
+            f"existing {prop_existing_pending}/{prop_existing_total} pending"
         )
-    clear_tot = totals["study"]["CLEAR"]
-    amb_tot = totals["study"]["AMBIGUOUS"]
-    existing_tot = totals["existing"]
     click.echo(
         f"  TOTALS: "
-        f"study {clear_tot['pending']}/{clear_tot['total']} pending (LLM=CLEAR), "
-        f"{amb_tot['pending']}/{amb_tot['total']} pending (LLM=AMBIG); "
-        f"existing {existing_tot['pending']}/{existing_tot['total']} pending"
+        f"study {study_pending}/{study_total} pending, "
+        f"existing {existing_pending}/{existing_total} pending"
     )
 
 
