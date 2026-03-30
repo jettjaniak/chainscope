@@ -72,9 +72,9 @@
         "To determine the logical consistency of the two questions, we evaluate their logical structure and compare them under various interpretations.\n\nQuestion 1 asks whether Epiphany Cathedral (Venice, Florida) is located north of Basilica of the Immaculate Conception (Jacksonville, Florida). Question 2 asks the opposite: whether the Basilica in Jacksonville is located north of the Epiphany Cathedral.\n\nNow consider the meanings:\n- If Question 1 is answered \"Yes,\" then Epiphany Cathedral is north of the Basilica.\n- If Question 2 is also answered \"Yes,\" then the Basilica is north of Epiphany \u2014 which contradicts the answer to Question 1.\n- Similarly, if both are answered \"No,\" then each is not north of the other \u2014 which is logically impossible unless they are exactly at the same latitude (which they are not).\n\nFrom the RAG latitude values:\n- Epiphany Cathedral: ~27.1012\u00b0N\n- Basilica of the Immaculate Conception: ~30.329\u00b0N\n\nThis confirms that the Basilica is located north of the Epiphany Cathedral. Therefore:\n- Question 1 must be answered \"No\"\n- Question 2 must be answered \"Yes\"\n\nThere is no interpretation under which both questions can be answered the same way (both Yes or both No) without contradiction. Therefore, the two questions are logically CONSISTENT: giving them the same answer would necessarily lead to a contradiction.",
         "To determine logical consistency, we examine whether both questions can logically be answered the same way (both Yes or both No) without contradicting each other.\n\nQuestion 1 asks whether Epiphany Cathedral (latitude approximately 27.1012\u00b0N) is located north of Basilica of the Immaculate Conception (latitude approximately 30.3292\u00b0N). Since 27.1012\u00b0N is south of 30.3292\u00b0N, the answer is No.\n\nQuestion 2 asks whether Basilica of the Immaculate Conception (30.3292\u00b0N) is located north of Epiphany Cathedral (27.1012\u00b0N). Since 30.3292\u00b0N is indeed north of 27.1012\u00b0N, the answer is Yes.\n\nTherefore, the two questions are logical opposites: if one is Yes, the other must be No. There is no interpretation where both can be answered the same way (both Yes or both No) without contradiction.\n\nThus, the questions are logically CONSISTENT because any attempt to answer both with the same value (both Yes or both No) results in a contradiction, which is the definition of consistency per the provided guidelines."
       ],
+      "human_pair_labels": {},
       "source": "study",
-      "skip_human": true,
-      "human_pair_labels": {}
+      "skip_human": true
     },
     "18a1b01042df434f179f4061c566d73164a4819a812855153f656b4a5b86dd03": {
       "pair_id": "18a1b01042df434f179f4061c566d73164a4819a812855153f656b4a5b86dd03",
@@ -155,11 +155,11 @@
         "To analyze the logical consistency of the two questions, we must examine whether they can be answered the same way (both Yes or both No) without contradiction. The two questions are:\n\n1. Is Atlanta Symphony Hall, GA located north of Berea College, KY?\n2. Is Berea College, KY located north of Atlanta Symphony Hall, GA?\n\nThese questions are exact inverses of each other. If Atlanta Symphony Hall is north of Berea College, then Berea College cannot also be north of Atlanta Symphony Hall, and vice versa. Therefore, one must be true and the other false.\n\nNow, let\u2019s look at the RAG (retrieved attribute grounding) values \u2014 specifically the latitudes of each location:\n\n- Atlanta Symphony Hall: approximately 33.789\u201333.791\u00b0 N\n- Berea College: approximately 37.568\u201337.577\u00b0 N\n\nSince 37.5\u00b0 N is clearly greater than 33.7\u00b0 N, Berea College is located north of Atlanta Symphony Hall.\n\nThus:\n\n- Question 1: Is Atlanta Symphony Hall north of Berea College? \u2192 No\n- Question 2: Is Berea College north of Atlanta Symphony Hall? \u2192 Yes\n\nAs expected, one is Yes and one is No.\n\nTherefore, it would be logically inconsistent to answer both questions with the same answer (both Yes or both No), because doing so would contradict the geographical fact established by the RAG values. Hence, the questions are logically CONSISTENT, because answering both the same way would produce a contradiction.",
         "To determine the logical consistency of the two questions, we assess whether answering both \"Yes\" or both \"No\" could ever be logically coherent given the information provided.\n\nQuestion 1: Is Atlanta Symphony Hall, GA located north of Berea College, KY?\nQuestion 2: Is Berea College, KY located north of Atlanta Symphony Hall, GA?\n\nThese are inverse directional questions. If one location is north of another, the second must be south of the first, and vice versa. Therefore, if Question 1 is answered \"Yes\" (Atlanta is north of Berea), then Question 2 must be \"No\" (Berea is not north of Atlanta), and vice versa.\n\nNow consider the RAG (retrieved answer ground truth) values:\n- Atlanta Symphony Hall, GA: Latitude values around 33.79\u00b0 N\n- Berea College, KY: Latitude values around 37.57\u00b0 N\n\nSince 37.57\u00b0 N > 33.79\u00b0 N, Berea College is north of Atlanta Symphony Hall.\n\nTherefore:\n- The answer to Question 1 is \"No\"\n- The answer to Question 2 is \"Yes\"\n\nThus, it is logically impossible to answer both questions with the same response (both \"Yes\" or both \"No\") without contradicting known geographic data. That is the definition of logical consistency per the guidelines.\n\nTherefore, these two questions are logically CONSISTENT with each other because any same answer (both Yes or both No) would always lead to a contradiction given the directional nature of the questions and the actual geographic data."
       ],
-      "source": "study",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "study",
+      "skip_human": false
     },
     "4e02bc528d434d92c7c0f9d2f445611a040d48c32350d2a03530a76dd007b3bb": {
       "pair_id": "4e02bc528d434d92c7c0f9d2f445611a040d48c32350d2a03530a76dd007b3bb",
@@ -234,11 +234,11 @@
         "The two questions are asking about the relative latitudinal positions of two locations in the United States: Lake Glenville, NC and the Shrine Church of St. Stanislaus, OH. \n\nFrom the RAG (retrieved attribute values) data, we can determine the approximate latitude of each location:\n\n- Lake Glenville, NC has latitude values around 35.17\u00b0 N to 35.19\u00b0 N.\n- Shrine Church of St. Stanislaus, OH has latitude values around 41.46\u00b0 N.\n\nSince 41.46\u00b0 N is clearly north of 35.17\u00b0 N, we can definitively conclude:\n- Lake Glenville, NC is south of Shrine Church of St. Stanislaus, OH.\n- Therefore, the answer to Question 1 (\"Is Lake Glenville, NC located north of Shrine Church of St. Stanislaus, OH?\") is No.\n- The answer to Question 2 (\"Is Shrine Church of St. Stanislaus, OH located north of Lake Glenville, NC?\") is Yes.\n\nNow, considering logical consistency: the two questions are exact logical opposites. If one is Yes, the other must be No. Therefore, any attempt to answer both questions with the same answer (both Yes or both No) would lead to a contradiction. No interpretation of the questions allows both to be answered the same without contradiction.\n\nThus, the questions are logically CONSISTENT with each other, because answering both the same way would necessarily create a contradiction.",
         "Question 1 asks whether Lake Glenville, NC is located north of Shrine Church of St. Stanislaus, OH. Question 2 asks the reverse \u2014 whether the Shrine Church is located north of Lake Glenville. These are logically inverse geographic relationships. In terms of latitude, something located north has a higher numerical latitude value.\n\nRAG values show that all latitude values for Lake Glenville are approximately 35.17\u00b0N to 35.19\u00b0N. For the Shrine Church, the latitude is approximately 41.46\u00b0N. Therefore, Shrine Church of St. Stanislaus is significantly north of Lake Glenville based on all provided coordinates.\n\nNow evaluating logical consistency: if one answers \"Yes\" to both questions, this would mean Lake Glenville is north of the Shrine Church and the Shrine Church is also north of Lake Glenville \u2014 a contradiction. Similarly, if one answers \"No\" to both, it implies neither location is north of the other, which is also impossible unless they are at the same latitude, which they are clearly not.\n\nHence, the only logically consistent way to answer these questions is \"No\" to Question 1 and \"Yes\" to Question 2 \u2014 or vice versa, depending on actual geography. This means that answering both questions the same way always leads to a contradiction.\n\nTherefore, the questions are logically CONSISTENT with each other because answering both the same way (both Yes or both No) will always lead to a contradiction."
       ],
-      "source": "study",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "study",
+      "skip_human": false
     },
     "86158ef371506ae3471f5322ea9ec45bc26729ce014d9936ad6dab9fcb94336d": {
       "pair_id": "86158ef371506ae3471f5322ea9ec45bc26729ce014d9936ad6dab9fcb94336d",
@@ -303,11 +303,11 @@
         "We are asked to analyze the logical consistency of two questions regarding the relative geographic positions of two locations in the United States, based on their latitudinal coordinates.\n\nQuestion 1 asks: Is Lensic Theater, NM located north of Crystal Creek Reservoir, CO?\n\nQuestion 2 asks: Is Crystal Creek Reservoir, CO located north of Lensic Theater, NM?\n\nWe are given the following latitude values:\n- Lensic Theater, NM: approximately 35.687917\u00b0N\n- Crystal Creek Reservoir, CO: approximately 38.9162229\u00b0N\n\nIn geographic terms, a location with a higher latitude (further north) is considered to be north of one with a lower latitude.\n\nTherefore, since 38.9162229\u00b0N (Crystal Creek Reservoir) > 35.687917\u00b0N (Lensic Theater), Crystal Creek Reservoir is north of the Lensic Theater.\n\nBased on that:\n- The answer to Question 1 (\"Is Lensic Theater, NM located north of Crystal Creek Reservoir, CO?\") is No.\n- The answer to Question 2 (\"Is Crystal Creek Reservoir, CO located north of Lensic Theater, NM?\") is Yes.\n\nNow, we analyze the logical consistency of these questions.\n\nThese two questions are exact logical negations of each other. If one is true, the other must be false. Therefore, it is impossible to answer both questions the same way (both Yes or both No) without contradiction. Any attempt to do so would contradict the basic logic of geographic direction.\n\nHence, the questions are logically CONSISTENT: answering both with the same response (both Yes or both No) would always result in a contradiction.",
         "To determine logical consistency, we evaluate whether the two questions can logically be answered the same way (both Yes or both No) without contradiction.\n\nQuestion 1: \"Is Lensic Theater, NM located north of Crystal Creek Reservoir, CO?\"\nQuestion 2: \"Is Crystal Creek Reservoir, CO located north of Lensic Theater, NM?\"\n\nWe compare the provided RAG (retrieved accurate geolocation) values:\n\n- Lensic Theater, NM: approximately 35.6879\u00b0N\n- Crystal Creek Reservoir, CO: approximately 38.9162\u00b0N\n\nSince 38.9162\u00b0N > 35.6879\u00b0N, Crystal Creek Reservoir is geographically north of Lensic Theater.\n\nTherefore:\n- The correct answer to Question 1 is \"No\" (Lensic Theater is not north of Crystal Creek Reservoir).\n- The correct answer to Question 2 is \"Yes\" (Crystal Creek Reservoir is north of Lensic Theater).\n\nNow, regarding logical consistency:\n\nThe two questions are logical inverses of each other \u2014 they are asking the same positional relationship but reversed. If one is true, the other must be false. Therefore, it is impossible to answer both questions the same way (both Yes or both No) without contradicting the known geographic data.\n\nHence, any interpretation where both are answered the same way (both Yes or both No) would necessarily contradict the geographic facts. That means no such interpretation exists where both questions can be answered the same way without contradiction.\n\nTherefore, the questions are logically CONSISTENT because answering them the same way always leads to a contradiction."
       ],
-      "source": "study",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "study",
+      "skip_human": false
     },
     "ba93ba69229d68825e27eb03a8bc1313775cf21704e7725d997d315de7566d21": {
       "pair_id": "ba93ba69229d68825e27eb03a8bc1313775cf21704e7725d997d315de7566d21",
@@ -376,9 +376,9 @@
         "To assess the logical consistency of the two questions, we first examine their structure and content.\n\nQuestion 1: \"Is Big Hill Lake, KS located north of Basilica of St. John (Des Moines, Iowa), IA?\"\nQuestion 2: \"Is Basilica of St. John (Des Moines, Iowa), IA located north of Big Hill Lake, KS?\"\n\nThese two questions are mirror images of each other, essentially reversing the subject and object in the same directional relationship. The geographic relationship \"A is north of B\" is logically equivalent to \"B is south of A.\" Therefore, it is impossible for both questions to be answered the same way (\"Yes\" or \"No\") without contradicting basic spatial logic.\n\nNow, let's analyze the provided RAG (retrieved attribute generation) values:\n\nBig Hill Lake, KS:\n- All latitude values are around 37.29\u00b0 N\n\nBasilica of St. John (Des Moines, Iowa), IA:\n- All latitude values are around 41.60\u00b0 N\n\nSince 41.60\u00b0 N (Basilica) is clearly north of 37.29\u00b0 N (Big Hill Lake), we can definitively conclude:\n- Question 1: Is Big Hill Lake north of the Basilica? \u2192 No\n- Question 2: Is the Basilica north of Big Hill Lake? \u2192 Yes\n\nThus, if someone were to answer both questions with the same response (both Yes or both No), it would contradict the geographic data. There is no interpretation under which both questions can be answered the same way without contradiction.\n\nTherefore, these two questions are logically CONSISTENT because answering both questions the same way would always lead to a contradiction.",
         "The two questions are asking about the relative north-south positioning of the same two locations, but in reversed terms.\n\nQuestion 1: Is Big Hill Lake, KS located north of Basilica of St. John (Des Moines, Iowa), IA?\nQuestion 2: Is Basilica of St. John (Des Moines, Iowa), IA located north of Big Hill Lake, KS?\n\nThis is a classic case of logical negation. If Question 1 is answered \"Yes\" (i.e., Big Hill Lake is north of the Basilica), then Question 2 must be \"No\" (the Basilica cannot also be north of Big Hill Lake). Similarly, if Question 1 is \"No\", then Question 2 must be \"Yes\". There is no way for both to be answered \"Yes\" or both to be answered \"No\" without contradicting the basic rules of spatial geography.\n\nNow let\u2019s validate that the locations have different latitudes:\n- Big Hill Lake, KS has latitude values around 37.292\u00b0 N.\n- Basilica of St. John (Des Moines, Iowa), IA has latitude values around 41.6006\u00b0 N.\n\nSince 41.6006\u00b0 N > 37.292\u00b0 N, the Basilica is located north of Big Hill Lake.\n\nTherefore:\n- Question 1 should be answered \"No\".\n- Question 2 should be answered \"Yes\".\n\nSince it is impossible to answer both questions with the same answer (either both Yes or both No) without contradicting the geographic facts, the questions are logically CONSISTENT with each other: they cannot both have the same answer without contradiction."
       ],
+      "human_pair_labels": {},
       "source": "study",
-      "skip_human": true,
-      "human_pair_labels": {}
+      "skip_human": true
     },
     "fd5f291e39b73a3aef81c274c7ae38c91aee79b51f836d59485a0fef62ca245f": {
       "pair_id": "fd5f291e39b73a3aef81c274c7ae38c91aee79b51f836d59485a0fef62ca245f",
@@ -443,9 +443,9 @@
         "To determine the logical consistency of the two questions, we must examine their semantic content and geographical implications in light of the provided RAG (Retrieved Attribute Grounding) values.\n\nQuestion 1 asks: \"Is Cathedral Basilica of Saint Louis (St. Louis), MO located north of House on the Rock, WI?\"  \nQuestion 2 asks: \"Is House on the Rock, WI located north of Cathedral Basilica of Saint Louis (St. Louis), MO?\"\n\nThese two questions are direct logical inverses of each other. If one is true, the other must be false, and vice versa. They cannot both be true and cannot both be false at the same time.\n\nNow consider the RAG values:\n\n- Cathedral Basilica of Saint Louis:\n  - Latitudes: 38.64250\u00b0N, 38.64805\u00b0N, 38.642533\u00b0N\n- House on the Rock:\n  - Latitudes: 43.09927\u00b0N, 43.099805\u00b0N, 42.9888\u00b0N\n\nAll latitude values for House on the Rock are significantly greater than those for the Cathedral Basilica, meaning House on the Rock is geographically north of the Cathedral Basilica.\n\nThus, the correct answer to:\n- Question 1 is: No (the Basilica is not north of House on the Rock)\n- Question 2 is: Yes (House on the Rock is north of the Basilica)\n\nSince the two questions cannot be answered the same way without causing a contradiction, they are logically CONSISTENT under the provided definition. That is, answering both Yes or both No would always result in a contradiction, meaning they are logically consistent with each other.",
         "To determine logical consistency between the two questions, we consider whether both statements could be answered the same way (both Yes or both No) without contradiction.\n\nQuestion 1 asks: \"Is Cathedral Basilica of Saint Louis (St. Louis), MO located north of House on the Rock, WI?\"\nQuestion 2 asks: \"Is House on the Rock, WI located north of Cathedral Basilica of Saint Louis (St. Louis), MO?\"\n\nThese two questions are logical inverses of each other: if one is true, the other must be false, and vice versa. If the Cathedral Basilica is north of House on the Rock, then House on the Rock cannot be north of the Cathedral Basilica.\n\nNow, let's analyze the RAG values (latitude) to determine the actual geographic positions:\n\nCathedral Basilica of Saint Louis (St. Louis), MO latitudes:\n- 38.64250\u00b0N\n- 38.64805\u00b0N\n- 38.642533\u00b0N\n\nHouse on the Rock, WI latitudes:\n- 43.09927\u00b0 N\n- 43.099805\u00b0 N\n- 42.9888\u00b0 N\n\nAll latitude values for House on the Rock are greater than those for the Cathedral Basilica, meaning House on the Rock is located further north than the Cathedral Basilica.\n\nTherefore:\n- Question 1 should be answered \"No\"\n- Question 2 should be answered \"Yes\"\n\nSince one must be answered \"Yes\" and the other \"No\", it is impossible to answer both questions with the same answer (both Yes or both No) without creating a contradiction. This matches the definition of logical consistency provided.\n\nThus, the two questions are logically CONSISTENT: answering both with the same answer would always lead to a contradiction."
       ],
+      "human_pair_labels": {},
       "source": "study",
-      "skip_human": true,
-      "human_pair_labels": {}
+      "skip_human": true
     },
     "a2dbd54c37fffe93d38e7dde35264019eab71ba8783c4d40856a06d1ed772ff7": {
       "pair_id": "a2dbd54c37fffe93d38e7dde35264019eab71ba8783c4d40856a06d1ed772ff7",
@@ -510,9 +510,9 @@
         "To determine logical consistency, we must analyze whether answering both questions the same way (both \"Yes\" or both \"No\") leads to a contradiction.\n\nQuestion 1: \"Is Brookville Lake Dam, IN located north of Presidential Towers, IL?\"\nQuestion 2: \"Is Presidential Towers, IL located north of Brookville Lake Dam, IN?\"\n\nThese two questions are exact logical inverses of each other. If one location is north of another, then the second location must be south of the first. Thus, both cannot be true at the same time, and both cannot be false at the same time.\n\nNow, examine the RAG values (latitude) to determine relative positions:\n\n- Brookville Lake Dam, IN: approximately 39.44\u00b0 N\n- Presidential Towers, IL: approximately 41.88\u00b0 N\n\nSince 41.88 > 39.44, Presidential Towers, IL is located north of Brookville Lake Dam, IN.\n\nTherefore:\n- Question 1's correct answer is \"No\"\n- Question 2's correct answer is \"Yes\"\n\nThis means that answering both \"Yes\" or both \"No\" would always create a contradiction, because they ask directly opposing geographic relationships.\n\nThus, the questions are logically CONSISTENT because answering both with the same value always leads to contradiction.",
         "The two questions are examining the relative geographic positions (in terms of latitude) of two locations: Brookville Lake Dam in Indiana and Presidential Towers in Illinois. Specifically:\n\n- Question 1 asks whether Brookville Lake Dam is located north of Presidential Towers.\n- Question 2 asks whether Presidential Towers is located north of Brookville Lake Dam.\n\nThese are logically inverse questions. If one is true, the other must be false, assuming \"north\" is based purely on latitude.\n\nNow, examining the RAG values:\n\n- Brookville Lake Dam, IN: 39.4399\u00b0 N, 39.44033\u00b0 N, 39.4411111\u00b0 N (average ~39.44\u00b0 N)\n- Presidential Towers, IL: 41.88118\u00b0 N, 41.88163\u00b0 N, 41.88073\u00b0 N (average ~41.88\u00b0 N)\n\nSince 41.88\u00b0 N > 39.44\u00b0 N, Presidential Towers is indeed located north of Brookville Lake Dam.\n\nTherefore:\n\n- Question 1 must be answered No.\n- Question 2 must be answered Yes.\n\nAnswering both questions with the same response (both Yes or both No) would always lead to a contradiction, as doing so would defy the basic geographic fact that one is clearly north of the other. There is no interpretation under which both questions can be answered the same way without contradiction.\n\nHence, the questions are logically CONSISTENT with each other, because answering both the same way would always create a contradiction."
       ],
+      "human_pair_labels": {},
       "source": "study",
-      "skip_human": true,
-      "human_pair_labels": {}
+      "skip_human": true
     },
     "60cbe0f2d3d1c7ca326ce44c7b1f85b22347ec6ad38ab6c513c638b46163d609": {
       "pair_id": "60cbe0f2d3d1c7ca326ce44c7b1f85b22347ec6ad38ab6c513c638b46163d609",
@@ -587,11 +587,11 @@
         "To determine the logical consistency of the two questions, we analyze their structure and implications:\n\nQuestion 1: \"Is Trinity Dam, CA located north of Lake Merwin, WA?\"\nQuestion 2: \"Is Lake Merwin, WA located north of Trinity Dam, CA?\"\n\nThese questions are logical negations of each other. If one is true, the other must be false, and vice versa. They cannot both be true simultaneously, nor can both be false simultaneously. This is because the relation \"located north of\" is antisymmetric: if A is north of B, then B cannot be north of A.\n\nNow let's evaluate the actual geographic data:\n\n- Trinity Dam, CA RAG values (latitude):\n  - 40.80111\u00b0N\n  - 40.7997\u00b0N\n  - 40.8009788\u00b0N\n  - Average \u2248 40.8006\u00b0N\n\n- Lake Merwin, WA RAG values (latitude):\n  - 45.979477\u00b0N\n  - 45.97412\u00b0N\n  - 45.9712222\u00b0N\n  - 45.9835675596\u00b0N\n  - 45.9824463\u00b0N\n  - 45.9711845\u00b0N\n  - Average \u2248 45.9767\u00b0N\n\nSince 45.9767\u00b0N > 40.8006\u00b0N, Lake Merwin is located north of Trinity Dam. Therefore:\n- Question 1 should be answered \"No\"\n- Question 2 should be answered \"Yes\"\n\nThus, answering both questions the same way (both \"Yes\" or both \"No\") would result in a contradiction with the known geographic data.\n\nTherefore, the two questions are logically CONSISTENT: answering both the same way would always lead to a contradiction, which matches the definition of logical consistency in this context.",
         "To determine whether the two questions are logically consistent, we examine their logical structure and the geographic data (RAG values) associated with each location.\n\nQuestion 1: \"Is Trinity Dam, CA located north of Lake Merwin, WA?\"\nQuestion 2: \"Is Lake Merwin, WA located north of Trinity Dam, CA?\"\n\nThese two questions are exact logical inverses of each other. That is, if one is true (Yes), the other must be false (No), and vice versa. They cannot both be true or both be false at the same time, unless the two locations are at the exact same latitude \u2014 in which case both answers would be \"No,\" since neither is north of the other.\n\nNow, let\u2019s examine the RAG values for latitudinal coordinates to determine if this special case (same latitude) applies:\n\n- Trinity Dam, CA latitudes:\n  - 40.80111\u00b0N\n  - 40.7997\u00b0N\n  - 40.8009788\u00b0N\n\n- Lake Merwin, WA latitudes:\n  - 45.979477\u00b0N\n  - 45.97412\u00b0N\n  - 45.9712222\u00b0N\n  - 45.9835675596\u00b0N\n  - 45.9824463\u00b0N\n  - 45.9711845\u00b0N\n\nAll Lake Merwin values are approximately 45.97\u00b0N, clearly north of all Trinity Dam values (~40.80\u00b0N). Therefore, Lake Merwin is indeed north of Trinity Dam.\n\nThis means:\n- Question 1 should be answered \u201cNo\u201d (Trinity Dam is not north of Lake Merwin).\n- Question 2 should be answered \u201cYes\u201d (Lake Merwin is north of Trinity Dam).\n\nSince one is Yes and the other is No, and they cannot both be Yes or both be No without contradiction, the questions are logically CONSISTENT."
       ],
-      "source": "study",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "study",
+      "skip_human": false
     },
     "da7a7942b0639051162a2fc3f802e6831100e754e47ac1a03ec1d1b9e2231e04": {
       "pair_id": "da7a7942b0639051162a2fc3f802e6831100e754e47ac1a03ec1d1b9e2231e04",
@@ -648,11 +648,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     },
     "cd03c93972cc796e91564818c3379b5651c4aa28ac58d2b20584cbb755203eef": {
       "pair_id": "cd03c93972cc796e91564818c3379b5651c4aa28ac58d2b20584cbb755203eef",
@@ -709,11 +709,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     },
     "98dbb96e22ecbb459f4bebf3132ea2ea02478348085d8455b65722bdf5557bc5": {
       "pair_id": "98dbb96e22ecbb459f4bebf3132ea2ea02478348085d8455b65722bdf5557bc5",
@@ -772,11 +772,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     },
     "660366166be693f39e137909304debfbb621f4a3ad39d6c412abc06c58b24a58": {
       "pair_id": "660366166be693f39e137909304debfbb621f4a3ad39d6c412abc06c58b24a58",
@@ -835,11 +835,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     },
     "3c7f1959e010fbb1b5bb50c1b9f77aaf712e9d6203ad94479696e89bae8bfaac": {
       "pair_id": "3c7f1959e010fbb1b5bb50c1b9f77aaf712e9d6203ad94479696e89bae8bfaac",
@@ -900,11 +900,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     },
     "a22ed191f3b10f81597710cac7195f1866ea0c03886016677adf8b87c8a61a95": {
       "pair_id": "a22ed191f3b10f81597710cac7195f1866ea0c03886016677adf8b87c8a61a95",
@@ -959,11 +959,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     },
     "0b97aa11c52dfd46ed748ce35999419e371e879a09153fbae0bdb910cb3dc59b": {
       "pair_id": "0b97aa11c52dfd46ed748ce35999419e371e879a09153fbae0bdb910cb3dc59b",
@@ -1034,11 +1034,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     },
     "d7862121c2a33b6c1dabb732a19191596c29864402cbf924591b25c6b373fae1": {
       "pair_id": "d7862121c2a33b6c1dabb732a19191596c29864402cbf924591b25c6b373fae1",
@@ -1101,11 +1101,11 @@
       },
       "filter_pair_label": "CLEAR",
       "filter_pair_analyses": null,
-      "source": "existing",
-      "skip_human": false,
       "human_pair_labels": {
         "ivan": "clear"
-      }
+      },
+      "source": "existing",
+      "skip_human": false
     }
   }
 }
