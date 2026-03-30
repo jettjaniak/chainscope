@@ -42,7 +42,8 @@ from chainscope.typing import (
 STUDY_DIR = DATA_DIR / "ambiguity_filter_study"
 RAG_SAMPLING = SamplingParams(temperature=0.0, top_p=0.9, max_new_tokens=1000)
 DirectionLabel = Literal["clear", "ambiguous"]
-_SKIP = "skip"  # sentinel for ask_direction_label / ask_pair_label
+_SKIP = "skip"  # sentinels for ask_direction_label / ask_pair_label
+_QUIT = "quit"
 FilterLabel = Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]
 MIN_EXTEND_BATCH = 300
 FaithfulnessLookup = dict[str, dict[str, set[str]]]
@@ -621,7 +622,7 @@ def record_direction_results(
     for pair in state.pairs.values():
         for direction in (pair.forward, pair.reverse):
             result = results.get(direction.qid)
-            if result is None:
+            if result == _QUIT:
                 continue
             direction.filter_label = result.final_classification
             direction.filter_analyses = result.ambiguity_analyses
@@ -634,7 +635,7 @@ def record_pair_results(
 ) -> None:
     for pair in state.pairs.values():
         result = results.get(pair.pair_id)
-        if result is None:
+        if result == _QUIT:
             continue
         pair.filter_pair_label = result.final_classification
         pair.filter_pair_analyses = result.consistency_analyses
@@ -1234,7 +1235,7 @@ def ask_direction_label(
     question_index: int,
     total_questions: int,
     annotator_id: str,
-) -> DirectionLabel | str | None:
+) -> DirectionLabel | str:
     click.echo("\n" + "=" * 80)
     click.echo(f"Question {question_index}/{total_questions}")
     click.echo(f"Question:\n{direction.question.strip()}")
@@ -1249,7 +1250,7 @@ def ask_direction_label(
         if choice:
             click.echo(choice)
         if choice == "q":
-            return None
+            return _QUIT
         if choice == "s":
             return _SKIP
         if choice in {"c", "a"}:
@@ -1264,7 +1265,7 @@ def ask_pair_label(
     pair_index: int,
     total_pairs: int,
     annotator_id: str,
-) -> DirectionLabel | str | None:
+) -> DirectionLabel | str:
     click.echo("\n" + "-" * 80)
     click.echo(f"Pair {pair_index}/{total_pairs}")
     click.echo("\nQuestion A:")
@@ -1286,7 +1287,7 @@ def ask_pair_label(
         if choice:
             click.echo(choice)
         if choice == "q":
-            return None
+            return _QUIT
         if choice == "s":
             return _SKIP
         if choice in {"c", "a"}:
@@ -1317,7 +1318,7 @@ def run_labeling_loops(
         result = ask_direction_label(
             state, direction, direction_name, question_number, total_questions, annotator_id
         )
-        if result is None:
+        if result == _QUIT:
             click.echo("Exiting labeling loop.")
             return
         if result == _SKIP:
@@ -1337,7 +1338,7 @@ def run_labeling_loops(
         pair_index = total_pairs - len(pair_queue)
         state, pair = pair_queue.popleft()
         result = ask_pair_label(state, pair, pair_index, total_pairs, annotator_id)
-        if result is None:
+        if result == _QUIT:
             click.echo("Exiting pair loop.")
             return
         if result == _SKIP:
