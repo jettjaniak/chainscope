@@ -1614,24 +1614,41 @@ def _print_agreement(
     a_clear_b_amb = sum(1 for a, b in zip(labels_a, labels_b) if a == "clear" and b == "ambiguous")
     a_amb_b_clear = sum(1 for a, b in zip(labels_a, labels_b) if a == "ambiguous" and b == "clear")
 
+    # Per-annotator ambiguity rates
+    ambig_a = sum(1 for a in labels_a if a == "ambiguous")
+    ambig_b = sum(1 for b in labels_b if b == "ambiguous")
+
     click.echo(f"Raw agreement: {raw_agreement:.3f} ({agree}/{n})")
+    click.echo(f"Ambiguity rate ({ann_a}): {ambig_a}/{n} = {ambig_a/n:.1%}")
+    click.echo(f"Ambiguity rate ({ann_b}): {ambig_b}/{n} = {ambig_b/n:.1%}")
     click.echo(f"Confusion matrix:")
     click.echo(f"  {'':<12} {ann_b}=clear  {ann_b}=ambig")
     click.echo(f"  {ann_a}=clear   {both_clear:>8}  {a_clear_b_amb:>8}")
     click.echo(f"  {ann_a}=ambig   {a_amb_b_clear:>8}  {both_amb:>8}")
 
-    # Cohen's kappa
+    # Marginal proportions
     p_a_clear = (both_clear + a_clear_b_amb) / n
     p_b_clear = (both_clear + a_amb_b_clear) / n
     p_a_amb = 1.0 - p_a_clear
     p_b_amb = 1.0 - p_b_clear
-    p_e = p_a_clear * p_b_clear + p_a_amb * p_b_amb
 
-    if abs(1.0 - p_e) < 1e-10:
+    # Cohen's kappa
+    p_e_kappa = p_a_clear * p_b_clear + p_a_amb * p_b_amb
+    if abs(1.0 - p_e_kappa) < 1e-10:
         click.echo("Cohen's kappa: undefined (trivial agreement)")
     else:
-        kappa = (raw_agreement - p_e) / (1.0 - p_e)
+        kappa = (raw_agreement - p_e_kappa) / (1.0 - p_e_kappa)
         click.echo(f"Cohen's kappa: {kappa:.3f}")
+
+    # Gwet's AC1 (more stable than kappa with skewed marginals)
+    pi_clear = (p_a_clear + p_b_clear) / 2.0
+    pi_amb = (p_a_amb + p_b_amb) / 2.0
+    p_e_ac1 = 2.0 * pi_clear * pi_amb
+    if abs(1.0 - p_e_ac1) < 1e-10:
+        click.echo("Gwet's AC1: undefined (trivial agreement)")
+    else:
+        ac1 = (raw_agreement - p_e_ac1) / (1.0 - p_e_ac1)
+        click.echo(f"Gwet's AC1: {ac1:.3f}")
 
 
 @click.command()
