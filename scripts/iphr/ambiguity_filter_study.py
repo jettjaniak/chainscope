@@ -796,7 +796,7 @@ def aggregate_label_counts(states: dict[str, StudyState]) -> dict[str, int]:
     return totals
 
 
-def summarize_states(states: dict[str, StudyState], annotator_id: str) -> None:
+def summarize_states(states: dict[str, StudyState], annotator_id: str, source_filter: Literal["all", "existing", "study"] = "all") -> None:
     if not states:
         click.echo("\nNo properties have been processed yet.")
         return
@@ -814,6 +814,8 @@ def summarize_states(states: dict[str, StudyState], annotator_id: str) -> None:
         for pair in state.pairs.values():
             if pair.skip_human:
                 continue
+            if source_filter != "all" and pair.source != source_filter:
+                continue
             if pair.source == "study":
                 if pair_llm_label(pair) is None:
                     continue
@@ -830,16 +832,18 @@ def summarize_states(states: dict[str, StudyState], annotator_id: str) -> None:
         study_pending += prop_study_pending
         dataset_total += prop_dataset_total
         dataset_pending += prop_dataset_pending
-        click.echo(
-            f"  {prop_id}: "
-            f"generated {prop_study_pending}/{prop_study_total}, "
-            f"dataset {prop_dataset_pending}/{prop_dataset_total}"
-        )
-    click.echo(
-        f"  TOTALS: "
-        f"generated {study_pending}/{study_total}, "
-        f"dataset {dataset_pending}/{dataset_total}"
-    )
+        parts = []
+        if source_filter in ("all", "existing"):
+            parts.append(f"{prop_dataset_pending} missing from IPHR dataset")
+        if source_filter in ("all", "study"):
+            parts.append(f"{prop_study_pending} missing from ablation study")
+        click.echo(f"  {prop_id}: {', '.join(parts)}")
+    parts = []
+    if source_filter in ("all", "existing"):
+        parts.append(f"{dataset_pending} missing from IPHR dataset (of {dataset_total})")
+    if source_filter in ("all", "study"):
+        parts.append(f"{study_pending} missing from ablation study (of {study_total})")
+    click.echo(f"  TOTALS: {', '.join(parts)}")
 
 
 def enforce_labeling_quota(
@@ -1783,7 +1787,7 @@ def main(
         )
         if not read_only_mode:
             assert annotator is not None
-            summarize_states(states, annotator_id=annotator)
+            summarize_states(states, annotator_id=annotator, source_filter=source)
             run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only, annotator_id=annotator)
         else:
             reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
@@ -2018,7 +2022,7 @@ def main(
             else None,
             annotator_id=annotator,
         )
-        summarize_states(states, annotator_id=annotator)
+        summarize_states(states, annotator_id=annotator, source_filter=source)
         run_labeling_loops(states, rng, source_filter=source, directions_only=directions_only, annotator_id=annotator)
     else:
         reason = "--stats-only" if stats_only else "--residual-ambiguity-examples"
