@@ -42,6 +42,7 @@ from chainscope.typing import (
 STUDY_DIR = DATA_DIR / "ambiguity_filter_study"
 RAG_SAMPLING = SamplingParams(temperature=0.0, top_p=0.9, max_new_tokens=1000)
 DirectionLabel = Literal["clear", "ambiguous"]
+_SKIP = "skip"  # sentinel for ask_direction_label / ask_pair_label
 FilterLabel = Literal["CLEAR", "AMBIGUOUS", "FAILED_EVAL"]
 MIN_EXTEND_BATCH = 300
 FaithfulnessLookup = dict[str, dict[str, set[str]]]
@@ -1233,7 +1234,7 @@ def ask_direction_label(
     question_index: int,
     total_questions: int,
     annotator_id: str,
-) -> DirectionLabel | None:
+) -> DirectionLabel | str | None:
     click.echo("\n" + "=" * 80)
     click.echo(f"Question {question_index}/{total_questions}")
     click.echo(f"Question:\n{direction.question.strip()}")
@@ -1250,7 +1251,7 @@ def ask_direction_label(
         if choice == "q":
             return None
         if choice == "s":
-            return direction.human_labels.get(annotator_id)
+            return _SKIP
         if choice in {"c", "a"}:
             return cast(DirectionLabel, {"c": "clear", "a": "ambiguous"}[choice])
         click.echo("Invalid choice, please use c/a/s/q.")
@@ -1263,7 +1264,7 @@ def ask_pair_label(
     pair_index: int,
     total_pairs: int,
     annotator_id: str,
-) -> DirectionLabel | None:
+) -> DirectionLabel | str | None:
     click.echo("\n" + "-" * 80)
     click.echo(f"Pair {pair_index}/{total_pairs}")
     click.echo("\nQuestion A:")
@@ -1287,7 +1288,7 @@ def ask_pair_label(
         if choice == "q":
             return None
         if choice == "s":
-            return pair.human_pair_labels.get(annotator_id)
+            return _SKIP
         if choice in {"c", "a"}:
             return cast(DirectionLabel, {"c": "clear", "a": "ambiguous"}[choice])
         click.echo("Invalid choice, please use c/a/s/q.")
@@ -1313,12 +1314,15 @@ def run_labeling_loops(
     while task_queue:
         state, pair, direction, direction_name = task_queue.popleft()
         question_number = total_questions - len(task_queue)
-        label = ask_direction_label(
+        result = ask_direction_label(
             state, direction, direction_name, question_number, total_questions, annotator_id
         )
-        if label is None:
+        if result is None:
             click.echo("Exiting labeling loop.")
             return
+        if result == _SKIP:
+            continue
+        label = cast(DirectionLabel, result)
         if label == direction.human_labels.get(annotator_id):
             continue
         direction.human_labels[annotator_id] = label
@@ -1332,10 +1336,13 @@ def run_labeling_loops(
     while pair_queue:
         pair_index = total_pairs - len(pair_queue)
         state, pair = pair_queue.popleft()
-        label = ask_pair_label(state, pair, pair_index, total_pairs, annotator_id)
-        if label is None:
+        result = ask_pair_label(state, pair, pair_index, total_pairs, annotator_id)
+        if result is None:
             click.echo("Exiting pair loop.")
             return
+        if result == _SKIP:
+            continue
+        label = cast(DirectionLabel, result)
         if label == pair.human_pair_labels.get(annotator_id):
             continue
         pair.human_pair_labels[annotator_id] = label
