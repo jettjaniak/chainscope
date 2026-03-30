@@ -800,46 +800,19 @@ def summarize_states(states: dict[str, StudyState], annotator_id: str) -> None:
     if not states:
         click.echo("\nNo properties have been processed yet.")
         return
-    click.echo(f"\nPending direction-level labels for annotator: {annotator_id}")
-    study_total = 0
-    study_pending = 0
-    dataset_total = 0
-    dataset_pending = 0
-    for prop_id in sorted(states.keys()):
-        state = states[prop_id]
-        prop_study_total = 0
-        prop_study_pending = 0
-        prop_dataset_total = 0
-        prop_dataset_pending = 0
+    total = 0
+    done = 0
+    for state in states.values():
         for pair in state.pairs.values():
             if pair.skip_human:
                 continue
-            if pair.source == "study":
-                if pair_llm_label(pair) is None:
-                    continue
+            if pair.source == "study" and pair_llm_label(pair) is None:
+                continue
             for direction in (pair.forward, pair.reverse):
-                if pair.source == "study":
-                    prop_study_total += 1
-                    if annotator_id not in direction.human_labels:
-                        prop_study_pending += 1
-                else:
-                    prop_dataset_total += 1
-                    if annotator_id not in direction.human_labels:
-                        prop_dataset_pending += 1
-        study_total += prop_study_total
-        study_pending += prop_study_pending
-        dataset_total += prop_dataset_total
-        dataset_pending += prop_dataset_pending
-        click.echo(
-            f"  {prop_id}: "
-            f"generated {prop_study_pending}/{prop_study_total}, "
-            f"dataset {prop_dataset_pending}/{prop_dataset_total}"
-        )
-    click.echo(
-        f"  TOTALS: "
-        f"generated {study_pending}/{study_total}, "
-        f"dataset {dataset_pending}/{dataset_total}"
-    )
+                total += 1
+                if annotator_id in direction.human_labels:
+                    done += 1
+    click.echo(f"\nAnnotator {annotator_id}: {done}/{total} directions labeled, {total - done} remaining.")
 
 
 def enforce_labeling_quota(
